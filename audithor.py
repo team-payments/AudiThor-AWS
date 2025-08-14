@@ -4,7 +4,6 @@ import boto3
 import threading
 import webbrowser
 import json
-import subprocess
 from collections import defaultdict
 from datetime import datetime, timedelta
 import pytz
@@ -69,6 +68,102 @@ def collect_iam_data(session):
         result_groups.append({ "GroupName": group["GroupName"], "CreateDate": str(group["CreateDate"]), "AttachedPolicies": [p["PolicyName"] for p in client.list_attached_group_policies(GroupName=group["GroupName"])["AttachedPolicies"]], "IsPrivileged": False, "PrivilegeReasons": [] })
     detectar_privilegios(result_users, result_roles, result_groups, session)
     return {"users": result_users, "roles": result_roles, "groups": result_groups, "password_policy": password_policy}
+
+def collect_identity_center_data(session):
+    """
+    Recopila datos de AWS Identity Center, buscando primero la instancia en todas las regiones.
+    """
+    try:
+        # --- INICIO DE LA MODIFICACIÓN ---
+        
+        # OBTENEMOS TODAS LAS REGIONES DE AWS
+        # Reutilizamos la función que ya tienes para obtener la lista de regiones.
+        all_regions = get_all_aws_regions(session)
+        
+        instance_arn = None
+        identity_store_id = None
+        found_region = None
+
+        # BUSCAMOS LA INSTANCIA DE IDENTITY CENTER EN TODAS LAS REGIONES
+        # Iteramos por cada región hasta encontrarla.
+        for region in all_regions:
+            try:
+                # Creamos un cliente específico para esta región en el bucle
+                regional_sso_client = session.client("sso-admin", region_name=region)
+                instances = regional_sso_client.list_instances().get("Instances", [])
+                if instances:
+                    # ¡La encontramos! Guardamos los datos y la región, y salimos del bucle.
+                    instance_arn = instances[0]['InstanceArn']
+                    identity_store_id = instances[0]['IdentityStoreId']
+                    found_region = region
+                    break 
+            except ClientError:
+                # Ignoramos regiones donde no tengamos permisos o el servicio no esté disponible.
+                continue
+        
+        # SI NO SE ENCONTRÓ NINGUNA INSTANCIA...
+        # Si el bucle termina y no hemos encontrado nada, devolvemos un mensaje claro.
+        if not instance_arn:
+            return {"status": "No Encontrado", "message": "No se encontraron instancias de AWS Identity Center activas en ninguna región."}
+
+        # SI LA ENCONTRAMOS, CONTINUAMOS...
+        # Ahora creamos los clientes finales apuntando a la REGIÓN CORRECTA.
+        sso_admin_client = session.client("sso-admin", region_name=found_region)
+        identity_client = session.client("identitystore", region_name=found_region)
+        
+        # --- FIN DE LA MODIFICACIÓN ---
+        # El resto de la lógica es la misma que ya tenías.
+
+        # 2. Obtener todos los grupos y crear un mapa para búsqueda rápida
+        group_map = {}
+        paginator_groups = identity_client.get_paginator('list_groups')
+        for page in paginator_groups.paginate(IdentityStoreId=identity_store_id):
+            for group in page.get("Groups", []):
+                group_map[group['GroupId']] = group['DisplayName']
+
+        # 3. Obtener todos los Permission Sets
+        ps_map = {}
+        paginator_ps = sso_admin_client.get_paginator('list_permission_sets')
+        for page in paginator_ps.paginate(InstanceArn=instance_arn):
+            for ps_arn in page.get("PermissionSets", []):
+                details = sso_admin_client.describe_permission_set(InstanceArn=instance_arn, PermissionSetArn=ps_arn)
+                ps_map[ps_arn] = details.get("PermissionSet", {}).get("Name", "Desconocido")
+
+        # 4. Correlacionar todo
+        assignments = []
+        paginator_accounts = sso_admin_client.get_paginator('list_accounts_for_provisioned_permission_set')
+
+        for ps_arn, ps_name in ps_map.items():
+            for page in paginator_accounts.paginate(InstanceArn=instance_arn, PermissionSetArn=ps_arn):
+                for account_id in page.get("AccountIds", []):
+                    paginator_assignments = sso_admin_client.get_paginator('list_account_assignments')
+                    for assign_page in paginator_assignments.paginate(InstanceArn=instance_arn, AccountId=account_id, PermissionSetArn=ps_arn):
+                        for assignment in assign_page.get("AccountAssignments", []):
+                            if assignment.get("PrincipalType") == "GROUP":
+                                group_id = assignment.get("PrincipalId")
+                                assignments.append({
+                                    "AccountId": account_id,
+                                    "PermissionSetArn": ps_arn,
+                                    "PermissionSetName": ps_name,
+                                    "GroupId": group_id,
+                                    "GroupName": group_map.get(group_id, "Grupo Desconocido")
+                                })
+
+        return {
+            "status": "Encontrado",
+            "instance_arn": instance_arn,
+            "identity_store_id": identity_store_id,
+            "assignments": sorted(assignments, key=lambda x: (x['GroupName'], x['PermissionSetName']))
+        }
+
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'AccessDeniedException':
+             return {"status": "Error", "message": "Acceso denegado. Se necesitan permisos para 'sso-admin' y 'identitystore'."}
+        return {"status": "Error", "message": f"Error inesperado al consultar Identity Center: {str(e)}"}
+    except Exception as e:
+        return {"status": "Error General", "message": f"Ocurrió un error inesperado en la función: {str(e)}"}
+
+
 
 def detectar_privilegios(users, roles, groups, session):
     client = session.client("iam")
@@ -199,17 +294,17 @@ def run_iam_audit():
 def collect_federation_data(session):
     """
     Recopila información sobre la configuración de federación en la cuenta.
+    MODIFICADO: Ahora también incluye datos de AWS Identity Center.
     """
     iam_client = session.client("iam")
-    
-    # 1. Obtener el alias de la cuenta (usado en la URL de inicio de sesión federado)
+
+    # --- Parte 1: Federación IAM (sin cambios) ---
     try:
         aliases = iam_client.list_account_aliases()['AccountAliases']
         account_alias = aliases[0] if aliases else None
     except ClientError:
         account_alias = None
 
-    # 2. Obtener proveedores de identidad SAML
     saml_providers = []
     try:
         response = iam_client.list_saml_providers()
@@ -219,23 +314,31 @@ def collect_federation_data(session):
                 "CreateDate": provider.get('CreateDate').isoformat(),
                 "ValidUntil": provider.get('ValidUntil').isoformat() if provider.get('ValidUntil') else 'N/A'
             })
-    except ClientError:
-        pass # Puede fallar si no hay permisos o no existen
+    except ClientError: pass
 
-    # 3. Obtener proveedores de identidad OpenID Connect (OIDC)
     oidc_providers = []
     try:
         response = iam_client.list_open_id_connect_providers()
         for provider in response.get('OpenIDConnectProviderList', []):
              oidc_providers.append({"Arn": provider.get('Arn')})
-    except ClientError:
-        pass
+    except ClientError: pass
 
-    return {
+    iam_federation_data = {
         "account_alias": account_alias,
         "saml_providers": saml_providers,
         "oidc_providers": oidc_providers
     }
+
+    # --- Parte 2: AWS Identity Center (NUEVO) ---
+    identity_center_data = collect_identity_center_data(session)
+
+    # Devolvemos un diccionario con ambas secciones
+    return {
+        "iam_federation": iam_federation_data,
+        "identity_center": identity_center_data
+    }
+
+
 
 @app.route('/api/run-federation-audit', methods=['POST'])
 def run_federation_audit():
@@ -1085,20 +1188,14 @@ def collect_acm_data_web(session):
 
 # --- Lógica para Databases ---
 def collect_database_data(session):
-    """
-    Busca recursos de base de datos (RDS, Aurora, DynamoDB) en todas las regiones disponibles.
-    Basado en el script DB.py.
-    """
     rds_instances = []
     aurora_clusters = []
     dynamodb_tables = []
     documentdb_clusters = []
     
     try:
-        # Usamos un servicio común como 'rds' para obtener una lista de regiones
         regions = session.get_available_regions("rds")
     except ClientError:
-        # Si falla, usamos una lista de regiones por defecto (menos ideal, pero funciona como fallback)
         regions = get_all_aws_regions(session)
 
     for region in regions:
@@ -1112,13 +1209,26 @@ def collect_database_data(session):
             for page in aurora_paginator.paginate():
                 for cluster in page.get("DBClusters", []):
                     if "aurora" in cluster.get("Engine", ""):
+                        db_subnet_group_name = cluster.get("DBSubnetGroup")
+                        vpc_id = None
+                        subnet_ids = []
+                        if db_subnet_group_name:
+                            try:
+                                subnet_group_details = rds_client.describe_db_subnet_groups(DBSubnetGroupName=db_subnet_group_name).get("DBSubnetGroups", [])
+                                if subnet_group_details:
+                                    vpc_id = subnet_group_details[0].get("VpcId")
+                                    subnet_ids = [s.get("SubnetIdentifier") for s in subnet_group_details[0].get("Subnets", [])]
+                            except ClientError:
+                                pass
                         aurora_clusters.append({
                             "Region": region,
                             "ClusterIdentifier": cluster.get("DBClusterIdentifier"),
                             "Engine": cluster.get("Engine"),
                             "Status": cluster.get("Status"),
                             "Endpoint": cluster.get("Endpoint", "N/A"),
-                            "ARN": cluster.get("DBClusterArn")
+                            "ARN": cluster.get("DBClusterArn"),
+                            "VpcId": vpc_id,
+                            "SubnetIds": subnet_ids
                         })
             
             # 2. Instancias RDS (que no pertenezcan a un clúster de Aurora)
@@ -1126,6 +1236,9 @@ def collect_database_data(session):
             for page in rds_paginator.paginate():
                 for instance in page.get("DBInstances", []):
                     if not instance.get("DBClusterIdentifier"):
+                        db_subnet_group = instance.get("DBSubnetGroup", {})
+                        vpc_id = db_subnet_group.get("VpcId")
+                        subnet_ids = [s.get("SubnetIdentifier") for s in db_subnet_group.get("Subnets", [])]
                         rds_instances.append({
                             "Region": region,
                             "DBInstanceIdentifier": instance.get("DBInstanceIdentifier"),
@@ -1134,7 +1247,9 @@ def collect_database_data(session):
                             "DBInstanceStatus": instance.get("DBInstanceStatus"),
                             "Endpoint": instance.get("Endpoint", {}).get("Address", "N/A"),
                             "ARN": instance.get("DBInstanceArn"),
-                            "PubliclyAccessible": instance.get('PubliclyAccessible', False) # <-- AÑADE ESTA LÍNEA
+                            "PubliclyAccessible": instance.get('PubliclyAccessible', False),
+                            "VpcId": vpc_id,
+                            "SubnetIds": subnet_ids
                         })
 
             # 3. Tablas de DynamoDB
@@ -1164,7 +1279,6 @@ def collect_database_data(session):
                     })
 
         except ClientError as e:
-            # Ignoramos errores comunes de regiones no activas o sin permisos
             if e.response['Error']['Code'] not in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
                 print(f"Error procesando bases de datos en la región {region}: {e}")
             continue
@@ -1183,9 +1297,8 @@ def collect_database_data(session):
 
 
 
-
-
 # --- Lógica para Compute ---
+
 def collect_compute_data(session):
 
     regions = get_all_aws_regions(session)
@@ -1221,7 +1334,8 @@ def collect_compute_data(session):
                             "InstanceType": instance.get("InstanceType"), "State": instance.get("State", {}).get("Name"),
                             "PublicIpAddress": instance.get("PublicIpAddress", "N/A"), "Tags": tags_dict,
                             "OperatingSystem": os_info,
-                            "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}"
+                            "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}",
+                            "SubnetId": instance.get("SubnetId")
                         })
             
             lambda_paginator = lambda_client.get_paginator("list_functions")
@@ -1231,7 +1345,8 @@ def collect_compute_data(session):
                         "Region": region, "FunctionName": function.get("FunctionName"),
                         "Runtime": function.get("Runtime"), "MemorySize": function.get("MemorySize"),
                         "Timeout": function.get("Timeout"), "LastModified": str(function.get("LastModified")),
-                        "ARN": function.get("FunctionArn")
+                        "ARN": function.get("FunctionArn"),
+                        "VpcConfig": function.get("VpcConfig", {})
                     })
 
             eks_clusters = eks_client.list_clusters().get("clusters", [])
@@ -1263,15 +1378,19 @@ def collect_compute_data(session):
     }
 
 # --- Lógica para Network Security Policies ---
+
 def collect_network_policies_data(session):
     regions = get_all_aws_regions(session) # Se obtiene la lista completa de regiones aquí
     result_vpcs = []
     result_acls = []
     result_sgs = []
+    result_subnets = [] # <-- AÑADIDO
 
     for region in regions:
         try:
             ec2_client = session.client("ec2", region_name=region)
+            
+            # Recopilar VPCs
             vpcs = ec2_client.describe_vpcs().get("Vpcs", [])
             for vpc in vpcs:
                 tags_dict = {tag['Key']: tag['Value'] for tag in vpc.get('Tags', [])}
@@ -1279,6 +1398,8 @@ def collect_network_policies_data(session):
                     "Region": region, "VpcId": vpc.get("VpcId"), "CidrBlock": vpc.get("CidrBlock"),
                     "IsDefault": vpc.get("IsDefault"), "Tags": tags_dict
                 })
+
+            # Recopilar Network ACLs
             acls = ec2_client.describe_network_acls().get("NetworkAcls", [])
             for acl in acls:
                 tags_dict = {tag['Key']: tag['Value'] for tag in acl.get('Tags', [])}
@@ -1286,6 +1407,8 @@ def collect_network_policies_data(session):
                     "Region": region, "AclId": acl.get("NetworkAclId"), "VpcId": acl.get("VpcId"),
                     "IsDefault": acl.get("IsDefault"), "Tags": tags_dict
                 })
+
+            # Recopilar Security Groups
             sgs = ec2_client.describe_security_groups().get("SecurityGroups", [])
             for sg in sgs:
                 tags_dict = {tag['Key']: tag['Value'] for tag in sg.get('Tags', [])}
@@ -1293,19 +1416,110 @@ def collect_network_policies_data(session):
                     "Region": region, "GroupId": sg.get("GroupId"), "GroupName": sg.get("GroupName"),
                     "VpcId": sg.get("VpcId"), "Description": sg.get("Description"), "Tags": tags_dict
                 })
+            
+            # --- INICIO DEL CÓDIGO AÑADIDO ---
+            # Recopilar Subredes
+            subnets = ec2_client.describe_subnets().get("Subnets", [])
+            for subnet in subnets:
+                tags_dict = {tag['Key']: tag['Value'] for tag in subnet.get('Tags', [])}
+                result_subnets.append({
+                    "Region": region,
+                    "SubnetId": subnet.get("SubnetId"),
+                    "VpcId": subnet.get("VpcId"),
+                    "CidrBlock": subnet.get("CidrBlock"),
+                    "AvailabilityZone": subnet.get("AvailabilityZone"),
+                    "Tags": tags_dict
+                })
+            # --- FIN DEL CÓDIGO AÑADIDO ---
+
         except ClientError as e:
             if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
                 continue
         except Exception:
             continue
-    # **** CAMBIO CLAVE AQUÍ ****
-    # Ahora el return incluye la lista completa de regiones
+            
+    # El return ahora incluye la lista de subredes
     return { 
         "vpcs": result_vpcs, 
         "acls": result_acls, 
         "security_groups": result_sgs,
+        "subnets": result_subnets, # <-- AÑADIDO
         "all_regions": regions 
     }
+
+
+
+def collect_connectivity_data(session):
+    """
+    Recopila información sobre VPC Peering, Transit Gateway, VPNs y VPC Endpoints.
+    """
+    regions = get_all_aws_regions(session)
+    result = {
+        "peering_connections": [],
+        "tgw_attachments": [],
+        "vpn_connections": [],
+        "vpc_endpoints": []
+    }
+
+    for region in regions:
+        try:
+            ec2_client = session.client("ec2", region_name=region)
+            
+            # 1. VPC Peering Connections (solo activas)
+            peering_paginator = ec2_client.get_paginator('describe_vpc_peering_connections')
+            for page in peering_paginator.paginate(Filters=[{'Name': 'status-code', 'Values': ['active']}]):
+                for pcx in page.get("VpcPeeringConnections", []):
+                    result["peering_connections"].append({
+                        "Region": region,
+                        "ConnectionId": pcx.get("VpcPeeringConnectionId"),
+                        "RequesterVpc": pcx.get("RequesterVpcInfo", {}),
+                        "AccepterVpc": pcx.get("AccepterVpcInfo", {})
+                    })
+
+            # 2. Transit Gateway VPC Attachments (solo disponibles)
+            tgw_paginator = ec2_client.get_paginator('describe_transit_gateway_attachments')
+            for page in tgw_paginator.paginate(Filters=[{'Name': 'resource-type', 'Values': ['vpc']}, {'Name': 'state', 'Values': ['available']}]):
+                for tgw_attachment in page.get("TransitGatewayAttachments", []):
+                    result["tgw_attachments"].append({
+                        "Region": region,
+                        "AttachmentId": tgw_attachment.get("TransitGatewayAttachmentId"),
+                        "TransitGatewayId": tgw_attachment.get("TransitGatewayId"),
+                        "VpcId": tgw_attachment.get("ResourceId"),
+                        "VpcOwnerId": tgw_attachment.get("ResourceOwnerId")
+                    })
+
+            # 3. Site-to-Site VPN Connections (solo disponibles)
+            vpns = ec2_client.describe_vpn_connections(Filters=[{'Name': 'state', 'Values': ['available']}])
+            for vpn in vpns.get("VpnConnections", []):
+                result["vpn_connections"].append({
+                    "Region": region,
+                    "VpnConnectionId": vpn.get("VpnConnectionId"),
+                    "CustomerGatewayId": vpn.get("CustomerGatewayId"),
+                    "TransitGatewayId": vpn.get("TransitGatewayId", "N/A"),
+                    "State": vpn.get("State")
+                })
+
+            # 4. VPC Endpoints
+            endpoint_paginator = ec2_client.get_paginator('describe_vpc_endpoints')
+            for page in endpoint_paginator.paginate():
+                for endpoint in page.get("VpcEndpoints", []):
+                     result["vpc_endpoints"].append({
+                        "Region": region,
+                        "VpcEndpointId": endpoint.get("VpcEndpointId"),
+                        "VpcId": endpoint.get("VpcId"),
+                        "ServiceName": endpoint.get("ServiceName"),
+                        "EndpointType": endpoint.get("VpcEndpointType"),
+                        "State": endpoint.get("State")
+                    })
+
+        except ClientError as e:
+            if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
+                continue
+        except Exception:
+            continue
+            
+    return result
+
 
 # --- Lógica de Utilidad para formateo de Tablas ---
 PROTOCOLS = {'-1': 'ALL', '6': 'TCP', '17': 'UDP', '1': 'ICMP'}
@@ -1806,10 +2020,9 @@ def sh_check_regional_services(session, regions):
             try:
                 standards_response = securityhub_client.get_enabled_standards()
                 for standard in standards_response.get('StandardsSubscriptions', []):
-                    # Guardamos el nombre del estándar para la tabla de "Estado de Servicios"
-                    arn_parts = standard.get('StandardsArn', 'unknown').split('/')
-                    standard_name = f"{arn_parts[-3]}-v{arn_parts[-1]}" if len(arn_parts) >= 3 else arn_parts[-1]
-                    region_status["EnabledStandards"].append(standard_name)
+                    # --- LÍNEA MODIFICADA ---
+                    # Ahora guardamos el ARN completo para procesarlo en el frontend.
+                    region_status["EnabledStandards"].append(standard.get('StandardsArn', 'unknown'))
                     
                     # Ahora, calculamos el cumplimiento para este estándar
                     standard_arn = standard.get('StandardsSubscriptionArn')
@@ -1840,6 +2053,8 @@ def sh_check_regional_services(session, regions):
             
         results.append(region_status)
     return results
+
+
 
 
 def collect_config_sh_status_only(session):
@@ -2002,7 +2217,6 @@ def run_cloudtrail_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de CloudTrail: {str(e)}"}), 500
 
-# --- NUEVO ENDPOINT PARA BÚSQUEDA EN CLOUDTRAIL ---
 @app.route('/api/run-cloudtrail-lookup', methods=['POST'])
 def run_cloudtrail_lookup():
     session, error = get_session(request.get_json())
@@ -2102,9 +2316,6 @@ def run_databases_audit():
         return jsonify({"error": f"Error inesperado al recopilar datos de Databases: {str(e)}"}), 500
 
 
-
-
-
 @app.route('/api/run-network-policies-audit', methods=['POST'])
 def run_network_policies_audit():
     session, error = get_session(request.get_json())
@@ -2122,11 +2333,6 @@ def run_network_policies_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de Network Policies: {str(e)}"}), 500
         
-# --- INICIO: NUEVO ENDPOINT PARA AWS CONFIG & SECURITY HUB ---
-
-
-
-
 
 @app.route('/api/run-config-sh-audit', methods=['POST'])
 def run_config_sh_audit():
@@ -2169,11 +2375,6 @@ def run_config_sh_status_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar el estado de Config & SH: {str(e)}"}), 500
 
-
-
-# --- FIN: NUEVO ENDPOINT ---
-
-# --- Endpoint para Detalles de Red (NUEVO) ---
 @app.route('/api/run-network-detail-audit', methods=['POST'])
 def run_network_detail_audit():
     session, error = get_session(request.get_json())
@@ -2209,6 +2410,26 @@ def run_network_detail_audit():
         return jsonify({"error": f"Error de AWS: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": f"Error inesperado: {str(e)}"}), 500
+
+
+@app.route('/api/run-connectivity-audit', methods=['POST'])
+def run_connectivity_audit():
+    session, error = get_session(request.get_json())
+    if error: 
+        return jsonify({"error": error}), 401
+    try:
+        connectivity_results = collect_connectivity_data(session)
+        sts = session.client("sts")
+        return jsonify({
+            "metadata": {
+                "accountId": sts.get_caller_identity()["Account"],
+                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
+            },
+            "results": connectivity_results
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado al recopilar datos de conectividad: {str(e)}"}), 500
+
 
 @app.route('/api/run-playground-audit', methods=['POST'])
 def run_playground_audit():
@@ -2250,7 +2471,7 @@ def run_kms_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de KMS: {str(e)}"}), 500
 
-# REEMPLAZA la función /api/run-sslscan con esta nueva versión
+# REEMPLAZA esta función en audithor.py
 
 @app.route('/api/run-sslscan', methods=['POST'])
 def run_sslscan():
@@ -2260,50 +2481,64 @@ def run_sslscan():
     if not targets_str:
         return jsonify({"error": "No se ha proporcionado ningún objetivo (target)."}), 400
 
-    # 1. Separamos los objetivos y eliminamos espacios en blanco
     targets = [t.strip() for t in targets_str.split(',')]
     results = []
+    
+    # --- INICIO DE LA MODIFICACIÓN ---
+    # Importamos la librería 'shutil' para encontrar el ejecutable
+    import shutil
+    import subprocess
+
+    # Comprobamos si 'sslscan' está disponible en el PATH del sistema
+    if not shutil.which("sslscan"):
+        # Si no se encuentra, devolvemos un error claro y terminamos
+        error_msg = "El comando 'sslscan' no se encuentra en el PATH de tu sistema. Asegúrate de que está instalado y accesible."
+        return jsonify({"results": [{"target": ", ".join(targets), "error": error_msg}]})
+    # --- FIN DE LA MODIFICACIÓN ---
+
     threads = []
 
-    # 2. Creamos una función 'worker' que escaneará un solo objetivo
     def scan_target(target):
-        # Validamos cada objetivo individualmente
         safe_characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-"
         if not all(char in safe_characters for char in target) or not target:
             results.append({"target": target, "error": "El objetivo contiene caracteres no válidos o está vacío."})
             return
-
+        
         try:
+            # --- LÍNEA CORREGIDA ---
+            # Ahora usamos 'sslscan' directamente, sin la ruta fija.
             command = ['sslscan', '--no-colour', target]
+            
+            print(f"Ejecutando comando: {' '.join(command)}")
+
             result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=True
+                command, capture_output=True, text=True, timeout=120, check=False
             )
-            results.append({"target": target, "output": result.stdout})
+
+            if not result.stdout and not result.stderr:
+                results.append({"target": target, "error": "El comando se ejecutó pero no devolvió ninguna salida. Revisa los permisos o la instalación de sslscan en el servidor."})
+            else:
+                full_output = result.stdout + result.stderr
+                results.append({"target": target, "output": full_output})
+
         except FileNotFoundError:
-            results.append({"target": target, "error": "El comando 'sslscan' no se encuentra."})
+            results.append({"target": target, "error": f"Comando no encontrado. Verifica que sslscan esté instalado y en el PATH del sistema."})
         except subprocess.TimeoutExpired:
             results.append({"target": target, "error": "El escaneo ha superado el tiempo de espera (120 segundos)."})
-        except subprocess.CalledProcessError as e:
-            results.append({"target": target, "output": f"Error al escanear:\n{e.stderr}"})
         except Exception as e:
             results.append({"target": target, "error": f"Ha ocurrido un error inesperado: {str(e)}"})
 
-    # 3. Creamos e iniciamos un hilo para cada objetivo
     for target in targets:
         thread = threading.Thread(target=scan_target, args=(target,))
         threads.append(thread)
         thread.start()
 
-    # 4. Esperamos a que todos los hilos terminen
     for thread in threads:
         thread.join()
 
-    # 5. Devolvemos una lista de resultados
     return jsonify({"results": results})
+
+
 
 # --- Ejecución del servidor ---
 if __name__ == '__main__':

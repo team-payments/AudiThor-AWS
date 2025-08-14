@@ -126,6 +126,15 @@
                         </a>
                     </div>
                     <div>
+                        <a href="#" data-view="connectivity" class="main-nav-link flex items-center px-4 py-2.5 rounded-md hover:bg-[#1a335a]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-ethernet w-5 h-5 mr-3" viewBox="0 0 16 16">
+                                <path d="M14 13.5v-7a.5.5 0 0 0-.5-.5H12V4.5a.5.5 0 0 0-.5-.5h-1v-.5A.5.5 0 0 0 10 3H6a.5.5 0 0 0-.5.5V4h-1a.5.5 0 0 0-.5.5V6H2.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5M3.75 11h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-1.5a.25.25 0 0 1 .25-.25m2 0h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-1.5a.25.25 0 0 1 .25-.25m1.75.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zM9.75 11h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-1.5a.25.25 0 0 1 .25-.25m1.75.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25z"/>
+                                <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM1 2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z"/>
+                            </svg>
+                            <span>Conectividad de Red</span>
+                        </a>
+                    </div>
+                    <div>
                         <a href="#" data-view="config-sh" class="main-nav-link flex items-center px-4 py-2.5 rounded-md hover:bg-[#1a335a]">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-slash w-5 h-5 mr-3" viewBox="0 0 16 16">
                                 <path fill-rule="evenodd" d="M1.093 3.093c-.465 4.275.885 7.46 2.513 9.589a11.8 11.8 0 0 0 2.517 2.453c.386.273.744.482 1.048.625.28.132.581.24.829.24s.548-.108.829-.24a7 7 0 0 0 1.048-.625 11.3 11.3 0 0 0 1.733-1.525l-.745-.745a10.3 10.3 0 0 1-1.578 1.392c-.346.244-.652.42-.893.533q-.18.085-.293.118a1 1 0 0 1-.101.025 1 1 0 0 1-.1-.025 2 2 0 0 1-.294-.118 6 6 0 0 1-.893-.533 10.7 10.7 0 0 1-2.287-2.233C3.053 10.228 1.879 7.594 2.06 4.06zM3.98 1.98l-.852-.852A59 59 0 0 1 5.072.559C6.157.266 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.483 3.626-.332 6.491-1.551 8.616l-.77-.77c1.042-1.915 1.72-4.469 1.29-7.702a.48.48 0 0 0-.33-.39c-.65-.213-1.75-.56-2.836-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524a50 50 0 0 0-1.357.39zm9.666 12.374-13-13 .708-.708 13 13z"/>
@@ -168,6 +177,7 @@
                 <main id="kms-view" class="view hidden"></main>
                 <main id="network-policies-view" class="view hidden"></main>
                 <main id="config-sh-view" class="view hidden"></main>
+                <main id="connectivity-view" class="view hidden"></main> <main id="playground-view" class="view hidden"></main>
                 <main id="playground-view" class="view hidden"></main>
             </div>
         </div>
@@ -180,7 +190,7 @@
 
     <script>
         // --- ESTADO GLOBAL ---
-        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, kmsApiData = null;        
+        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null;        
         // --- SELECTORES ---
         let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
 
@@ -210,115 +220,137 @@
 
         // --- LÓGICA DE ANÁLISIS ---
         const runAnalysisFromInputs = async () => {
-            log('Iniciando análisis completo...', 'info');
-            const accessKey = accessKeyInput.value.trim();
-            const secretKey = secretKeyInput.value.trim();
-            const sessionToken = sessionTokenInput.value.trim();
-            if (!accessKey || !secretKey) {
-                const msg = 'Por favor, introduce el Access Key ID y el Secret Access Key.';
-                errorMessageDiv.textContent = msg;
-                errorMessageDiv.classList.remove('hidden');
-                log(msg, 'error');
-                return;
-            }
-            const payload = {
-                access_key: accessKey,
-                secret_key: secretKey
-            };
-            if (sessionToken) {
-                payload.session_token = sessionToken;
-                log('Se ha detectado un Session Token.', 'info');
-            }
+                    // --- INICIO DE LA MODIFICACIÓN: Resetear el estado global ---
+                    // Limpiamos todas las variables de datos para asegurar que no haya
+                    // información residual de un análisis anterior.
+                    iamApiData = null;
+                    securityHubApiData = null;
+                    exposureApiData = null;
+                    guarddutyApiData = null;
+                    wafApiData = null;
+                    cloudtrailApiData = null;
+                    cloudwatchApiData = null;
+                    inspectorApiData = null;
+                    acmApiData = null;
+                    computeApiData = null;
+                    databasesApiData = null;
+                    networkPoliciesApiData = null;
+                    connectivityApiData = null; // Incluimos la nueva variable de conectividad
+                    playgroundApiData = null;
+                    allAvailableRegions = [];
+                    lastCloudtrailLookupResults = [];
+                    federationApiData = null;
+                    configSHApiData = null;
+                    configSHStatusApiData = null;
+                    kmsApiData = null;
+                    document.querySelectorAll('.view').forEach(v => v.innerHTML = ''); // Limpiamos el contenido de las vistas
+                    document.getElementById('iam-view').innerHTML = createInitialEmptyState(); // Restauramos el estado inicial
+                    // --- FIN DE LA MODIFICACIÓN ---
 
-            runAnalysisBtn.disabled = true;
-            loadingSpinner.classList.remove('hidden');
-            buttonText.textContent = 'Analizando...';
-            errorMessageDiv.classList.add('hidden');
-
-            try {
-                log('Llamando a las APIs...', 'info');
-
-                const apiCalls = {
-                    iam: fetch('http://127.0.0.1:5001/api/run-iam-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    securityhub: fetch('http://127.0.0.1:5001/api/run-securityhub-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    exposure: fetch('http://127.0.0.1:5001/api/run-exposure-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    guardduty: fetch('http://127.0.0.1:5001/api/run-guardduty-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    waf: fetch('http://127.0.0.1:5001/api/run-waf-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    cloudtrail: fetch('http://127.0.0.1:5001/api/run-cloudtrail-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    cloudwatch: fetch('http://127.0.0.1:5001/api/run-cloudwatch-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    inspector: fetch('http://127.0.0.1:5001/api/run-inspector-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    acm: fetch('http://127.0.0.1:5001/api/run-acm-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    compute: fetch('http://127.0.0.1:5001/api/run-compute-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    databases: fetch('http://127.0.0.1:5001/api/run-databases-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    network_policies: fetch('http://127.0.0.1:5001/api/run-network-policies-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    federation: fetch('http://127.0.0.1:5001/api/run-federation-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    config_sh_status: fetch('http://127.0.0.1:5001/api/run-config-sh-status-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                    kms: fetch('http://127.0.0.1:5001/api/run-kms-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-                };
-
-                // Convertimos el objeto de llamadas en un array de promesas que mantienen su clave (nombre)
-                const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
-                    try {
-                        const response = await promise;
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                        }
-                        const data = await response.json();
-                        return [key, data]; // Devolvemos la clave junto con los datos
-                    } catch (error) {
-                        log(`Error en la llamada a la API para '${key}': ${error.message}`, 'error');
-                        return [key, null]; // Devolvemos null para esta clave si falla
+                    log('Iniciando análisis completo...', 'info');
+                    const accessKey = accessKeyInput.value.trim();
+                    const secretKey = secretKeyInput.value.trim();
+                    const sessionToken = sessionTokenInput.value.trim();
+                    if (!accessKey || !secretKey) {
+                        const msg = 'Por favor, introduce el Access Key ID y el Secret Access Key.';
+                        errorMessageDiv.textContent = msg;
+                        errorMessageDiv.classList.remove('hidden');
+                        log(msg, 'error');
+                        return;
                     }
-                });
+                    const payload = {
+                        access_key: accessKey,
+                        secret_key: secretKey
+                    };
+                    if (sessionToken) {
+                        payload.session_token = sessionToken;
+                        log('Se ha detectado un Session Token.', 'info');
+                    }
 
-                // Esperamos a que todas las promesas se resuelvan
-                const resolvedPromises = await Promise.all(promises);
+                    runAnalysisBtn.disabled = true;
+                    loadingSpinner.classList.remove('hidden');
+                    buttonText.textContent = 'Analizando...';
+                    errorMessageDiv.classList.add('hidden');
 
-                // Convertimos el array de [key, data] de nuevo en un objeto de resultados
-                const results = Object.fromEntries(resolvedPromises);
+                    try {
+                        log('Llamando a las APIs...', 'info');
 
-                // Asignamos los datos a las variables globales por su nombre. ¡Mucho más seguro!
-                iamApiData = results.iam;
-                securityHubApiData = results.securityhub;
-                exposureApiData = results.exposure;
-                guarddutyApiData = results.guardduty;
-                wafApiData = results.waf;
-                cloudtrailApiData = results.cloudtrail;
-                cloudwatchApiData = results.cloudwatch;
-                inspectorApiData = results.inspector;
-                acmApiData = results.acm;
-                computeApiData = results.compute;
-                databasesApiData = results.databases;
-                networkPoliciesApiData = results.network_policies;
-                federationApiData = results.federation;
-                configSHStatusApiData = results.config_sh_status;
-                kmsApiData = results.kms;
+                        const apiCalls = {
+                            iam: fetch('http://127.0.0.1:5001/api/run-iam-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            securityhub: fetch('http://127.0.0.1:5001/api/run-securityhub-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            exposure: fetch('http://127.0.0.1:5001/api/run-exposure-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            guardduty: fetch('http://127.0.0.1:5001/api/run-guardduty-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            waf: fetch('http://127.0.0.1:5001/api/run-waf-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            cloudtrail: fetch('http://127.0.0.1:5001/api/run-cloudtrail-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            cloudwatch: fetch('http://127.0.0.1:5001/api/run-cloudwatch-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            inspector: fetch('http://127.0.0.1:5001/api/run-inspector-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            acm: fetch('http://127.0.0.1:5001/api/run-acm-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            compute: fetch('http://127.0.0.1:5001/api/run-compute-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            databases: fetch('http://127.0.0.1:5001/api/run-databases-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            network_policies: fetch('http://127.0.0.1:5001/api/run-network-policies-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            federation: fetch('http://127.0.0.1:5001/api/run-federation-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            config_sh_status: fetch('http://127.0.0.1:5001/api/run-config-sh-status-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            kms: fetch('http://127.0.0.1:5001/api/run-kms-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                            connectivity: fetch('http://127.0.0.1:5001/api/run-connectivity-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                        };
 
-                // Comprobamos si alguna llamada principal falló
-                if (!iamApiData || !networkPoliciesApiData) {
-                    throw new Error("Una o más llamadas críticas a la API fallaron. No se puede continuar.");
-                }
+                        const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
+                            try {
+                                const response = await promise;
+                                if (!response.ok) {
+                                    const errorData = await response.json();
+                                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                                }
+                                const data = await response.json();
+                                return [key, data];
+                            } catch (error) {
+                                log(`Error en la llamada a la API para '${key}': ${error.message}`, 'error');
+                                return [key, null];
+                            }
+                        });
 
-                allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
+                        const resolvedPromises = await Promise.all(promises);
+                        const results = Object.fromEntries(resolvedPromises);
 
-                log('Todos los datos han sido recibidos.', 'success');
-                buildAndRenderAllViews();
+                        iamApiData = results.iam;
+                        securityHubApiData = results.securityhub;
+                        exposureApiData = results.exposure;
+                        guarddutyApiData = results.guardduty;
+                        wafApiData = results.waf;
+                        cloudtrailApiData = results.cloudtrail;
+                        cloudwatchApiData = results.cloudwatch;
+                        inspectorApiData = results.inspector;
+                        acmApiData = results.acm;
+                        computeApiData = results.compute;
+                        databasesApiData = results.databases;
+                        networkPoliciesApiData = results.network_policies;
+                        federationApiData = results.federation;
+                        configSHStatusApiData = results.config_sh_status;
+                        kmsApiData = results.kms;
+                        connectivityApiData = results.connectivity;
 
-            } catch (error) {
-                const errorMsg = `Error: ${error.message || 'Ocurrió un error desconocido.'}`;
-                console.error('Error detallado:', error);
-                errorMessageDiv.textContent = errorMsg;
-                errorMessageDiv.classList.remove('hidden');
-                document.getElementById('iam-view').innerHTML = createInitialEmptyState();
-                log(`${errorMsg}`, 'error');
-            } finally {
-                runAnalysisBtn.disabled = false;
-                loadingSpinner.classList.add('hidden');
-                buttonText.textContent = 'Analizar Cuenta';
-            }
-        };
+                        if (!iamApiData || !networkPoliciesApiData) {
+                            throw new Error("Una o más llamadas críticas a la API fallaron. No se puede continuar.");
+                        }
 
+                        allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
+
+                        log('Todos los datos han sido recibidos.', 'success');
+                        buildAndRenderAllViews();
+
+                    } catch (error) {
+                        const errorMsg = `Error: ${error.message || 'Ocurrió un error desconocido.'}`;
+                        console.error('Error detallado:', error);
+                        errorMessageDiv.textContent = errorMsg;
+                        errorMessageDiv.classList.remove('hidden');
+                        document.getElementById('iam-view').innerHTML = createInitialEmptyState();
+                        log(`${errorMsg}`, 'error');
+                    } finally {
+                        runAnalysisBtn.disabled = false;
+                        loadingSpinner.classList.add('hidden');
+                        buttonText.textContent = 'Analizar Cuenta';
+                    }
+                };
 
 
         // --- LÓGICA DE RENDERIZADO ---
@@ -340,6 +372,7 @@
                 buildPlaygroundView();
                 renderFederationView();
                 buildKmsView();
+                buildConnectivityView();
                 log('Vistas renderizadas.', 'success');
             } catch (e) { log(`Error al renderizar: ${e.message}`, 'error'); console.error(e); }
         };
@@ -454,7 +487,6 @@
             renderRolesTable(roles);
             renderPasswordPolicy(password_policy);
 
-            // --- CAMBIO: Se llama a la nueva función única para la tabla consolidada ---
             renderCriticalPermissionsTable(users);
         };
 
@@ -546,65 +578,70 @@
             container.innerHTML = tableHtml;
         };
 
-
         const renderFederationView = () => {
             const container = document.getElementById('federation-content');
             if (!container || !federationApiData) return;
 
-            const { account_alias, saml_providers, oidc_providers } = federationApiData.results;
+            // Extraemos las dos secciones de datos
+            const { iam_federation, identity_center } = federationApiData.results;
 
-            let aliasHtml = `
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-                    <h3 class="font-bold text-lg mb-2 text-[#204071]">Alias de la Cuenta</h3>`;
-            
-            if (account_alias) {
-                const signInUrl = `https://${account_alias}.signin.aws.amazon.com/console`;
-                aliasHtml += `
-                    <p class="text-sm text-gray-600">El alias de esta cuenta es: <strong class="font-mono bg-gray-100 p-1 rounded">${account_alias}</strong></p>
-                    <p class="text-sm text-gray-600 mt-2">Los usuarios federados probablemente inician sesión a través de una URL personalizada:</p>
-                    <a href="${signInUrl}" target="_blank" class="text-blue-600 hover:underline font-mono text-sm break-all">${signInUrl}</a>`;
+            // --- HTML para la Federación IAM Tradicional (como antes) ---
+            let aliasHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+                                <h3 class="font-bold text-lg mb-2 text-[#204071]">Alias de la Cuenta</h3>`;
+            if (iam_federation.account_alias) {
+                const signInUrl = `https://${iam_federation.account_alias}.signin.aws.amazon.com/console`;
+                aliasHtml += `<p class="text-sm text-gray-600">Alias: <strong class="font-mono bg-gray-100 p-1 rounded">${iam_federation.account_alias}</strong></p>
+                            <p class="text-sm text-gray-600 mt-2">URL de inicio de sesión:</p>
+                            <a href="${signInUrl}" target="_blank" class="text-blue-600 hover:underline font-mono text-sm break-all">${signInUrl}</a>`;
             } else {
-                const signInUrl = `https://${federationApiData.metadata.accountId}.signin.aws.amazon.com/console`;
-                aliasHtml += `
-                    <p class="text-sm text-gray-600">Esta cuenta no tiene un alias personalizado configurado.</p>
-                    <p class="text-sm text-gray-600 mt-2">La URL de inicio de sesión por defecto es:</p>
-                    <a href="${signInUrl}" target="_blank" class="text-blue-600 hover:underline font-mono text-sm break-all">${signInUrl}</a>`;
+                aliasHtml += `<p class="text-sm text-gray-600">Esta cuenta no tiene un alias personalizado configurado.</p>`;
             }
             aliasHtml += `</div>`;
 
-            let samlHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-                                <h3 class="font-bold text-lg mb-4 text-[#204071]">Proveedores de Identidad SAML 2.0</h3>`;
-            if (saml_providers.length > 0) {
-                samlHtml += `<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50"><tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ARN del Proveedor</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha de Creación</th>
-                                </tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
-                saml_providers.forEach(p => {
-                    samlHtml += `<tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-2 text-sm text-gray-700 font-mono break-all">${p.Arn}</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${new Date(p.CreateDate).toLocaleString()}</td>
-                                </tr>`;
-                });
-                samlHtml += `</tbody></table></div>`;
-            } else {
-                samlHtml += `<p class="text-center text-gray-500 py-4">No se encontraron proveedores de identidad SAML configurados.</p>`;
-            }
-            samlHtml += `</div>`;
-            
-            let oidcHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                <h3 class="font-bold text-lg mb-4 text-[#204071]">Proveedores de Identidad OpenID Connect (OIDC)</h3>`;
-            if (oidc_providers.length > 0) {
-                // ... (similar a la tabla SAML) ...
-            } else {
-                oidcHtml += `<p class="text-center text-gray-500 py-4">No se encontraron proveedores de identidad OIDC configurados.</p>`;
-            }
-            oidcHtml += `</div>`;
+            // ... (El código para las tablas SAML y OIDC puede seguir aquí si quieres mantenerlo) ...
 
-            container.innerHTML = aliasHtml + samlHtml + oidcHtml;
+            // --- HTML para AWS Identity Center (NUEVO) ---
+            let identityCenterHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
+                                        <h3 class="font-bold text-lg mb-4 text-[#204071]">AWS Identity Center (SSO)</h3>`;
+
+            if (identity_center.status === 'Encontrado') {
+                const { instance_arn, assignments } = identity_center;
+
+                identityCenterHtml += `<div class="mb-6 space-y-2 text-sm">
+                                            <p><strong class="text-gray-600">ARN de la Instancia:</strong> <span class="font-mono bg-gray-100 p-1 rounded">${instance_arn}</span></p>
+                                        </div>`;
+
+                if (assignments.length > 0) {
+                    identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Asignaciones de Permisos</h4>
+                                            <div class="overflow-x-auto">
+                                            <table class="min-w-full divide-y divide-gray-200">
+                                                <thead class="bg-gray-50"><tr>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grupo</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Conjunto de Permisos (Rol)</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID de Cuenta AWS</th>
+                                                </tr></thead>
+                                                <tbody class="bg-white divide-y divide-gray-200">`;
+                    assignments.forEach(a => {
+                        identityCenterHtml += `<tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-3 text-sm font-medium text-gray-800">${a.GroupName}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-600">${a.PermissionSetName}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-600 font-mono">${a.AccountId}</td>
+                                            </tr>`;
+                    });
+                    identityCenterHtml += `</tbody></table></div>`;
+                } else {
+                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center está activado, pero no se encontraron asignaciones de permisos a grupos.</p>`;
+                }
+            } else {
+                // Mensaje si no se encuentra Identity Center o hay un error
+                identityCenterHtml += `<p class="text-center text-gray-500 py-4">${identity_center.message}</p>`;
+            }
+
+            identityCenterHtml += `</div>`;
+
+            // Unimos todas las secciones de HTML
+            container.innerHTML = aliasHtml + identityCenterHtml;
         };
-
-
 
 
         const updateSecurityHubDashboard = () => {
@@ -903,11 +940,6 @@
                 renderSecurityHubFindings(securityHubFindings, 'sh-exposure-findings-container', 'No se encontraron findings de Security Hub relacionados con exposición a internet.');
             }
         };
-
-
-
-
-
         
         const createExposureSummaryCardsHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-8">
@@ -933,9 +965,6 @@
             document.getElementById('exp-critical-findings').textContent = criticalHighFindings; 
         };
         
-        // EN EL FICHERO dashboard.html, DENTRO DE LA ETIQUETA <script>
-
-
         const renderExposureDetails = (service, regions) => {
             if (Object.keys(regions).length === 0) {
                 return `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron recursos de tipo "${service}" expuestos.</p></div>`;
@@ -1006,9 +1035,6 @@
             html += '</div>';
             return html;
         };
-
-
-
 
         const renderNetworkPortsTable = (ports) => {
             if (!ports || ports.length === 0) {
@@ -1090,6 +1116,7 @@
         };  
 
         const renderGuarddutyStatusTable = (statusList) => { if (!statusList || statusList.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">GuardDuty no está habilitado en ninguna de las regiones analizadas.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S3 Logs</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kubernetes Logs</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Malware Protection</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; statusList.forEach(s => { table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${s.Region}</td> <td class="px-4 py-4 whitespace-nowrap text-sm">${createStatusBadge(s.Status)}</td> <td class="px-4 py-4 whitespace-nowrap text-sm">${createStatusBadge(s['S3 Logs'])}</td> <td class="px-4 py-4 whitespace-nowrap text-sm">${createStatusBadge(s['Kubernetes Logs'])}</td> <td class="px-4 py-4 whitespace-nowrap text-sm">${createStatusBadge(s['Malware Protection'])}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
+        
         const renderGuarddutyFindingsTable = (findings) => { if (!findings || findings.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron findings de GuardDuty activos.</p></div>'; const severityClasses = { 'CRITICAL': 'bg-red-600 text-white', 'HIGH': 'bg-orange-500 text-white', 'MEDIUM': 'bg-yellow-400 text-black', 'LOW': 'bg-blue-500 text-white', 'INFORMATIONAL': 'bg-gray-400 text-white' }; let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; findings.forEach(f => { const severity = f.SeverityLabel || 'N/A'; const severityClass = severityClasses[severity] || 'bg-gray-200 text-gray-800'; tableHtml += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityClass}">${severity} (${f.SeverityScore})</span></td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td> <td class="px-4 py-4 text-sm text-gray-800 break-words">${f.Title}</td> <td class="px-4 py-4 text-sm text-gray-600 break-words">${f.Resource}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.LastSeen}</td> </tr>`; }); tableHtml += '</tbody></table></div>'; return tableHtml; };
 
         const setupGuarddutyFindingsFilter = () => {
@@ -1510,8 +1537,6 @@
             }
         };
 
-
-
         const runDeepInspectorAnalysis = async () => {
             const runBtn = document.getElementById('run-deep-inspector-scan-btn');
             const btnText = document.getElementById('deep-inspector-scan-btn-text');
@@ -1552,9 +1577,6 @@
                 deepScanContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
             }
         };
-
-
-
 
         const renderSecurityHubFindingsPage = (tbodyContainer, findings, page, rowsPerPage) => {
             tbodyContainer.innerHTML = '';
@@ -2141,16 +2163,23 @@
             table += '</tbody></table></div>';
             return table;
         };
+        
+        
         // --- SECCIÓN DE NETWORK POLICIES ---
-
         const buildNetworkPoliciesView = () => {
             const container = document.getElementById('network-policies-view');
-            if (!networkPoliciesApiData) return;
+            if (!networkPoliciesApiData || !computeApiData || !databasesApiData) {
+                container.innerHTML = '<p class="text-center text-gray-500">Datos de Network Policies, Compute o Databases no disponibles.</p>';
+                return;
+            }
 
-            // **** CAMBIO CLAVE AQUÍ ****
-            // Ahora extraemos 'all_regions' directamente de la respuesta de la API
-            const { vpcs, acls, security_groups, all_regions } = networkPoliciesApiData.results;
-            
+            const { vpcs, acls, security_groups, subnets, all_regions } = networkPoliciesApiData.results;
+            const { ec2_instances, lambda_functions } = computeApiData.results;
+            const { rds_instances, aurora_clusters } = databasesApiData.results;
+
+            const activeRegions = [...new Set(vpcs.map(v => v.Region))].sort();
+            const regionOptionsHtml = activeRegions.map(r => `<option value="${r}">${r}</option>`).join('');
+
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
@@ -2168,7 +2197,28 @@
                     </nav>
                 </div>
                 <div id="network-policies-tab-content-container">
-                    <div id="np-summary-content" class="network-policies-tab-content">${createNetworkPoliciesSummaryCardsHtml()}</div>
+                    <div id="np-summary-content" class="network-policies-tab-content">
+                        ${createNetworkPoliciesSummaryCardsHtml()}
+                        <div id="vpc-diagram-container" class="mt-8">
+                            <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
+                                <h3 class="text-xl font-bold text-[#204071]">Diagrama de Red</h3>
+                                <div class="flex items-center gap-x-6 gap-y-2 flex-wrap">
+                                    <div class="flex items-center gap-2">
+                                        <label for="vpc-diagram-region-filter" class="text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                                        <select id="vpc-diagram-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
+                                            <option value="all">Todas las Regiones</option>
+                                            ${regionOptionsHtml}
+                                        </select>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" id="vpc-diagram-hide-empty-filter" class="h-4 w-4 rounded border-gray-300 text-[#eb3496] focus:ring-[#eb3496]">
+                                        <label for="vpc-diagram-hide-empty-filter" class="text-sm font-medium text-gray-700">Ocultar VPCs vacías</label>
+                                    </div>
+                                </div>
+                                </div>
+                            <div id="diagram-content-wrapper"></div>
+                        </div>
+                    </div>
                     <div id="np-vpcs-content" class="network-policies-tab-content hidden"></div>
                     <div id="np-acls-content" class="network-policies-tab-content hidden"></div>
                     <div id="np-sgs-content" class="network-policies-tab-content hidden"></div>
@@ -2178,12 +2228,60 @@
 
             updateNetworkPoliciesSummaryCards(vpcs, acls, security_groups);
 
+            // <-- INICIO: LÓGICA DE FILTRADO ACTUALIZADA -->
+            const diagramWrapper = document.getElementById('diagram-content-wrapper');
+            const regionFilter = document.getElementById('vpc-diagram-region-filter');
+            const hideEmptyFilter = document.getElementById('vpc-diagram-hide-empty-filter'); // Nuevo selector
+
+            // Esta única función ahora se encarga de aplicar AMBOS filtros
+            const updateDiagram = () => {
+                const selectedRegion = regionFilter.value;
+                const hideEmpty = hideEmptyFilter.checked;
+
+                // 1. Filtramos por región (como antes)
+                let filteredVpcs = (selectedRegion === 'all')
+                    ? vpcs
+                    : vpcs.filter(v => v.Region === selectedRegion);
+
+                // 2. Si el checkbox está marcado, aplicamos el segundo filtro
+                if (hideEmpty) {
+                    filteredVpcs = filteredVpcs.filter(vpc => {
+                        // Comprobamos si la VPC tiene al menos un recurso de cualquier tipo
+                        const hasEc2 = ec2_instances.some(i => {
+                            const subnet = subnets.find(s => s.SubnetId === i.SubnetId);
+                            return subnet && subnet.VpcId === vpc.VpcId;
+                        });
+                        const hasLambda = lambda_functions.some(l => l.VpcConfig && l.VpcConfig.VpcId === vpc.VpcId);
+                        const hasRds = rds_instances.some(r => r.VpcId === vpc.VpcId);
+                        const hasAurora = aurora_clusters.some(a => a.VpcId === vpc.VpcId);
+                        
+                        // Si tiene alguno, la incluimos (devolvemos true)
+                        return hasEc2 || hasLambda || hasRds || hasAurora;
+                    });
+                }
+                
+                // 3. Renderizamos el diagrama con la lista de VPCs ya filtrada
+                diagramWrapper.innerHTML = renderVpcDiagram(filteredVpcs, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters);
+            };
+
+            // Añadimos listeners a AMBOS filtros. Los dos llaman a la misma función.
+            if (regionFilter) {
+                regionFilter.addEventListener('change', updateDiagram);
+            }
+            if (hideEmptyFilter) {
+                hideEmptyFilter.addEventListener('change', updateDiagram);
+            }
+            
+            // Renderizado inicial al cargar la vista
+            updateDiagram();
+            // <-- FIN: LÓGICA DE FILTRADO ACTUALIZADA -->
+            
+            // El resto de la función no cambia
             const vpcsContainer = document.getElementById('np-vpcs-content');
             const aclsContainer = document.getElementById('np-acls-content');
             const sgsContainer = document.getElementById('np-sgs-content');
             const detailContainer = document.getElementById('np-detail-content');
             
-            // Usamos la lista completa de regiones 'all_regions' para rellenar los filtros
             vpcsContainer.innerHTML = renderVPCsTable(vpcs, all_regions, 'all');
             aclsContainer.innerHTML = renderACLsTable(acls, all_regions, 'all');
             sgsContainer.innerHTML = renderSGsTable(security_groups, all_regions, 'all');
@@ -2193,16 +2291,13 @@
                 const selectedRegion = e.target.value;
                 switch (e.target.id) {
                     case 'vpc-region-filter':
-                        const filteredVpcs = selectedRegion === 'all' ? vpcs : vpcs.filter(v => v.Region === selectedRegion);
-                        vpcsContainer.innerHTML = renderVPCsTable(filteredVpcs, all_regions, selectedRegion);
+                        vpcsContainer.innerHTML = renderVPCsTable(vpcs.filter(v => selectedRegion === 'all' || v.Region === selectedRegion), all_regions, selectedRegion);
                         break;
                     case 'acl-region-filter':
-                        const filteredAcls = selectedRegion === 'all' ? acls : acls.filter(a => a.Region === selectedRegion);
-                        aclsContainer.innerHTML = renderACLsTable(filteredAcls, all_regions, selectedRegion);
+                        aclsContainer.innerHTML = renderACLsTable(acls.filter(a => selectedRegion === 'all' || a.Region === selectedRegion), all_regions, selectedRegion);
                         break;
                     case 'sg-region-filter':
-                        const filteredSgs = selectedRegion === 'all' ? security_groups : security_groups.filter(sg => sg.Region === selectedRegion);
-                        sgsContainer.innerHTML = renderSGsTable(filteredSgs, all_regions, selectedRegion);
+                        sgsContainer.innerHTML = renderSGsTable(security_groups.filter(sg => selectedRegion === 'all' || sg.Region === selectedRegion), all_regions, selectedRegion);
                         break;
                 }
             });
@@ -2213,6 +2308,7 @@
             const tabsNav = container.querySelector('#network-policies-tabs');
             if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.network-policies-tab-content'));
         };
+
 
         const createNetworkPoliciesSummaryCardsHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -2382,6 +2478,92 @@
             return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControl}${table}</div>`;
         };        
 
+        const renderVpcDiagram = (vpcs, subnets, instances, lambdas, rdsInstances, auroraClusters) => {
+            if (!vpcs || vpcs.length === 0) {
+                return '<p class="text-center text-gray-500">No se encontraron VPCs para mostrar en el diagrama.</p>';
+            }
+
+            let diagramHtml = '<div class="space-y-8">'; // Contenedor principal para todas las VPCs
+
+            // 1. Iteramos por cada VPC
+            vpcs.forEach(vpc => {
+                const vpcSubnets = subnets.filter(s => s.VpcId === vpc.VpcId);
+                // Contamos todos los recursos para la cabecera
+                const vpcInstances = instances.filter(i => vpcSubnets.some(s => s.SubnetId === i.SubnetId));
+                const vpcLambdas = lambdas.filter(l => l.VpcConfig && l.VpcConfig.VpcId === vpc.VpcId);
+                const vpcRds = rdsInstances.filter(r => r.VpcId === vpc.VpcId);
+                const vpcAurora = auroraClusters.filter(a => a.VpcId === vpc.VpcId);
+                const totalResources = vpcInstances.length + vpcLambdas.length + vpcRds.length + vpcAurora.length;
+
+
+                diagramHtml += `
+                <div class="bg-white border border-gray-200 rounded-xl shadow-md">
+                    <div class="bg-gray-50 p-3 border-b border-gray-200 rounded-t-xl">
+                        <h3 class="text-lg font-bold text-[#204071]">${vpc.Tags['Name'] || vpc.VpcId}</h3>
+                        <p class="text-sm text-gray-500 font-mono">${vpc.Region} | ${vpc.VpcId} | ${vpc.CidrBlock} | ${vpcSubnets.length} subredes | ${totalResources} recursos</p>
+                    </div>
+                    <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                `;
+
+                // 2. Iteramos por cada Subred de esta VPC
+                vpcSubnets.sort((a,b) => (a.Tags['Name'] || a.SubnetId).localeCompare(b.Tags['Name'] || b.SubnetId)).forEach(subnet => {
+                    diagramHtml += `
+                    <div class="bg-slate-50 border border-blue-200 rounded-lg p-3 flex flex-col">
+                        <div class="border-b border-blue-200 pb-2 mb-3">
+                            <p class="font-bold text-sm text-blue-800">${subnet.Tags['Name'] || subnet.SubnetId}</p>
+                            <p class="text-xs text-gray-500 font-mono">${subnet.CidrBlock}</p>
+                        </div>
+                        <div class="space-y-2 flex-grow">
+                    `;
+                    
+                    // 3. Dibujamos Instancias EC2
+                    const subnetInstances = instances.filter(i => i.SubnetId === subnet.SubnetId);
+                    if (subnetInstances.length > 0) {
+                        subnetInstances.sort((a,b) => (a.Tags['Name'] || a.InstanceId).localeCompare(b.Tags['Name'] || b.InstanceId)).forEach(instance => {
+                            const state = instance.State.toLowerCase();
+                            let bgColor = (state === 'running') ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300';
+                            const instanceName = instance.Tags['Name'] || instance.InstanceId;
+                            diagramHtml += `<div class="${bgColor} p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${instanceName}">${instanceName}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${instance.InstanceType}</span><span>${instance.State}</span></div></div>`;
+                        });
+                    }
+
+                    // 4. Dibujamos Funciones Lambda
+                    const subnetLambdas = lambdas.filter(l => l.VpcConfig && l.VpcConfig.SubnetIds && l.VpcConfig.SubnetIds.includes(subnet.SubnetId));
+                    if (subnetLambdas.length > 0) {
+                        subnetLambdas.sort((a,b) => a.FunctionName.localeCompare(b.FunctionName)).forEach(lambda => {
+                            diagramHtml += `<div class="bg-purple-100 border border-purple-300 p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${lambda.FunctionName}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/><path d="M6.854 4.646a.5.5 0 0 1 0 .708L4.207 8l2.647 2.646a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0m2.292 0a.5.5 0 0 0 0 .708L11.793 8l-2.647 2.646a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0"/></svg>${lambda.FunctionName}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${lambda.Runtime}</span></div></div>`;
+                        });
+                    }
+                    
+                    // 5. Dibujamos Instancias RDS
+                    const subnetRds = rdsInstances.filter(r => r.SubnetIds && r.SubnetIds.includes(subnet.SubnetId));
+                    if (subnetRds.length > 0) {
+                        subnetRds.forEach(rds => {
+                            diagramHtml += `<div class="bg-blue-100 border border-blue-300 p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${rds.DBInstanceIdentifier}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M4.318 2.687C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4c0-.374.356-.875 1.318-1.313M13 5.698V7c0 .374-.356.875-1.318 1.313C10.766 8.729 9.464 9 8 9s-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.711 6.427 7 8 7s3.022-.289 4.096-.777A5 5 0 0 0 13 5.698M14 4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16s3.022-.289 4.096-.777C13.125 14.755 14 14.007 14 13zm-1 4.698V10c0 .374-.356.875-1.318 1.313C10.766 11.729 9.464 12 8 12s-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10s3.022-.289 4.096-.777A5 5 0 0 0 13 8.698m0 3V13c0 .374-.356.875-1.318 1.313C10.766 14.729 9.464 15 8 15s-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13s3.022-.289 4.096-.777c.324-.147.633-.323.904-.525"/></svg>${rds.DBInstanceIdentifier}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${rds.Engine}</span></div></div>`;
+                        });
+                    }
+
+                    // 6. Dibujamos Clústeres Aurora
+                    const subnetAurora = auroraClusters.filter(c => c.SubnetIds && c.SubnetIds.includes(subnet.SubnetId));
+                    if (subnetAurora.length > 0) {
+                        subnetAurora.forEach(aurora => {
+                            diagramHtml += `<div class="bg-teal-100 border border-teal-300 p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${aurora.ClusterIdentifier}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M4.318 2.687C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4c0-.374.356-.875 1.318-1.313M13 5.698V7c0 .374-.356.875-1.318 1.313C10.766 8.729 9.464 9 8 9s-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.711 6.427 7 8 7s3.022-.289 4.096-.777A5 5 0 0 0 13 5.698M14 4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16s3.022-.289 4.096-.777C13.125 14.755 14 14.007 14 13zm-1 4.698V10c0 .374-.356.875-1.318 1.313C10.766 11.729 9.464 12 8 12s-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10s3.022-.289 4.096-.777A5 5 0 0 0 13 8.698m0 3V13c0 .374-.356.875-1.318 1.313C10.766 14.729 9.464 15 8 15s-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13s3.022-.289 4.096-.777c.324-.147.633-.323.904-.525"/></svg>${aurora.ClusterIdentifier}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${aurora.Engine}</span></div></div>`;
+                        });
+                    }
+
+                    if (subnetInstances.length === 0 && subnetLambdas.length === 0 && subnetRds.length === 0 && subnetAurora.length === 0) {
+                        diagramHtml += '<p class="text-center text-xs text-gray-400 py-4">Sin recursos</p>';
+                    }
+
+                    diagramHtml += `</div></div>`; // Cierre de la subred
+                });
+                diagramHtml += `</div></div>`; // Cierre de la VPC
+            });
+
+            diagramHtml += '</div>'; // Cierre del contenedor principal
+            return diagramHtml;
+        };
+
         const renderNetworkDetailView = (allRegions) => {
             const regionOptions = allRegions.map(r => `<option value="${r}">${r}</option>`).join('');
             
@@ -2476,6 +2658,124 @@
                 <h3 class="text-xl font-bold text-[#204071] mb-4">Resultado del Análisis</h3>
                 <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${tableString}</pre>
             `;
+        };
+
+
+// --- SECCIÓN DE CONECTIVIDAD DE RED ---
+
+        const buildConnectivityView = () => {
+            const container = document.getElementById('connectivity-view');
+            if (!container || !connectivityApiData) return;
+
+            const { peering_connections, tgw_attachments, vpn_connections, vpc_endpoints } = connectivityApiData.results;
+
+            container.innerHTML = `
+                <header class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-[#204071]">Conectividad de Red</h2>
+                        <p class="text-sm text-gray-500">${connectivityApiData.metadata.executionDate}</p>
+                    </div>
+                </header>
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="-mb-px flex flex-wrap space-x-6" id="connectivity-tabs">
+                        <a href="#" data-tab="conn-peering-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">VPC Peering (${peering_connections.length})</a>
+                        <a href="#" data-tab="conn-tgw-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Transit Gateway (${tgw_attachments.length})</a>
+                        <a href="#" data-tab="conn-vpn-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">VPN Connections (${vpn_connections.length})</a>
+                        <a href="#" data-tab="conn-endpoints-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">VPC Endpoints (${vpc_endpoints.length})</a>
+                    </nav>
+                </div>
+                <div id="connectivity-tab-content-container">
+                    <div id="conn-peering-content" class="connectivity-tab-content">${renderPeeringTable(peering_connections)}</div>
+                    <div id="conn-tgw-content" class="connectivity-tab-content hidden">${renderTgwAttachmentsTable(tgw_attachments)}</div>
+                    <div id="conn-vpn-content" class="connectivity-tab-content hidden">${renderVpnConnectionsTable(vpn_connections)}</div>
+                    <div id="conn-endpoints-content" class="connectivity-tab-content hidden">${renderVpcEndpointsTable(vpc_endpoints)}</div>
+                </div>
+            `;
+            
+            const tabsNav = container.querySelector('#connectivity-tabs');
+            if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.connectivity-tab-content'));
+        };
+
+        const renderPeeringTable = (connections) => {
+            if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron conexiones de VPC Peering activas.</p></div>';
+            let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID Conexión</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC Solicitante (Requester)</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC Aceptante (Accepter)</th>' +
+                        '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            connections.forEach(c => {
+                const requesterInfo = `${c.RequesterVpc.VpcId} (${c.RequesterVpc.OwnerId})`;
+                const accepterInfo = `${c.AccepterVpc.VpcId} (${c.AccepterVpc.OwnerId})`;
+                table += `<tr class="hover:bg-gray-50">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${c.Region}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 font-mono">${c.ConnectionId}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${requesterInfo}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${accepterInfo}</td>
+                        </tr>`;
+            });
+            table += '</tbody></table></div>';
+            return table;
+        };
+
+        const renderTgwAttachmentsTable = (attachments) => {
+            if (!attachments || attachments.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron adjuntos de VPC a Transit Gateways.</p></div>';
+             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transit Gateway ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC Adjunta</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID del Adjunto</th>' +
+                        '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            attachments.forEach(a => {
+                table += `<tr class="hover:bg-gray-50">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${a.Region}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 font-mono">${a.TransitGatewayId}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${a.VpcId}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${a.AttachmentId}</td>
+                        </tr>`;
+            });
+            table += '</tbody></table></div>';
+            return table;
+        };
+
+        const renderVpnConnectionsTable = (connections) => {
+            if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron conexiones VPN activas.</p></div>';
+            let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPN Connection ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Gateway ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Asociado a TGW</th>' +
+                        '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            connections.forEach(c => {
+                table += `<tr class="hover:bg-gray-50">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${c.Region}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 font-mono">${c.VpnConnectionId}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${c.CustomerGatewayId}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${c.TransitGatewayId}</td>
+                        </tr>`;
+            });
+            table += '</tbody></table></div>';
+            return table;
+        };
+
+        const renderVpcEndpointsTable = (endpoints) => {
+            if (!endpoints || endpoints.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron VPC Endpoints.</p></div>';
+            let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre del Servicio</th>' +
+                        '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            endpoints.forEach(e => {
+                table += `<tr class="hover:bg-gray-50">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${e.Region}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 font-mono">${e.VpcId}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${e.EndpointType}</td>
+                            <td class="px-4 py-4 text-sm text-gray-600 break-all font-mono">${e.ServiceName}</td>
+                        </tr>`;
+            });
+            table += '</tbody></table></div>';
+            return table;
         };
 
 
@@ -2692,13 +2992,12 @@
                 return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No hay regiones con AWS Config o Security Hub habilitados.</p></div>';
             }
             
-            // --- MODIFICACIÓN 1: Añadir nueva cabecera de tabla ---
             let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AWS Config</th>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AWS Security Hub</th>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estándares SH</th>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conformance Packs</th>' + // <-- Nueva cabecera
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conformance Packs</th>' +
                             '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             
             activeRegions.forEach(s => {
@@ -2708,20 +3007,21 @@
                 let standardsHtml = '-';
                 if (s.EnabledStandards && s.EnabledStandards.length > 0) {
                     standardsHtml = '<div class="flex flex-col items-start gap-1">' + 
-                                    s.EnabledStandards.map(std => `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">${std}</span>`).join('') +
+                                    s.EnabledStandards.map(arn => {
+                                        // Aquí acortamos el ARN
+                                        const shortName = arn.split(/[/:]standards\//).pop() || arn;
+                                        return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">${shortName}</span>`
+                                    }).join('') +
                                     '</div>';
                 }
                 
-                // --- MODIFICACIÓN 2: Renderizar la lista de Conformance Packs ---
                 let conformancePacksHtml = '-';
                 if (s.EnabledConformancePacks && s.EnabledConformancePacks.length > 0) {
                     conformancePacksHtml = '<div class="flex flex-col items-start gap-1">' +
                                         s.EnabledConformancePacks.map(cp => `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-800">${cp}</span>`).join('') +
                                         '</div>';
                 }
-                // --- FIN MODIFICACIÓN 2 ---
 
-                // --- MODIFICACIÓN 3: Añadir la nueva celda a la fila ---
                 tableHtml += `<tr class="hover:bg-gray-50">
                                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${s.Region}</td>
                                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${configBadge}</td>
@@ -2734,145 +3034,111 @@
             return tableHtml;
         };
 
+
+
         const renderComplianceStatus = (complianceSummary, allFindings) => {
             const container = document.getElementById('config-sh-compliance-content');
             if (!container) return;
 
             if (!complianceSummary || complianceSummary.length === 0) {
-                container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron datos de cumplimiento.</p></div>`;
+                container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron datos de cumplimiento para generar el gráfico.</p></div>`;
                 return;
             }
 
+            // Creamos la nueva estructura HTML con un solo canvas para el gráfico unificado
             let contentHtml = `
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-xl font-bold text-[#204071] mb-6 pb-2 border-b">Resumen de Cumplimiento por Estándar</h3>
-                    <div class="space-y-8">
+                    <h3 class="text-xl font-bold text-[#204071] mb-2">Cumplimiento General por Estándar de Seguridad</h3>
+                    <p class="text-sm text-gray-500 mb-6">Comparativa del porcentaje de controles superados para cada estándar habilitado.</p>
+                    <div class="h-96">
+                        <canvas id="unifiedComplianceChart"></canvas>
+                    </div>
+                </div>
             `;
             
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Mapeo de severidades actualizado con colores de fondo para las píldoras
-            const severityMap = {
-                'CRITICAL': { label: 'Críticos', color: 'text-red-800', bg: 'bg-red-100' },
-                'HIGH': { label: 'Altos', color: 'text-orange-800', bg: 'bg-orange-100' },
-                'MEDIUM': { label: 'Medios', color: 'text-yellow-800', bg: 'bg-yellow-100' },
-                'LOW': { label: 'Bajos', color: 'text-blue-800', bg: 'bg-blue-100' },
-            };
-            // --- FIN DE LA MODIFICACIÓN ---
-
-            complianceSummary.forEach((standard, index) => {
-                const failedFindingsForStandard = allFindings.filter(f => 
-                    f.ProductFields?.StandardsArn === standard.standardArn && f.Compliance?.Status === 'FAILED'
-                );
-
-                const severityCounts = { 'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0 };
-                failedFindingsForStandard.forEach(f => {
-                    const severity = f.Severity?.Label;
-                    if (severity in severityCounts) {
-                        severityCounts[severity]++;
-                    }
-                });
-
-                let summaryCardsHtml = '';
-                for (const severity in severityCounts) {
-                    if (severityCounts[severity] > 0) {
-                        // --- INICIO DE LA MODIFICACIÓN ---
-                        // Se genera una píldora en lugar de texto simple
-                        summaryCardsHtml += `
-                            <div class="flex justify-between items-center text-sm">
-                                <div>
-                                    <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityMap[severity].bg} ${severityMap[severity].color}">
-                                        ${severityMap[severity].label}
-                                    </span>
-                                </div>
-                                <span class="font-bold text-gray-700">${severityCounts[severity]}</span>
-                            </div>
-                        `;
-                        // --- FIN DE LA MODIFICACIÓN ---
-                    }
-                }
-
-                contentHtml += `
-                    <div class="p-4 border border-gray-200 rounded-lg">
-                        <h4 class="text-center text-md font-semibold text-[#204071] mb-1">${standard.standardName}</h4>
-                        <p class="text-center text-xs text-gray-500 mb-4">${standard.passedCount} / ${standard.totalControls} controles superados</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                            <div class="relative w-48 h-48 mx-auto">
-                                <canvas id="complianceChart${index}"></canvas>
-                            </div>
-                            <div class="space-y-3 pr-4">
-                                <h5 class="font-bold text-gray-800 text-sm">Incumplimientos:</h5>
-                                ${summaryCardsHtml || '<p class="text-xs text-gray-500">¡Ninguno!</p>'}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            contentHtml += '</div></div>';
             container.innerHTML = contentHtml;
 
+            // Esperamos un instante para que el canvas esté en el DOM y luego llamamos a la función que lo dibujará
             setTimeout(() => {
-                complianceSummary.forEach((standard, index) => {
-                    createDonutChart(`complianceChart${index}`, standard.compliancePercentage);
-                });
+                createUnifiedBarChart(complianceSummary);
             }, 0);
         };
-
-
-
-
-        const createDonutChart = (canvasId, percentage) => {
-            const ctx = document.getElementById(canvasId);
+        
+        const createUnifiedBarChart = (complianceData) => {
+            const ctx = document.getElementById('unifiedComplianceChart');
             if (!ctx) return;
 
-            // Plugin para dibujar el texto en el centro del gráfico
-            const centerTextPlugin = {
-                id: 'centerText',
-                afterDraw: (chart) => {
-                    const { ctx, chartArea: { top, right, bottom, left, width, height } } = chart;
-                    ctx.save();
-                    const text = `${Math.round(percentage)}%`;
-                    ctx.font = 'bold 36px Inter, sans-serif';
-                    ctx.fillStyle = '#204071';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    const x = left + (width / 2);
-                    const y = top + (height / 2);
-                    ctx.fillText(text, x, y);
-                    ctx.restore();
-                }
-            };
-            
+            // 1. Preparamos los datos para Chart.js (sin cambios aquí)
+            const labels = complianceData.map(d => {
+                const arn = d.standardArn || '';
+                return arn.split(/[/:]standards\//).pop() || arn;
+            });
+            const percentages = complianceData.map(d => d.compliancePercentage);
+
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // 2. Definimos una paleta de colores fijos para los estándares.
+            //    Chart.js automáticamente usará un color para cada barra y reciclará
+            //    los colores si hay más barras que colores en la paleta.
+            const colorPalette = [
+                'rgba(59, 130, 246, 0.7)',  // Blue
+                'rgba(22, 163, 74, 0.7)',   // Green
+                'rgba(249, 115, 22, 0.7)',  // Orange
+                'rgba(139, 92, 246, 0.7)',  // Purple
+                'rgba(236, 72, 153, 0.7)',  // Pink
+                'rgba(20, 184, 166, 0.7)',  // Teal
+                'rgba(250, 204, 21, 0.7)',  // Yellow
+                'rgba(107, 114, 128, 0.7)'  // Gray
+            ];
+            const borderPalette = colorPalette.map(color => color.replace('0.7', '1')); // Versión sólida para el borde
+
+            // --- FIN DE LA MODIFICACIÓN ---
+
+            // 3. Configuramos el gráfico
             new Chart(ctx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
+                    labels: labels,
                     datasets: [{
-                        data: [percentage, 100 - percentage],
-                        backgroundColor: [
-                            '#0d6efd', // Color azul para el porcentaje de cumplimiento
-                            '#e9ecef'  // Color gris claro para el resto
-                        ],
-                        borderColor: [
-                            '#0d6efd',
-                            '#e9ecef'
-                        ],
-                        borderWidth: 1,
-                        cutout: '80%', // Esto hace que la dona sea más delgada
+                        label: '% Cumplimiento',
+                        data: percentages,
+                        backgroundColor: colorPalette, // Usamos la nueva paleta
+                        borderColor: borderPalette,    // Usamos la paleta para los bordes
+                        borderWidth: 1
                     }]
                 },
                 options: {
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + "%"
+                                }
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                autoSkip: false
+                            }
+                        }
+                    },
                     plugins: {
                         legend: {
-                            display: false // Oculta la leyenda
+                            display: false
                         },
                         tooltip: {
-                            enabled: false // Desactiva los tooltips al pasar el ratón
+                            callbacks: {
+                                label: function(context) {
+                                    return `Cumplimiento: ${context.raw.toFixed(2)}%`;
+                                }
+                            }
                         }
                     }
-                },
-                plugins: [centerTextPlugin] // Aplicamos el plugin para el texto
+                }
             });
         };
 
@@ -3023,7 +3289,6 @@
 
         const buildPlaygroundView = () => {
             const container = document.getElementById('playground-view');
-            // El HTML no cambia, lo mantenemos igual
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
@@ -3074,24 +3339,20 @@
                     <div id="sslscan-results-container" class="mt-6"></div>
                 </div>
             `;
-            
-            // Conexión de eventos
-            const tabsNav = document.getElementById('playground-tabs');
-            if(tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.playground-tab-content'));
-            const runAnalysisBtn = document.getElementById('pg-run-analysis-btn');
-            if(runAnalysisBtn) runAnalysisBtn.addEventListener('click', runPlaygroundAnalysis);
-            const runSslScanBtn = document.getElementById('pg-run-sslscan-btn');
-            if(runSslScanBtn) runSslScanBtn.addEventListener('click', runSslScan);
 
-            // --- LÓGICA CORREGIDA ---
-            // Comprobamos de forma segura si existen datos importados para cada herramienta
+            const tabsNav = document.getElementById('playground-tabs');
+            if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.playground-tab-content'));
+            const runAnalysisBtn = document.getElementById('pg-run-analysis-btn');
+            if (runAnalysisBtn) runAnalysisBtn.addEventListener('click', runPlaygroundAnalysis);
+            const runSslScanBtn = document.getElementById('pg-run-sslscan-btn');
+            if (runSslScanBtn) runSslScanBtn.addEventListener('click', runSslScan);
+
             if (playgroundApiData?.results) {
                 renderPlaygroundResults();
             }
             if (playgroundApiData?.sslscan) {
                 renderSslScanResults(playgroundApiData.sslscan);
             }
-            // --- FIN DE LA CORRECCIÓN ---
         };
 
 
@@ -3149,15 +3410,11 @@
                 btnText.textContent = 'Analizar Ruta';
             }
         };
-
         const renderPlaygroundResults = () => {
-            // Comprobación de seguridad: nos aseguramos de que los datos existen
-            if (!playgroundApiData?.results) return;
-
+            if (!playgroundApiData) return;
             const container = document.getElementById('playground-results-container');
             const { status, reason, tables, detail_tables } = playgroundApiData.results;
 
-            // El resto de la función es igual
             let resultHtml = '';
             if (status === 'REACHABLE') {
                 resultHtml = `
@@ -3173,6 +3430,9 @@
                         resultHtml += `<pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto mt-4">${table}</pre>`;
                     });
                 }
+                
+                // --- INICIO DE LA MODIFICACIÓN ---
+                // Ahora, añadimos las tablas de detalles si existen
                 if (detail_tables && Object.keys(detail_tables).length > 0) {
                     resultHtml += '<h3 class="text-xl font-bold text-[#204071] mt-8 mb-4 border-b pb-2">Detalles de los Recursos Involucrados</h3>';
                     for (const resourceId in detail_tables) {
@@ -3183,7 +3443,9 @@
                         `;
                     }
                 }
-            } else {
+                // --- FIN DE LA MODIFICACIÓN ---
+
+            } else { // UNREACHABLE
                 resultHtml = `
                     <div class="bg-red-50 text-red-800 p-4 rounded-lg">
                         <h4 class="text-lg font-bold flex items-center">
@@ -3197,12 +3459,40 @@
             container.innerHTML = resultHtml;
         };
 
+        const renderSslScanResults = (results) => {
+            const resultsContainer = document.getElementById('sslscan-results-container');
+            if (!results || results.length === 0) {
+                resultsContainer.innerHTML = '';
+                return;
+            }
 
+            let resultsHtml = '';
+            results.forEach(result => {
+                let resultOutput = '';
+                if (result.error) {
+                    // Si hay un error explícito del backend, lo mostramos
+                    resultOutput = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${result.error}</p></div>`;
+                } else if (result.output && result.output.trim() !== '') {
+                    // Si hay salida, la mostramos en la caja de código
+                    resultOutput = `<pre class="bg-gray-900 text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${result.output}</pre>`;
+                } else {
+                    // Si no hay error ni salida, mostramos un aviso
+                    resultOutput = `<div class="bg-yellow-50 text-yellow-700 p-4 rounded-lg"><h4 class="font-bold">Aviso</h4><p>El escaneo finalizó sin devolver resultados para este objetivo.</p></div>`;
+                }
+                
+                resultsHtml += `
+                    <div class="mb-6">
+                        <h4 class="font-bold text-lg mb-2 text-[#204071]">Resultado para: ${result.target}</h4>
+                        ${resultOutput}
+                    </div>
+                `;
+            });
+            resultsContainer.innerHTML = resultsHtml;
+        };
 
 
 
         const runSslScan = async () => {
-            // ... (la parte inicial de la función que define las variables y valida el input no cambia)
             const targetInput = document.getElementById('pg-sslscan-target');
             const resultsContainer = document.getElementById('sslscan-results-container');
             const runBtn = document.getElementById('pg-run-sslscan-btn');
@@ -3218,7 +3508,6 @@
             runBtn.disabled = true;
             spinner.classList.remove('hidden');
             btnText.textContent = 'Escaneando...';
-
             try {
                 const response = await fetch('http://127.0.0.1:5001/api/run-sslscan', {
                     method: 'POST',
@@ -3229,14 +3518,9 @@
                 if (!response.ok && data.error) {
                     throw new Error(data.error);
                 }
-
-                // --- INICIO DE LA LÓGICA MODIFICADA ---
-                if (!playgroundApiData) playgroundApiData = {}; // Inicializamos el objeto si es la primera vez
-                playgroundApiData.sslscan = data.results; // Guardamos los resultados en la variable global
-
-                renderSslScanResults(data.results); // Usamos la nueva función para mostrar los resultados
-                // --- FIN DE LA LÓGICA MODIFICADA ---
-                
+                if (!playgroundApiData) playgroundApiData = {};
+                playgroundApiData.sslscan = data.results;
+                renderSslScanResults(data.results);
                 log(`sslscan completado para: ${target}.`, 'success');
             } catch (e) {
                 log(`Error en sslscan: ${e.message}`, 'error');
@@ -3248,28 +3532,6 @@
             }
         };
 
-        const renderSslScanResults = (results) => {
-            const resultsContainer = document.getElementById('sslscan-results-container');
-            if (!results || results.length === 0) {
-                resultsContainer.innerHTML = '';
-                return;
-            }
-
-            let resultsHtml = '';
-            results.forEach(result => {
-                const resultOutput = result.error 
-                    ? `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${result.error}</p></div>`
-                    : `<pre class="bg-gray-900 text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${result.output}</pre>`;
-                
-                resultsHtml += `
-                    <div class="mb-6">
-                        <h4 class="font-bold text-lg mb-2 text-[#204071]">Resultado para: ${result.target}</h4>
-                        ${resultOutput}
-                    </div>
-                `;
-            });
-            resultsContainer.innerHTML = resultsHtml;
-        };
 
 // --- SECCIÓN DE KMS (NUEVA SECCIÓN) ---
 
@@ -3665,11 +3927,13 @@
 // --- LÓGICA DE EXPORTACIÓN ---
 
         const exportResultsToJson = () => {
+            // 1. Comprobar si se ha realizado algún análisis
             if (!iamApiData) {
                 alert("Aviso: Primero debes realizar un análisis antes de poder exportar los resultados.");
                 return;
             }
 
+            // 2. Determinar el tipo de análisis y recopilar metadatos
             let scanType = "rapido";
             if (configSHApiData || (inspectorApiData && inspectorApiData.results.findings && inspectorApiData.results.findings.length > 0)) {
                 scanType = "profundo";
@@ -3679,6 +3943,7 @@
             const accountAlias = federationApiData?.results?.account_alias || "NoAlias";
             const timestamp = iamApiData.metadata.executionDate;
 
+            // 3. Construir el objeto de datos completo para la exportación
             const exportData = {
                 metadata: {
                     accountId: accountId,
@@ -3703,14 +3968,17 @@
                     networkPolicies: networkPoliciesApiData || null,
                     configAndSecurityHubStatus: configSHStatusApiData || null,
                     configAndSecurityHubDeepScan: configSHApiData || null,
-                    kms: kmsApiData || null, // <-- LA COMA QUE FALTABA ESTÁ AQUÍ
-                    playground: playgroundApiData || null
+                    kms: kmsApiData || null, 
+                    playground: playgroundApiData || null,
+                    connectivity: connectivityApiData || null
                 }
             };
             
+            // 4. Generar el nombre del fichero y convertir el objeto a JSON
             const filename = `${accountId}_${accountAlias}_${scanType}.json`;
             const jsonString = JSON.stringify(exportData, null, 2);
 
+            // 5. Crear un "Blob" y simular un clic para descargar el fichero
             const blob = new Blob([jsonString], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             
@@ -3726,7 +3994,9 @@
             log(`Resultados exportados correctamente en el fichero: ${filename}`, 'success');
         };
 
+
 // --- LÓGICA DE IMPORTACIÓN ---
+
         const handleJsonImport = (event) => {
             const file = event.target.files[0];
             if (!file) {
@@ -3767,6 +4037,7 @@
                     configSHApiData = results.configAndSecurityHubDeepScan || null;
                     kmsApiData = results.kms || null;
                     playgroundApiData = results.playground || null;
+                    connectivityApiData = results.connectivity || null; // <-- AÑADE ESTA LÍNEA
                     
                     // Extraemos las regiones disponibles, igual que hacemos en el análisis normal
                     allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
@@ -3797,10 +4068,8 @@
         };
 
 
-
-        // --- INICIALIZACIÓN (CORREGIDO Y UNIFICADO) ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Selectores de elementos
+            // Selectores del DOM (todos juntos)
             views = document.querySelectorAll('.view');
             mainNavLinks = document.querySelectorAll('.main-nav-link');
             runAnalysisBtn = document.getElementById('run-analysis-button');
@@ -3816,23 +4085,24 @@
             logPanel = document.getElementById('log-panel');
             const importButton = document.getElementById('import-results-button');
             const fileInput = document.getElementById('json-file-input');
-            const exportButton = document.getElementById('export-results-button');
 
             // Estado inicial de la vista
             document.getElementById('iam-view').innerHTML = createInitialEmptyState();
 
-            // Asignación de todos los Event Listeners
+            // Asignación de Eventos (todos juntos)
             runAnalysisBtn.addEventListener('click', runAnalysisFromInputs);
-            exportButton.addEventListener('click', exportResultsToJson);
-            importButton.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', handleJsonImport);
             document.getElementById('sidebar-nav').addEventListener('click', handleMainNavClick);
             clearLogBtn.addEventListener('click', () => { logContainer.innerHTML = ''; });
             toggleLogBtn.addEventListener('click', () => {
                 logPanel.classList.toggle('minimized');
                 toggleLogBtn.textContent = logPanel.classList.contains('minimized') ? 'Maximizar' : 'Minimizar';
             });
+            document.getElementById('export-results-button').addEventListener('click', exportResultsToJson);
+            importButton.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleJsonImport);
         });
+
+
     </script>
 </body>
 </html>
