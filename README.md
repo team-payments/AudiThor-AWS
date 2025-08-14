@@ -25,7 +25,7 @@ AudiThor offers a wide range of audit modules in one single place:
 
 ## 🛠️ Tech Stack
 
-* **Backend:** Python 3, Flask, Boto3
+* **Backend (audithor.py):** Python 3, Flask, Boto3
 * **Frontend:** HTML, Tailwind CSS, Chart.js
 
 ## 📋 Prerequisites
@@ -67,7 +67,7 @@ Before you begin, make sure you have the following installed:
 
 1.  **Run the Flask server:**
     ```bash
-    python backend.py
+    python audithor.py
     ```
     The application will start and automatically open a new tab in your browser at `http://127.0.0.1:5001/dashboard.html`.
 
@@ -82,7 +82,7 @@ Before you begin, make sure you have the following installed:
 
 ### 🔒 Important! Credential Handling
 
-This tool runs **entirely locally on your machine**. The credentials you enter in the browser are sent only to your local server (the `backend.py` script) and never leave your computer. However, it is always good practice to:
+This tool runs **entirely locally on your machine**. The credentials you enter in the browser are sent only to your local server (the `audithor.py` script) and never leave your computer. However, it is always good practice to:
 * Use temporary credentials (Session Tokens) whenever possible.
 * Do not save your credentials in unsecured locations.
 * Run the tool in a trusted environment.
