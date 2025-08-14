@@ -1,93 +1,92 @@
 # AudiThor-AWS ⚡️
 
-**Una herramienta de auditoría de seguridad para AWS, con un enfoque en el cumplimiento de la normativa PCI DSS.**
+**A security auditing tool for AWS, with a focus on PCI DSS compliance.**
 
-AudiThor es una aplicación web local que proporciona un dashboard unificado para realizar auditorías de seguridad de solo lectura en entornos de AWS. Permite a los auditores, administradores y equipos de seguridad obtener una visión rápida y completa de la postura de seguridad de una cuenta, identificar posibles riesgos y verificar el cumplimiento de políticas, especialmente aquellas relacionadas con el estándar PCI DSS.
+AudiThor is a local web application that provides a unified dashboard for performing read-only security audits in AWS environments. It allows auditors, administrators, and security teams to get a quick and comprehensive view of an account's security posture, identify potential risks, and verify policy compliance, especially those related to the PCI DSS standard.
 
-La mayor parte de este proyecto fue desarrollada con la asistencia de un modelo de lenguaje de IA (Gemini de Google), lo que permitió acelerar la implementación de las diversas comprobaciones y la creación del dashboard.
+Most of this project was developed with the assistance of an AI language model (Google's Gemini), which helped accelerate the implementation of the various checks and the creation of the dashboard.
 
+## 🚀 Key Features
 
-## 🚀 Características Principales
+AudiThor offers a wide range of audit modules in one single place:
 
-AudiThor ofrece una amplia gama de módulos de auditoría en un único lugar:
+* **👤 Identity & Access (IAM):** Detailed analysis of users, groups, roles, password policies, privileged users, and federation.
+* **🌐 Internet Exposure:** Detection of resources exposed to the internet, such as public S3 buckets, EC2 instances, load balancers, open Security Groups, and more.
+* **🛡️ GuardDuty & WAF:** Review of GuardDuty's status and findings, and the configuration of Web ACLs and IP Sets in WAF.
+* **✍️ CloudTrail & CloudWatch:** Audit of Trail configurations, visualization of relevant security events, and review of alarms and SNS notifications.
+* **🔍 Inspector & ACM:** Visualization of the status and findings of the Amazon Inspector vulnerability service and management of certificates from AWS Certificate Manager.
+* **⚙️ Compute & Databases:** Inventory of compute resources (EC2, Lambda, EKS, ECS) and databases (RDS, Aurora, DynamoDB, DocumentDB).
+* **🔐 KMS & Network Policies:** Review of encryption keys in KMS and network policies such as VPCs, ACLs, and Security Groups.
+* **📊 Config & Security Hub:** A centralized module to check the status of these services and perform a deep analysis of compliance findings.
+* **🎮 Interactive Playground:**
+    * **Can we see each other?:** A tool to analyze network connectivity between two specific resources (e.g., an EC2 instance and an RDS database) at the Security Group, NACL, and route table level.
+    * **SSL Scan:** A wrapper for the popular `sslscan` to analyze the SSL/TLS configuration of public domains or IPs.
+* **📥/📤 Import & Export:** Save your audit results to a JSON file for later analysis or share them with your team.
 
-* **👤 Identity & Access (IAM):** Análisis detallado de usuarios, grupos, roles, políticas de contraseñas, usuarios privilegiados y federación.
-* **🌐 Internet Exposure:** Detección de recursos expuestos a Internet, como buckets S3 públicos, instancias EC2, balanceadores, Security Groups abiertos y más.
-* **🛡️ GuardDuty & WAF:** Revisión del estado y los hallazgos de GuardDuty y de la configuración de Web ACLs y IP Sets en WAF.
-* **✍️ CloudTrail & CloudWatch:** Auditoría de la configuración de Trails, visualización de eventos de seguridad relevantes y revisión de alarmas y notificaciones SNS.
-* **🔍 Inspector & ACM:** Visualización del estado y los hallazgos del servicio de vulnerabilidades Amazon Inspector y gestión de certificados de AWS Certificate Manager.
-* **⚙️ Compute & Databases:** Inventario de recursos de cómputo (EC2, Lambda, EKS, ECS) y bases de datos (RDS, Aurora, DynamoDB, DocumentDB).
-* **🔐 KMS & Network Policies:** Revisión de claves de cifrado en KMS y de políticas de red como VPCs, ACLs y Security Groups.
-* **📊 Config & Security Hub:** Módulo centralizado para verificar el estado de estos servicios y realizar un análisis profundo de hallazgos de cumplimiento.
-* **🎮 Playground Interactivo:**
-    * **¿Nos vemos?:** Una herramienta para analizar la conectividad de red entre dos recursos específicos (ej. una EC2 y una RDS) a nivel de Security Group, NACL y tablas de rutas.
-    * **SSL Scan:** Un wrapper del popular `sslscan` para analizar la configuración SSL/TLS de dominios o IPs públicas.
-* **📥/📤 Importar y Exportar:** Guarda los resultados de tu auditoría en un fichero JSON para su posterior análisis o compártelos con tu equipo.
-
-## 🛠️ Stack Tecnológico
+## 🛠️ Tech Stack
 
 * **Backend:** Python 3, Flask, Boto3
 * **Frontend:** HTML, Tailwind CSS, Chart.js
 
-## 📋 Prerrequisitos
+## 📋 Prerequisites
 
-Antes de empezar, asegúrate de tener instalado lo siguiente:
+Before you begin, make sure you have the following installed:
 
-1.  **Python 3.8+** y `pip`.
-2.  La herramienta de línea de comandos **`sslscan`**. Es utilizada por el módulo "SSL Scan" en el Playground.
-    * **En Debian/Ubuntu:** `sudo apt-get update && sudo apt-get install sslscan`
-    * **En macOS (con Homebrew):** `brew install sslscan`
-    * **En Windows:** Puedes descargar los binarios desde el [repositorio oficial de sslscan en GitHub](https://github.com/rbsec/sslscan/releases).
+1.  **Python 3.8+** and `pip`.
+2.  The **`sslscan`** command-line tool. It is used by the "SSL Scan" module in the Playground.
+    * **On Debian/Ubuntu:** `sudo apt-get update && sudo apt-get install sslscan`
+    * **On macOS (with Homebrew):** `brew install sslscan`
+    * **On Windows:** You can download the binaries from the [official sslscan GitHub repository](https://github.com/rbsec/sslscan/releases).
 
-## ⚙️ Instalación y Puesta en Marcha
+## ⚙️ Installation and Setup
 
-1.  **Clona el repositorio:**
+1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/tu-usuario/audithor.git](https://github.com/tu-usuario/audithor.git)
+    git clone [https://github.com/your-username/audithor.git](https://github.com/your-username/audithor.git)
     cd audithor
     ```
 
-2.  **Crea y activa un entorno virtual (recomendado):**
+2.  **Create and activate a virtual environment (recommended):**
     ```bash
-    # Crear el entorno
+    # Create the environment
     python -m venv venv
 
-    # Activarlo
-    # En Linux/macOS:
+    # Activate it
+    # On Linux/macOS:
     source venv/bin/activate
-    # En Windows:
+    # On Windows:
     .\venv\Scripts\activate
     ```
 
-3.  **Instala las dependencias:**
+3.  **Install the dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
 
-## ▶️ Uso
+## ▶️ Usage
 
-1.  **Ejecuta el servidor de Flask:**
+1.  **Run the Flask server:**
     ```bash
     python backend.py
     ```
-    La aplicación se iniciará y abrirá automáticamente una pestaña en tu navegador en `http://127.0.0.1:5001/dashboard.html`.
+    The application will start and automatically open a new tab in your browser at `http://127.0.0.1:5001/dashboard.html`.
 
-2.  **Introduce tus credenciales de AWS:**
-    * Necesitarás un **Access Key ID** y un **Secret Access Key** de un usuario o rol IAM.
-    * Si usas credenciales temporales, también deberás proporcionar el **Session Token**.
+2.  **Enter your AWS credentials:**
+    * You will need an **Access Key ID** and a **Secret Access Key** from an IAM user or role.
+    * If you are using temporary credentials, you must also provide the **Session Token**.
 
-    >**⚠️ Nota sobre los permisos:**
-    >Para que la herramienta funcione correctamente, las credenciales proporcionadas deben tener permisos de solo lectura sobre los servicios que se van a auditar. Un buen punto de partida es asociar las políticas gestionadas por AWS `SecurityAudit` y `ViewOnlyAccess` al usuario o rol IAM.
+    > **⚠️ Note on permissions:**
+    > For the tool to work correctly, the provided credentials must have read-only permissions for the services to be audited. A good starting point is to attach the AWS managed policies `SecurityAudit` and `ViewOnlyAccess` to the IAM user or role.
 
-3.  **Haz clic en "Analizar Cuenta"** y explora los resultados en los diferentes módulos.
+3.  **Click on "Analyze Account"** and explore the results in the different modules.
 
-### 🔒 ¡Importante! Manejo de Credenciales
+### 🔒 Important! Credential Handling
 
-Esta herramienta se ejecuta de forma **totalmente local en tu máquina**. Las credenciales que introduces en el navegador se envían únicamente a tu servidor local (el script `backend.py`) y nunca abandonan tu ordenador. Sin embargo, siempre es una buena práctica:
-* Utilizar credenciales temporales (Session Tokens) siempre que sea posible.
-* No guardar tus credenciales en lugares no seguros.
-* Ejecutar la herramienta en un entorno de confianza.
+This tool runs **entirely locally on your machine**. The credentials you enter in the browser are sent only to your local server (the `backend.py` script) and never leave your computer. However, it is always good practice to:
+* Use temporary credentials (Session Tokens) whenever possible.
+* Do not save your credentials in unsecured locations.
+* Run the tool in a trusted environment.
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto está bajo la Licencia MIT. Consulta el fichero `LICENSE` para más detalles.
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
