@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
+from rules import RULES_TO_CHECK
 from flask_cors import CORS
 import boto3
 import threading
@@ -2471,8 +2472,6 @@ def run_kms_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de KMS: {str(e)}"}), 500
 
-# REEMPLAZA esta función en audithor.py
-
 @app.route('/api/run-sslscan', methods=['POST'])
 def run_sslscan():
     data = request.get_json()
@@ -2538,7 +2537,47 @@ def run_sslscan():
 
     return jsonify({"results": results})
 
+# ==============================================================================
+# ENDPOINT PARA EL EXECUTIVE SUMMARY
+# ==============================================================================
 
+@app.route('/run_executive_summary', methods=['POST'])
+def run_executive_summary():
+    """
+    Recibe los datos de la auditoría y los procesa con el motor de reglas.
+    """
+    # 1. Obtiene el JSON con los datos de la auditoría que envía el frontend.
+    audit_data = request.json
+    if not audit_data:
+        return jsonify({"error": "No audit data provided"}), 400
+
+    executive_summary_findings = []
+
+    # 2. Itera a través de cada regla definida en rules.py.
+    for rule in RULES_TO_CHECK:
+        # Llama a la función de chequeo asociada a la regla (ej: check_mfa_for_console_users).
+        # Le pasa todos los datos de la auditoría.
+        check_function = rule.get("check_function")
+        
+        if callable(check_function):
+            violating_resources = check_function(audit_data)
+
+            # 3. Si la función devuelve algún recurso, significa que se encontró un hallazgo.
+            if violating_resources:
+                # Prepara el objeto del hallazgo para enviarlo al frontend.
+                finding = {
+                    "rule_id": rule.get("rule_id"),
+                    "name": rule.get("name"),
+                    "severity": rule.get("severity"),
+                    "description": rule.get("description"),
+                    "remediation": rule.get("remediation"),
+                    "status": "🚩 RED FLAG",
+                    "affected_resources": violating_resources
+                }
+                executive_summary_findings.append(finding)
+
+    # 4. Devuelve la lista de todos los hallazgos encontrados.
+    return jsonify(executive_summary_findings)
 
 # --- Ejecución del servidor ---
 if __name__ == '__main__':
