@@ -35,10 +35,7 @@ def check_iam_access_key_age(audit_data):
         for key in user.get("AccessKeys", []):
             try:
                 create_date_str = key.get("CreateDate")
-                # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
-                # Usamos fromisoformat que es más robusto para este formato de fecha
                 create_date = datetime.fromisoformat(create_date_str)
-                # --- ▲▲▲ FIN DE LA LÍNEA ▲▲▲ ---
                 age = now - create_date
                 if age.days > ninety_days:
                     user_identifier = user.get("arn", user.get("UserName"))
@@ -67,12 +64,18 @@ def check_password_policy_strength(audit_data):
         return ["Account Password Policy"]
     return []
 
-# --- ▼▼▼ NUEVAS FUNCIONES DE CHEQUEO (SEPARADAS) ▼▼▼ ---
+# --- ▼▼▼ FUNCIONES CORREGIDAS ▼▼▼ ---
 
 def check_guardduty_disabled(audit_data):
     """Verifica si GuardDuty está deshabilitado o suspendido."""
     failing_resources = []
     guardduty_status = audit_data.get("guardduty", {}).get("status", [])
+    
+    # CORRECCIÓN: Si la lista está vacía, significa que no está habilitado en NINGUNA parte.
+    if not guardduty_status:
+        failing_resources.append({"resource": "GuardDuty", "region": "Todas las regiones"})
+        return failing_resources
+
     for status in guardduty_status:
         if status.get("Status") != "Habilitado":
             failing_resources.append({
@@ -85,33 +88,44 @@ def check_config_disabled(audit_data):
     """Verifica si AWS Config está deshabilitado."""
     failing_resources = []
     config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
-    if config_sh_status:
-        for status in config_sh_status:
-            if not status.get("ConfigEnabled"):
-                failing_resources.append({
-                    "resource": "AWS Config",
-                    "region": status.get("Region")
-                })
+
+    # CORRECCIÓN: Comprobamos si hay alguna región con el servicio activo.
+    # Si ninguna lo está, se devuelve un hallazgo global.
+    if not any(s.get("ConfigEnabled") for s in config_sh_status):
+         failing_resources.append({"resource": "AWS Config", "region": "Todas las regiones"})
+         return failing_resources
+
+    for status in config_sh_status:
+        if not status.get("ConfigEnabled"):
+            failing_resources.append({
+                "resource": "AWS Config",
+                "region": status.get("Region")
+            })
     return failing_resources
 
 def check_security_hub_disabled(audit_data):
     """Verifica si AWS Security Hub está deshabilitado."""
     failing_resources = []
     config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
-    if config_sh_status:
-        for status in config_sh_status:
-            if not status.get("SecurityHubEnabled"):
-                failing_resources.append({
-                    "resource": "Security Hub",
-                    "region": status.get("Region")
-                })
+
+    # CORRECCIÓN: Misma lógica que para AWS Config.
+    if not any(s.get("SecurityHubEnabled") for s in config_sh_status):
+         failing_resources.append({"resource": "Security Hub", "region": "Todas las regiones"})
+         return failing_resources
+
+    for status in config_sh_status:
+        if not status.get("SecurityHubEnabled"):
+            failing_resources.append({
+                "resource": "Security Hub",
+                "region": status.get("Region")
+            })
     return failing_resources
 
-# --- ▲▲▲ FIN DE NUEVAS FUNCIONES DE CHEQUEO ▲▲▲ ---
+# --- ▲▲▲ FIN DE FUNCIONES CORREGIDAS ▲▲▲ ---
 
 
 # ------------------------------------------------------------------------------
-# 3. Lista Maestra de Reglas
+# 3. Lista Maestra de Reglas (Sin cambios aquí, pero se incluye por completitud)
 # ------------------------------------------------------------------------------
 RULES_TO_CHECK = [
     {
@@ -141,9 +155,6 @@ RULES_TO_CHECK = [
         "remediation": "En la consola de IAM, ve a 'Account settings' y edita la política de contraseñas para que cumpla con todos los requisitos: longitud >= 12, uso de mayúsculas, minúsculas, números y símbolos, expiración <= 90 días, reutilización >= 4 y expiración forzada.",
         "check_function": check_password_policy_strength
     },
-    
-    # --- ▼▼▼ NUEVAS REGLAS SEPARADAS ▼▼▼ ---
-    
     {
         "rule_id": "GUARDDUTY_001",
         "section": "Security Services",
@@ -171,6 +182,4 @@ RULES_TO_CHECK = [
         "remediation": "Accede a la consola de AWS, ve al servicio Security Hub y habilítalo en las regiones indicadas para centralizar y gestionar la postura de seguridad de tu cuenta.",
         "check_function": check_security_hub_disabled
     }
-    
-    # --- ▲▲▲ FIN DE NUEVAS REGLAS ▲▲▲ ---
 ]
