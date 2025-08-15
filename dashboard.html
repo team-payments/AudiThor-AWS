@@ -4131,7 +4131,8 @@
                     iam: iamApiData?.results,
                     guardduty: guarddutyApiData?.results,
                     config_sh: configSHStatusApiData?.results,
-                    exposure: exposureApiData?.results
+                    exposure: exposureApiData?.results,
+                    inspector: inspectorApiData?.results
                 };
 
                 const summaryResponse = await fetch('http://127.0.0.1:5001/run_executive_summary', {
