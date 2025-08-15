@@ -4078,19 +4078,20 @@
         const runAndDisplayHealthyStatus = async () => {
             log('Ejecutando motor de reglas para el Healthy Status...', 'info');
             try {
+                // ▼▼▼ LÍNEAS MODIFICADAS AQUÍ ▼▼▼
                 const fullAuditData = {
                     iam: iamApiData?.results,
-                    securityhub: securityHubApiData?.results,
+                    guardduty: guarddutyApiData?.results,
+                    config_sh: configSHStatusApiData?.results, // Usamos el de status que siempre está disponible
                     exposure: exposureApiData?.results
                 };
+                // ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲
 
-                // ▼▼▼ ¡AQUÍ ESTÁ LA LÍNEA CORREGIDA DE NUEVO! ▼▼▼
                 const summaryResponse = await fetch('http://127.0.0.1:5001/run_executive_summary', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(fullAuditData)
                 });
-                // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
 
                 const summaryFindings = await summaryResponse.json();
                 if (!summaryResponse.ok) {
@@ -4106,6 +4107,7 @@
                 }
             }
         };
+
 
         document.addEventListener('DOMContentLoaded', () => {
             // Selectores del DOM (todos juntos)

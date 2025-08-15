@@ -1,5 +1,5 @@
 # ==============================================================================
-# rules.py - Motor de Reglas para AudiThor-AWS (CORREGIDO)
+# rules.py - Motor de Reglas para AudiThor-AWS (ACTUALIZADO)
 # ==============================================================================
 from datetime import datetime, timezone
 
@@ -18,68 +18,92 @@ SEVERITY = {
 # 2. Funciones de Chequeo de Reglas
 # ------------------------------------------------------------------------------
 
-def check_mfa_for_console_users(audit_data):
-    """
-    Identifica a los usuarios con acceso a la consola (contraseña activada)
-    que no tienen un dispositivo MFA activo.
-    """
+def check_mfa_for_all_users(audit_data):
     failing_resources = []
-    # Usamos audit_data.get("iam", {}) para evitar errores si la clave 'iam' no existe
     users = audit_data.get("iam", {}).get("users", [])
-
     for user in users:
-        # --- CORRECCIÓN AQUÍ ---
-        # 1. Se usa "PasswordEnabled" (mayúscula) para que coincida con audithor.py
-        # 2. Se comprueba la lista "MFADevices". Si está vacía, `not user.get("MFADevices")` será True.
-        if user.get("PasswordEnabled") and not user.get("MFADevices"):
-            # Se usa "UserName" para que coincida con la estructura de datos
+        if not user.get("MFADevices"):
             failing_resources.append(user.get("arn", user.get("UserName")))
-
     return failing_resources
 
 
 def check_iam_access_key_age(audit_data):
-    """
-    Identifica las claves de acceso de usuario que no han sido rotadas
-    en los últimos 90 días.
-    """
     failing_resources = []
     users = audit_data.get("iam", {}).get("users", [])
     ninety_days = 90
     now = datetime.now(timezone.utc)
-
     for user in users:
-        # --- CORRECCIÓN AQUÍ ---
-        # Se usa "AccessKeys" (mayúscula) para que coincida con audithor.py
         for key in user.get("AccessKeys", []):
             try:
                 create_date_str = key.get("CreateDate")
                 create_date = datetime.fromisoformat(create_date_str)
-
                 age = now - create_date
                 if age.days > ninety_days:
                     user_identifier = user.get("arn", user.get("UserName"))
                     if user_identifier not in failing_resources:
                         failing_resources.append(user_identifier)
-
             except (ValueError, TypeError):
                 continue
+    return failing_resources
+
+def check_password_policy_strength(audit_data):
+    policy = audit_data.get("iam", {}).get("password_policy", {})
+    if policy.get("Error"):
+        return ["Account Password Policy"]
+    checks = [
+        policy.get("MinimumPasswordLength", 0) >= 12,
+        policy.get("RequireUppercaseCharacters") is True,
+        policy.get("RequireLowercaseCharacters") is True,
+        policy.get("RequireNumbers") is True,
+        policy.get("RequireSymbols") is True,
+        policy.get("MaxPasswordAge") is not None and policy.get("MaxPasswordAge") <= 90,
+        policy.get("PasswordReusePrevention", 0) >= 4,
+        policy.get("HardExpiry") is True
+    ]
+    if not all(checks):
+        return ["Account Password Policy"]
+    return []
+
+def check_foundational_services_disabled(audit_data):
+    """
+    Verifica si GuardDuty, AWS Config o Security Hub están deshabilitados
+    o suspendidos en alguna de las regiones auditadas.
+    """
+    failing_resources = []
+
+    # 1. Comprobar GuardDuty
+    guardduty_status = audit_data.get("guardduty", {}).get("status", [])
+    # --- LÍNEA MODIFICADA AQUÍ ---
+    # Ahora alerta si el estado NO es 'Habilitado' (cubre 'No Habilitado', 'Suspendido', etc.)
+    disabled_gd_regions = [s.get("Region") for s in guardduty_status if s.get("Status") != "Habilitado"]
+    if disabled_gd_regions:
+        failing_resources.append(f"GuardDuty no está activo en: {', '.join(sorted(list(set(disabled_gd_regions))))}")
+
+    # 2. Comprobar AWS Config y Security Hub
+    config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
+    if config_sh_status:
+        disabled_config_regions = [s.get("Region") for s in config_sh_status if not s.get("ConfigEnabled")]
+        if disabled_config_regions:
+            failing_resources.append(f"AWS Config deshabilitado en: {', '.join(sorted(list(set(disabled_config_regions))))}")
+        
+        disabled_sh_regions = [s.get("Region") for s in config_sh_status if not s.get("SecurityHubEnabled")]
+        if disabled_sh_regions:
+            failing_resources.append(f"Security Hub deshabilitado en: {', '.join(sorted(list(set(disabled_sh_regions))))}")
 
     return failing_resources
 
-
 # ------------------------------------------------------------------------------
-# 3. Lista Maestra de Reglas (Sin cambios, ya era correcta)
+# 3. Lista Maestra de Reglas
 # ------------------------------------------------------------------------------
 RULES_TO_CHECK = [
     {
         "rule_id": "IAM_001",
         "section": "Identity & Access",
-        "name": "Usuario de consola sin MFA activado",
+        "name": "Usuario sin MFA activado",
         "severity": SEVERITY["HIGH"],
-        "description": "Un usuario con contraseña para acceder a la consola no tiene la Autenticación Multi-Factor (MFA) activada, lo que representa un riesgo elevado de acceso no autorizado si la contraseña se ve comprometida.",
+        "description": "Un usuario de IAM no tiene la Autenticación Multi-Factor (MFA) activada. Requerir MFA para todos los usuarios es una práctica de seguridad fundamental para añadir una capa extra de protección contra accesos no autorizados.",
         "remediation": "Navega al servicio de IAM en la consola de AWS, selecciona el usuario afectado y, en la pestaña 'Security credentials', asigna un dispositivo MFA.",
-        "check_function": check_mfa_for_console_users
+        "check_function": check_mfa_for_all_users
     },
     {
         "rule_id": "IAM_002",
@@ -90,4 +114,22 @@ RULES_TO_CHECK = [
         "remediation": "En la consola de IAM, crea una nueva clave de acceso para el usuario, actualiza las aplicaciones que la usan, y luego desactiva y elimina la clave antigua.",
         "check_function": check_iam_access_key_age
     },
+    {
+        "rule_id": "IAM_003",
+        "section": "Identity & Access",
+        "name": "Política de contraseñas no es suficientemente robusta",
+        "severity": SEVERITY["HIGH"],
+        "description": "La política de contraseñas de la cuenta no cumple con los estándares de seguridad recomendados, haciendo las cuentas de usuario más vulnerables a ataques de fuerza bruta o adivinación.",
+        "remediation": "En la consola de IAM, ve a 'Account settings' y edita la política de contraseñas para que cumpla con todos los requisitos: longitud >= 12, uso de mayúsculas, minúsculas, números y símbolos, expiración <= 90 días, reutilización >= 4 y expiración forzada.",
+        "check_function": check_password_policy_strength
+    },
+    {
+        "rule_id": "FOUNDATIONAL_001",
+        "section": "Security Services",
+        "name": "Servicios de seguridad fundamentales no habilitados",
+        "severity": SEVERITY["LOW"],
+        "description": "GuardDuty, AWS Config o AWS Security Hub no están habilitados en todas las regiones. Estos servicios son la base para la detección de amenazas, el monitoreo de la configuración y la gestión de la postura de seguridad.",
+        "remediation": "Accede a la consola de AWS y habilita el servicio correspondiente en las regiones indicadas para mejorar la visibilidad y la seguridad de tu cuenta.",
+        "check_function": check_foundational_services_disabled
+    }
 ]
