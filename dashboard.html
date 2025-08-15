@@ -151,6 +151,16 @@
                             <span>Playground</span>
                         </a>
                     </div>
+                    <div>
+                        <a href="#" data-view="healthy-status" class="main-nav-link flex items-center px-4 py-2.5 rounded-md hover:bg-[#1a335a]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-5 h-5 mr-3" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M8 4a.5.5 0 0 1 .5.5v.634l.549-.317a.5.5 0 1 1 .5.866L9 6l.549.317a.5.5 0 1 1-.5.866L8.5 6.866V7.5a.5.5 0 0 1-1 0v-.634l-.549.317a.5.5 0 1 1-.5-.866L7 6l-.549-.317a.5.5 0 0 1 .5-.866l.549.317V4.5A.5.5 0 0 1 8 4M5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                                <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2"/>
+                                <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z"/>
+                            </svg>
+                            <span>Healthy Status</span>
+                        </a>
+                    </div>
                 </nav>
             </aside>
 
@@ -164,6 +174,24 @@
                     </div>
                     <div id="error-message" class="text-red-600 text-sm mt-2 font-medium hidden"></div>
                 </div>
+                <main id="healthy-status-view" class="view hidden">
+                    <header class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-[#204071]">Healthy Status</h2>
+                            <p class="text-sm text-gray-500">Resumen de hallazgos de seguridad encontrados.</p>
+                            <div class="mt-4">
+                                <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                                <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md"></select>
+                            </div>
+                            </div>
+                    </header>
+                    <div id="healthy-status-container">
+                        <div class="text-center py-16 bg-white rounded-lg">
+                            <h3 class="mt-2 text-lg font-medium text-[#204071]">Esperando análisis</h3>
+                            <p class="mt-1 text-sm text-gray-500">Los hallazgos de estado aparecerán aquí después de analizar una cuenta.</p>
+                        </div>
+                    </div>
+                </main>
                 <main id="iam-view" class="view"></main>
                 <main id="exposure-view" class="view hidden"></main>
                 <main id="guardduty-view" class="view hidden"></main>
@@ -190,7 +218,7 @@
 
     <script>
         // --- ESTADO GLOBAL ---
-        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null;        
+        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null, lastHealthyStatusFindings = [];        
         // --- SELECTORES ---
         let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
 
@@ -220,143 +248,76 @@
 
         // --- LÓGICA DE ANÁLISIS ---
         const runAnalysisFromInputs = async () => {
-                    // --- INICIO DE LA MODIFICACIÓN: Resetear el estado global ---
-                    // Limpiamos todas las variables de datos para asegurar que no haya
-                    // información residual de un análisis anterior.
-                    iamApiData = null;
-                    securityHubApiData = null;
-                    exposureApiData = null;
-                    guarddutyApiData = null;
-                    wafApiData = null;
-                    cloudtrailApiData = null;
-                    cloudwatchApiData = null;
-                    inspectorApiData = null;
-                    acmApiData = null;
-                    computeApiData = null;
-                    databasesApiData = null;
-                    networkPoliciesApiData = null;
-                    connectivityApiData = null; // Incluimos la nueva variable de conectividad
-                    playgroundApiData = null;
-                    allAvailableRegions = [];
-                    lastCloudtrailLookupResults = [];
-                    federationApiData = null;
-                    configSHApiData = null;
-                    configSHStatusApiData = null;
-                    kmsApiData = null;
-                    document.querySelectorAll('.view').forEach(v => v.innerHTML = ''); // Limpiamos el contenido de las vistas
-                    document.getElementById('iam-view').innerHTML = createInitialEmptyState(); // Restauramos el estado inicial
-                    // --- FIN DE LA MODIFICACIÓN ---
-
-                    log('Iniciando análisis completo...', 'info');
-                    const accessKey = accessKeyInput.value.trim();
-                    const secretKey = secretKeyInput.value.trim();
-                    const sessionToken = sessionTokenInput.value.trim();
-                    if (!accessKey || !secretKey) {
-                        const msg = 'Por favor, introduce el Access Key ID y el Secret Access Key.';
-                        errorMessageDiv.textContent = msg;
-                        errorMessageDiv.classList.remove('hidden');
-                        log(msg, 'error');
-                        return;
-                    }
-                    const payload = {
-                        access_key: accessKey,
-                        secret_key: secretKey
-                    };
-                    if (sessionToken) {
-                        payload.session_token = sessionToken;
-                        log('Se ha detectado un Session Token.', 'info');
-                    }
-
-                    runAnalysisBtn.disabled = true;
-                    loadingSpinner.classList.remove('hidden');
-                    buttonText.textContent = 'Analizando...';
-                    errorMessageDiv.classList.add('hidden');
-
-                    try {
-                        log('Llamando a las APIs...', 'info');
-
-                        const apiCalls = {
-                            iam: fetch('http://127.0.0.1:5001/api/run-iam-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            securityhub: fetch('http://127.0.0.1:5001/api/run-securityhub-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            exposure: fetch('http://127.0.0.1:5001/api/run-exposure-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            guardduty: fetch('http://127.0.0.1:5001/api/run-guardduty-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            waf: fetch('http://127.0.0.1:5001/api/run-waf-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            cloudtrail: fetch('http://127.0.0.1:5001/api/run-cloudtrail-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            cloudwatch: fetch('http://127.0.0.1:5001/api/run-cloudwatch-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            inspector: fetch('http://127.0.0.1:5001/api/run-inspector-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            acm: fetch('http://127.0.0.1:5001/api/run-acm-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            compute: fetch('http://127.0.0.1:5001/api/run-compute-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            databases: fetch('http://127.0.0.1:5001/api/run-databases-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            network_policies: fetch('http://127.0.0.1:5001/api/run-network-policies-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            federation: fetch('http://127.0.0.1:5001/api/run-federation-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            config_sh_status: fetch('http://127.0.0.1:5001/api/run-config-sh-status-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            kms: fetch('http://127.0.0.1:5001/api/run-kms-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                            connectivity: fetch('http://127.0.0.1:5001/api/run-connectivity-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-                        };
-
-                        const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
-                            try {
-                                const response = await promise;
-                                if (!response.ok) {
-                                    const errorData = await response.json();
-                                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                                }
-                                const data = await response.json();
-                                return [key, data];
-                            } catch (error) {
-                                log(`Error en la llamada a la API para '${key}': ${error.message}`, 'error');
-                                return [key, null];
-                            }
-                        });
-
-                        const resolvedPromises = await Promise.all(promises);
-                        const results = Object.fromEntries(resolvedPromises);
-
-                        iamApiData = results.iam;
-                        securityHubApiData = results.securityhub;
-                        exposureApiData = results.exposure;
-                        guarddutyApiData = results.guardduty;
-                        wafApiData = results.waf;
-                        cloudtrailApiData = results.cloudtrail;
-                        cloudwatchApiData = results.cloudwatch;
-                        inspectorApiData = results.inspector;
-                        acmApiData = results.acm;
-                        computeApiData = results.compute;
-                        databasesApiData = results.databases;
-                        networkPoliciesApiData = results.network_policies;
-                        federationApiData = results.federation;
-                        configSHStatusApiData = results.config_sh_status;
-                        kmsApiData = results.kms;
-                        connectivityApiData = results.connectivity;
-
-                        if (!iamApiData || !networkPoliciesApiData) {
-                            throw new Error("Una o más llamadas críticas a la API fallaron. No se puede continuar.");
-                        }
-
-                        allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
-
-                        log('Todos los datos han sido recibidos.', 'success');
-                        buildAndRenderAllViews();
-
-                    } catch (error) {
-                        const errorMsg = `Error: ${error.message || 'Ocurrió un error desconocido.'}`;
-                        console.error('Error detallado:', error);
-                        errorMessageDiv.textContent = errorMsg;
-                        errorMessageDiv.classList.remove('hidden');
-                        document.getElementById('iam-view').innerHTML = createInitialEmptyState();
-                        log(`${errorMsg}`, 'error');
-                    } finally {
-                        runAnalysisBtn.disabled = false;
-                        loadingSpinner.classList.add('hidden');
-                        buttonText.textContent = 'Analizar Cuenta';
-                    }
+            // ... (toda la parte inicial de reseteo y configuración es igual)
+            iamApiData = null; securityHubApiData = null; exposureApiData = null; guarddutyApiData = null; wafApiData = null; cloudtrailApiData = null; cloudwatchApiData = null; inspectorApiData = null; acmApiData = null; computeApiData = null; databasesApiData = null; networkPoliciesApiData = null; connectivityApiData = null; playgroundApiData = null; allAvailableRegions = []; lastCloudtrailLookupResults = []; federationApiData = null; configSHApiData = null; configSHStatusApiData = null; kmsApiData = null;
+            document.querySelectorAll('.view').forEach(v => v.innerHTML = '');
+            document.getElementById('iam-view').innerHTML = createInitialEmptyState();
+            const summaryContainer = document.getElementById('executive-summary-container');
+            if (summaryContainer) { summaryContainer.innerHTML = '<div class="text-center py-16"><div class="spinner mx-auto"></div><p class="mt-2 text-sm text-gray-500">Ejecutando análisis...</p></div>'; }
+            log('Iniciando análisis completo...', 'info');
+            const accessKey = accessKeyInput.value.trim(); const secretKey = secretKeyInput.value.trim(); const sessionToken = sessionTokenInput.value.trim();
+            if (!accessKey || !secretKey) { const msg = 'Por favor, introduce el Access Key ID y el Secret Access Key.'; errorMessageDiv.textContent = msg; errorMessageDiv.classList.remove('hidden'); log(msg, 'error'); return; }
+            const payload = { access_key: accessKey, secret_key: secretKey };
+            if (sessionToken) { payload.session_token = sessionToken; log('Se ha detectado un Session Token.', 'info'); }
+            runAnalysisBtn.disabled = true; loadingSpinner.classList.remove('hidden'); buttonText.textContent = 'Analizando...'; errorMessageDiv.classList.add('hidden');
+            // ... (toda la lógica de las llamadas a la API es igual)
+            try {
+                log('Llamando a las APIs de AWS...', 'info');
+                const apiCalls = {
+                    iam: fetch('http://127.0.0.1:5001/api/run-iam-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    securityhub: fetch('http://127.0.0.1:5001/api/run-securityhub-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    exposure: fetch('http://127.0.0.1:5001/api/run-exposure-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    guardduty: fetch('http://127.0.0.1:5001/api/run-guardduty-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    waf: fetch('http://127.0.0.1:5001/api/run-waf-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    cloudtrail: fetch('http://127.0.0.1:5001/api/run-cloudtrail-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    cloudwatch: fetch('http://127.0.0.1:5001/api/run-cloudwatch-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    inspector: fetch('http://127.0.0.1:5001/api/run-inspector-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    acm: fetch('http://127.0.0.1:5001/api/run-acm-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    compute: fetch('http://127.0.0.1:5001/api/run-compute-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    databases: fetch('http://127.0.0.1:5001/api/run-databases-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    network_policies: fetch('http://127.0.0.1:5001/api/run-network-policies-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    federation: fetch('http://127.0.0.1:5001/api/run-federation-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    config_sh_status: fetch('http://127.0.0.1:5001/api/run-config-sh-status-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    kms: fetch('http://127.0.0.1:5001/api/run-kms-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    connectivity: fetch('http://127.0.0.1:5001/api/run-connectivity-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                 };
+                const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
+                    try { const response = await promise; if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || `HTTP error! status: ${response.status}`); } return [key, await response.json()]; } catch (error) { log(`Error en la API para '${key}': ${error.message}`, 'error'); return [key, null]; }
+                });
+                const resolvedPromises = await Promise.all(promises);
+                const results = Object.fromEntries(resolvedPromises);
+                iamApiData = results.iam; securityHubApiData = results.securityhub; exposureApiData = results.exposure; guarddutyApiData = results.guardduty; wafApiData = results.waf; cloudtrailApiData = results.cloudtrail; cloudwatchApiData = results.cloudwatch; inspectorApiData = results.inspector; acmApiData = results.acm; computeApiData = results.compute; databasesApiData = results.databases; networkPoliciesApiData = results.network_policies; federationApiData = results.federation; configSHStatusApiData = results.config_sh_status; kmsApiData = results.kms; connectivityApiData = results.connectivity;
+                if (!iamApiData || !networkPoliciesApiData) { throw new Error("Una o más llamadas críticas a la API fallaron. No se puede continuar."); }
+                allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
+                log('Todos los datos han sido recibidos.', 'success');
+                buildAndRenderAllViews();
+
+                // --- ▼▼▼ CAMBIO IMPORTANTE AQUÍ ▼▼▼ ---
+                // Ahora simplemente llamamos a nuestra nueva función.
+                await runAndDisplayHealthyStatus();
+                // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
+
+            } catch (error) {
+                const errorMsg = `Error: ${error.message || 'Ocurrió un error desconocido.'}`;
+                console.error('Error detallado:', error);
+                errorMessageDiv.textContent = errorMsg;
+                errorMessageDiv.classList.remove('hidden');
+                document.getElementById('iam-view').innerHTML = createInitialEmptyState();
+                if (summaryContainer) { summaryContainer.innerHTML = `<div class="text-center py-16 text-red-600">${errorMsg}</div>`; }
+                log(`${errorMsg}`, 'error');
+            } finally {
+                runAnalysisBtn.disabled = false;
+                loadingSpinner.classList.add('hidden');
+                buttonText.textContent = 'Analizar Cuenta';
+            }
+        };
 
 
         // --- LÓGICA DE RENDERIZADO ---
         const buildAndRenderAllViews = () => {
             try {
                 log('Renderizando todas las vistas...', 'info');
+                buildHealthyStatusView();
                 buildIamView();
                 buildExposureView();
                 buildGuarddutyView();
@@ -376,6 +337,8 @@
                 log('Vistas renderizadas.', 'success');
             } catch (e) { log(`Error al renderizar: ${e.message}`, 'error'); console.error(e); }
         };
+        
+        
         const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><h3 class="mt-2 text-lg font-medium text-[#204071]">Bienvenido a AudiThor</h3><p class="mt-1 text-sm text-gray-500">Introduce credenciales y haz clic en "Analizar".</p></div>`;
         const createStatusBadge = (statusText) => { if (!statusText) { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>`; } const lowerStatus = statusText.toLowerCase(); if (lowerStatus === 'habilitado' || lowerStatus === 'enabled' || lowerStatus === 'running' || lowerStatus === 'active') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${statusText}</span>`; } if (lowerStatus === 'deshabilitado' || lowerStatus === 'suspendido' || lowerStatus.includes('error') || lowerStatus === 'not_available' || lowerStatus === 'stopped' || lowerStatus === 'terminated' || lowerStatus === 'shutting-down' || lowerStatus === 'failed') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${statusText}</span>`; } if (lowerStatus === 'pending' || lowerStatus === 'enabling' || lowerStatus === 'stopping') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${statusText}</span>`; } return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${statusText}</span>`; };
         const createAlarmStateBadge = (state) => { if (state === 'ALARM') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${state}</span>`; if (state === 'OK') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${state}</span>`; return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${state}</span>`; };
@@ -1106,7 +1069,6 @@
                     </div>
                 </div>
             `;
-            // --- FIN DE LA MODIFICACIÓN ---
 
             const tabsNav = container.querySelector('#guardduty-tabs');
             if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.guardduty-tab-content'));
@@ -3091,8 +3053,6 @@
             ];
             const borderPalette = colorPalette.map(color => color.replace('0.7', '1')); // Versión sólida para el borde
 
-            // --- FIN DE LA MODIFICACIÓN ---
-
             // 3. Configuramos el gráfico
             new Chart(ctx, {
                 type: 'bar',
@@ -3532,9 +3492,39 @@
             }
         };
 
+        // --- SECCIÓN DE EXECUTIVE SUMMARY ---
 
-// --- SECCIÓN DE KMS (NUEVA SECCIÓN) ---
+        const buildHealthyStatusView = () => {
+            const container = document.getElementById('healthy-status-view');
+            if (!container) return;
 
+            // --- ▼▼▼ CÓDIGO AÑADIDO QUE SOLUCIONA EL BUG ▼▼▼ ---
+            // Este HTML reconstruye la estructura interna de la vista, incluyendo
+            // el div "healthy-status-container" que se había borrado.
+            container.innerHTML = `
+                <header class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-[#204071]">Healthy Status</h2>
+                        <p class="text-sm text-gray-500">Resumen de hallazgos de seguridad encontrados.</p>
+                        <div class="mt-4">
+                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                            <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md">
+                                </select>
+                        </div>
+                    </div>
+                </header>
+                <div id="healthy-status-container">
+                    <div class="text-center py-16 bg-white rounded-lg">
+                        <h3 class="mt-2 text-lg font-medium text-[#204071]">Esperando análisis</h3>
+                        <p class="mt-1 text-sm text-gray-500">Los hallazgos de estado aparecerán aquí después de analizar una cuenta.</p>
+                    </div>
+                </div>
+            `;
+            // --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
+        };
+        
+
+        // --- SECCIÓN DE KMS
         const buildKmsView = () => {
             const container = document.getElementById('kms-view');
             if (!container || !kmsApiData) return;
@@ -4011,14 +4001,12 @@
                 try {
                     const importedData = JSON.parse(e.target.result);
 
-                    // Validación básica de la estructura del JSON
                     if (!importedData.metadata || !importedData.results) {
                         throw new Error("El fichero JSON no tiene la estructura esperada (metadata/results).");
                     }
 
                     log(`Fichero JSON parseado correctamente. Cuenta: ${importedData.metadata.accountId}`, 'info');
 
-                    // Asignamos los datos del JSON a las variables globales de la aplicación
                     const results = importedData.results;
                     iamApiData = results.iam || null;
                     federationApiData = results.federation || null;
@@ -4037,15 +4025,17 @@
                     configSHApiData = results.configAndSecurityHubDeepScan || null;
                     kmsApiData = results.kms || null;
                     playgroundApiData = results.playground || null;
-                    connectivityApiData = results.connectivity || null; // <-- AÑADE ESTA LÍNEA
+                    connectivityApiData = results.connectivity || null;
                     
-                    // Extraemos las regiones disponibles, igual que hacemos en el análisis normal
                     allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
 
                     log('Datos importados en el estado de la aplicación.', 'success');
                     
-                    // Finalmente, renderizamos todas las vistas con los datos cargados
+                    // Renderizamos todas las vistas con los datos cargados
                     buildAndRenderAllViews();
+                    
+                    // --- ✨ LÍNEA AÑADIDA QUE SOLUCIONA EL BUG ---
+                    runAndDisplayHealthyStatus();
 
                 } catch (error) {
                     log(`Error al importar el fichero JSON: ${error.message}`, 'error');
@@ -4062,11 +4052,135 @@
             };
 
             reader.readAsText(file);
-            
-            // Reseteamos el valor del input para poder subir el mismo fichero otra vez si es necesario
             event.target.value = '';
         };
 
+
+
+        const displayHealthyStatus = (selectedRegion) => {
+            const container = document.getElementById('healthy-status-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const filteredFindings = lastHealthyStatusFindings.map(finding => {
+                if (selectedRegion !== 'all') {
+                    const affectedInRegion = finding.affected_resources.filter(res => res.region === selectedRegion || res.region === 'Global');
+                    if (affectedInRegion.length > 0) {
+                        return { ...finding, affected_resources: affectedInRegion };
+                    }
+                    return null;
+                }
+                return finding;
+            }).filter(Boolean);
+
+            if (filteredFindings.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-center text-green-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/></svg>
+                            <p class="text-center font-semibold text-lg">¡Felicidades! No se encontraron hallazgos para la región seleccionada.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4 };
+            filteredFindings.sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99));
+
+            filteredFindings.forEach(finding => {
+                let borderColor = 'border-gray-500';
+                if (finding.severity === 'Crítico') borderColor = 'border-red-600';
+                if (finding.severity === 'Alto') borderColor = 'border-red-500';
+                if (finding.severity === 'Medio') borderColor = 'border-yellow-500';
+                if (finding.severity === 'Bajo') borderColor = 'border-blue-500';
+
+                // --- ▼▼▼ CAMBIO IMPORTANTE AQUÍ ▼▼▼ ---
+                // Nos aseguramos de que 'affected_resources' sea un array antes de usar .map()
+                const affectedResourcesHtml = Array.isArray(finding.affected_resources) 
+                    ? finding.affected_resources.map(res => `<li>${res.display}</li>`).join('')
+                    : '<li>Error al procesar los recursos afectados.</li>';
+                
+                const resourcesCount = Array.isArray(finding.affected_resources) ? finding.affected_resources.length : 0;
+                // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
+
+                const card = `
+                    <div class="bg-white p-4 rounded-xl mb-4 border-l-4 ${borderColor} shadow-sm">
+                        <h3 class="text-xl font-bold text-[#204071]">${finding.name} <span class="text-sm font-normal text-gray-500">(${finding.severity})</span></h3>
+                        <p class="text-gray-600 mt-2 text-sm">${finding.description}</p>
+                        <div class="mt-4">
+                            <h4 class="font-semibold text-gray-800 text-sm">Recursos Afectados (${resourcesCount}):</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-700 bg-gray-50 p-2 rounded-md mt-1 font-mono">
+                                ${affectedResourcesHtml}
+                            </ul>
+                        </div>
+                        <div class="mt-4">
+                            <h4 class="font-semibold text-gray-800 text-sm">Solución Recomendada:</h4>
+                            <p class="text-gray-600 text-sm">${finding.remediation}</p>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        };
+        
+
+        const runAndDisplayHealthyStatus = async () => {
+            log('Ejecutando motor de reglas para el Healthy Status...', 'info');
+            try {
+                const fullAuditData = {
+                    iam: iamApiData?.results,
+                    guardduty: guarddutyApiData?.results,
+                    config_sh: configSHStatusApiData?.results,
+                    exposure: exposureApiData?.results
+                };
+
+                const summaryResponse = await fetch('http://127.0.0.1:5001/run_executive_summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fullAuditData)
+                });
+
+                const summaryFindings = await summaryResponse.json();
+                if (!summaryResponse.ok) {
+                    throw new Error(summaryFindings.error || 'Error al generar el resumen de estado.');
+                }
+
+                // ▼▼▼ CAMBIOS AQUÍ ▼▼▼
+                lastHealthyStatusFindings = summaryFindings; // Guardamos los resultados globales
+                log(`Análisis de reglas completado. Encontrados ${summaryFindings.length} hallazgos.`, 'success');
+                
+                populateHealthyStatusFilter(); // Llenamos el dropdown del filtro
+                displayHealthyStatus('all'); // Mostramos todos por defecto
+                // ▲▲▲ FIN DE LOS CAMBIOS ▲▲▲
+
+            } catch (error) {
+                log(`Error al generar el Healthy Status: ${error.message}`, 'error');
+                const summaryContainer = document.getElementById('healthy-status-container');
+                if (summaryContainer) {
+                    summaryContainer.innerHTML = `<div class="text-center py-16 text-red-600">${error.message}</div>`;
+                }
+            }
+        };
+  
+        const populateHealthyStatusFilter = () => {
+            const filterSelect = document.getElementById('healthy-status-region-filter');
+            if (!filterSelect || !allAvailableRegions) return;
+
+            // Limpiamos opciones anteriores (excepto la de "Todas")
+            filterSelect.innerHTML = '<option value="all">Todas las Regiones</option>';
+
+            allAvailableRegions.sort().forEach(region => {
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = region;
+                filterSelect.appendChild(option);
+            });
+
+            // Añadimos el listener para que se ejecute al cambiar de opción
+            filterSelect.addEventListener('change', (e) => {
+                displayHealthyStatus(e.target.value);
+            });
+        };
 
         document.addEventListener('DOMContentLoaded', () => {
             // Selectores del DOM (todos juntos)

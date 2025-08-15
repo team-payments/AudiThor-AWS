@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
+from rules import RULES_TO_CHECK
 from flask_cors import CORS
 import boto3
 import threading
@@ -680,6 +681,7 @@ def collect_exposure_data(session):
 
 
 # --- Lógica para GuardDuty ---
+
 def collect_guardduty_data(session):
     all_regions = get_all_aws_regions(session)
     status_by_region = []
@@ -749,9 +751,8 @@ def collect_guardduty_data(session):
 
     processed_findings.sort(key=lambda x: x["SeverityScore"], reverse=True)
     
-    enabled_regions_status = [s for s in status_by_region if "No Habilitado" not in s.get("Status", "")]
-    
-    return {"status": enabled_regions_status, "findings": processed_findings}
+    # La línea de filtrado se ha eliminado y ahora devolvemos la lista completa.
+    return {"status": status_by_region, "findings": processed_findings}
 
 # --- Lógica para WAF ---
 def parse_resource_arn(arn):
@@ -2471,8 +2472,6 @@ def run_kms_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de KMS: {str(e)}"}), 500
 
-# REEMPLAZA esta función en audithor.py
-
 @app.route('/api/run-sslscan', methods=['POST'])
 def run_sslscan():
     data = request.get_json()
@@ -2538,6 +2537,56 @@ def run_sslscan():
 
     return jsonify({"results": results})
 
+# ==============================================================================
+# ENDPOINT PARA EL EXECUTIVE SUMMARY
+# ==============================================================================
+
+@app.route('/run_executive_summary', methods=['POST'])
+def run_executive_summary():
+    """
+    Recibe los datos de la auditoría y los procesa con el motor de reglas.
+    """
+    audit_data = request.json
+    if not audit_data:
+        return jsonify({"error": "No audit data provided"}), 400
+
+    executive_summary_findings = []
+
+    for rule in RULES_TO_CHECK:
+        check_function = rule.get("check_function")
+        
+        if callable(check_function):
+            violating_resources_raw = check_function(audit_data)
+
+            if violating_resources_raw:
+                # Formateamos los recursos para que sean legibles y mantengan la estructura
+                affected_resources_structured = []
+                for resource in violating_resources_raw:
+                    if isinstance(resource, dict):
+                        # Para nuestra nueva regla con regiones
+                        affected_resources_structured.append({
+                            "display": f"{resource['resource']} en {resource['region']}",
+                            "region": resource.get("region", "Global")
+                        })
+                    else:
+                        # Para reglas antiguas (globales)
+                        affected_resources_structured.append({
+                            "display": str(resource),
+                            "region": "Global"
+                        })
+                
+                finding = {
+                    "rule_id": rule.get("rule_id"),
+                    "name": rule.get("name"),
+                    "severity": rule.get("severity"),
+                    "description": rule.get("description"),
+                    "remediation": rule.get("remediation"),
+                    "status": "🚩 RED FLAG",
+                    "affected_resources": affected_resources_structured # Usamos la nueva lista estructurada
+                }
+                executive_summary_findings.append(finding)
+
+    return jsonify(executive_summary_findings)
 
 
 # --- Ejecución del servidor ---
