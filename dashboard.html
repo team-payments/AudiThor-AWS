@@ -179,7 +179,11 @@
                         <div>
                             <h2 class="text-2xl font-bold text-[#204071]">Healthy Status</h2>
                             <p class="text-sm text-gray-500">Resumen de hallazgos de seguridad encontrados.</p>
-                        </div>
+                            <div class="mt-4">
+                                <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                                <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md"></select>
+                            </div>
+                            </div>
                     </header>
                     <div id="healthy-status-container">
                         <div class="text-center py-16 bg-white rounded-lg">
@@ -214,7 +218,7 @@
 
     <script>
         // --- ESTADO GLOBAL ---
-        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null;        
+        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null, lastHealthyStatusFindings = [];        
         // --- SELECTORES ---
         let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
 
@@ -3489,11 +3493,36 @@
         };
 
         // --- SECCIÓN DE EXECUTIVE SUMMARY ---
+
         const buildHealthyStatusView = () => {
             const container = document.getElementById('healthy-status-view');
             if (!container) return;
-        };
 
+            // --- ▼▼▼ CÓDIGO AÑADIDO QUE SOLUCIONA EL BUG ▼▼▼ ---
+            // Este HTML reconstruye la estructura interna de la vista, incluyendo
+            // el div "healthy-status-container" que se había borrado.
+            container.innerHTML = `
+                <header class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-[#204071]">Healthy Status</h2>
+                        <p class="text-sm text-gray-500">Resumen de hallazgos de seguridad encontrados.</p>
+                        <div class="mt-4">
+                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                            <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md">
+                                </select>
+                        </div>
+                    </div>
+                </header>
+                <div id="healthy-status-container">
+                    <div class="text-center py-16 bg-white rounded-lg">
+                        <h3 class="mt-2 text-lg font-medium text-[#204071]">Esperando análisis</h3>
+                        <p class="mt-1 text-sm text-gray-500">Los hallazgos de estado aparecerán aquí después de analizar una cuenta.</p>
+                    </div>
+                </div>
+            `;
+            // --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
+        };
+        
 
         // --- SECCIÓN DE KMS
         const buildKmsView = () => {
@@ -4005,10 +4034,8 @@
                     // Renderizamos todas las vistas con los datos cargados
                     buildAndRenderAllViews();
                     
-                    // --- ▼▼▼ CAMBIO IMPORTANTE AQUÍ ▼▼▼ ---
-                    // Después de renderizar todo, llamamos a la función del resumen.
+                    // --- ✨ LÍNEA AÑADIDA QUE SOLUCIONA EL BUG ---
                     runAndDisplayHealthyStatus();
-                    // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
 
                 } catch (error) {
                     log(`Error al importar el fichero JSON: ${error.message}`, 'error');
@@ -4027,41 +4054,62 @@
             reader.readAsText(file);
             event.target.value = '';
         };
-        const displayHealthyStatus = (findings) => {
+
+
+
+        const displayHealthyStatus = (selectedRegion) => {
             const container = document.getElementById('healthy-status-container');
             if (!container) return;
-            container.innerHTML = ''; 
+            container.innerHTML = '';
 
-            if (findings.length === 0) {
+            const filteredFindings = lastHealthyStatusFindings.map(finding => {
+                if (selectedRegion !== 'all') {
+                    const affectedInRegion = finding.affected_resources.filter(res => res.region === selectedRegion || res.region === 'Global');
+                    if (affectedInRegion.length > 0) {
+                        return { ...finding, affected_resources: affectedInRegion };
+                    }
+                    return null;
+                }
+                return finding;
+            }).filter(Boolean);
+
+            if (filteredFindings.length === 0) {
                 container.innerHTML = `
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                         <div class="flex items-center justify-center text-green-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zM8.354 6.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 8.793l2.646-2.647a.5.5 0 0 1 .708 0z"/></svg>
-                            <p class="text-center font-semibold text-lg">¡Felicidades! No se encontraron hallazgos de seguridad según las reglas configuradas.</p>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/></svg>
+                            <p class="text-center font-semibold text-lg">¡Felicidades! No se encontraron hallazgos para la región seleccionada.</p>
                         </div>
                     </div>`;
                 return;
             }
 
             const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4 };
-            findings.sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99));
+            filteredFindings.sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99));
 
-            findings.forEach(finding => {
+            filteredFindings.forEach(finding => {
                 let borderColor = 'border-gray-500';
                 if (finding.severity === 'Crítico') borderColor = 'border-red-600';
                 if (finding.severity === 'Alto') borderColor = 'border-red-500';
                 if (finding.severity === 'Medio') borderColor = 'border-yellow-500';
                 if (finding.severity === 'Bajo') borderColor = 'border-blue-500';
 
-                const affectedResourcesHtml = finding.affected_resources.map(res => `<li>${res}</li>`).join('');
+                // --- ▼▼▼ CAMBIO IMPORTANTE AQUÍ ▼▼▼ ---
+                // Nos aseguramos de que 'affected_resources' sea un array antes de usar .map()
+                const affectedResourcesHtml = Array.isArray(finding.affected_resources) 
+                    ? finding.affected_resources.map(res => `<li>${res.display}</li>`).join('')
+                    : '<li>Error al procesar los recursos afectados.</li>';
+                
+                const resourcesCount = Array.isArray(finding.affected_resources) ? finding.affected_resources.length : 0;
+                // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
 
                 const card = `
                     <div class="bg-white p-4 rounded-xl mb-4 border-l-4 ${borderColor} shadow-sm">
                         <h3 class="text-xl font-bold text-[#204071]">${finding.name} <span class="text-sm font-normal text-gray-500">(${finding.severity})</span></h3>
                         <p class="text-gray-600 mt-2 text-sm">${finding.description}</p>
                         <div class="mt-4">
-                            <h4 class="font-semibold text-gray-800 text-sm">Recursos Afectados (${finding.affected_resources.length}):</h4>
-                            <ul class="list-disc list-inside text-mono text-xs text-yellow-600 bg-gray-50 p-2 rounded-md mt-1">
+                            <h4 class="font-semibold text-gray-800 text-sm">Recursos Afectados (${resourcesCount}):</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-700 bg-gray-50 p-2 rounded-md mt-1 font-mono">
                                 ${affectedResourcesHtml}
                             </ul>
                         </div>
@@ -4074,18 +4122,17 @@
                 container.innerHTML += card;
             });
         };
+        
 
         const runAndDisplayHealthyStatus = async () => {
             log('Ejecutando motor de reglas para el Healthy Status...', 'info');
             try {
-                // ▼▼▼ LÍNEAS MODIFICADAS AQUÍ ▼▼▼
                 const fullAuditData = {
                     iam: iamApiData?.results,
                     guardduty: guarddutyApiData?.results,
-                    config_sh: configSHStatusApiData?.results, // Usamos el de status que siempre está disponible
+                    config_sh: configSHStatusApiData?.results,
                     exposure: exposureApiData?.results
                 };
-                // ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲
 
                 const summaryResponse = await fetch('http://127.0.0.1:5001/run_executive_summary', {
                     method: 'POST',
@@ -4097,8 +4144,15 @@
                 if (!summaryResponse.ok) {
                     throw new Error(summaryFindings.error || 'Error al generar el resumen de estado.');
                 }
+
+                // ▼▼▼ CAMBIOS AQUÍ ▼▼▼
+                lastHealthyStatusFindings = summaryFindings; // Guardamos los resultados globales
                 log(`Análisis de reglas completado. Encontrados ${summaryFindings.length} hallazgos.`, 'success');
-                displayHealthyStatus(summaryFindings);
+                
+                populateHealthyStatusFilter(); // Llenamos el dropdown del filtro
+                displayHealthyStatus('all'); // Mostramos todos por defecto
+                // ▲▲▲ FIN DE LOS CAMBIOS ▲▲▲
+
             } catch (error) {
                 log(`Error al generar el Healthy Status: ${error.message}`, 'error');
                 const summaryContainer = document.getElementById('healthy-status-container');
@@ -4107,7 +4161,26 @@
                 }
             }
         };
+  
+        const populateHealthyStatusFilter = () => {
+            const filterSelect = document.getElementById('healthy-status-region-filter');
+            if (!filterSelect || !allAvailableRegions) return;
 
+            // Limpiamos opciones anteriores (excepto la de "Todas")
+            filterSelect.innerHTML = '<option value="all">Todas las Regiones</option>';
+
+            allAvailableRegions.sort().forEach(region => {
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = region;
+                filterSelect.appendChild(option);
+            });
+
+            // Añadimos el listener para que se ejecute al cambiar de opción
+            filterSelect.addEventListener('change', (e) => {
+                displayHealthyStatus(e.target.value);
+            });
+        };
 
         document.addEventListener('DOMContentLoaded', () => {
             // Selectores del DOM (todos juntos)

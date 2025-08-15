@@ -26,7 +26,6 @@ def check_mfa_for_all_users(audit_data):
             failing_resources.append(user.get("arn", user.get("UserName")))
     return failing_resources
 
-
 def check_iam_access_key_age(audit_data):
     failing_resources = []
     users = audit_data.get("iam", {}).get("users", [])
@@ -36,7 +35,10 @@ def check_iam_access_key_age(audit_data):
         for key in user.get("AccessKeys", []):
             try:
                 create_date_str = key.get("CreateDate")
+                # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+                # Usamos fromisoformat que es más robusto para este formato de fecha
                 create_date = datetime.fromisoformat(create_date_str)
+                # --- ▲▲▲ FIN DE LA LÍNEA ▲▲▲ ---
                 age = now - create_date
                 if age.days > ninety_days:
                     user_identifier = user.get("arn", user.get("UserName"))
@@ -45,6 +47,7 @@ def check_iam_access_key_age(audit_data):
             except (ValueError, TypeError):
                 continue
     return failing_resources
+
 
 def check_password_policy_strength(audit_data):
     policy = audit_data.get("iam", {}).get("password_policy", {})
@@ -64,33 +67,48 @@ def check_password_policy_strength(audit_data):
         return ["Account Password Policy"]
     return []
 
-def check_foundational_services_disabled(audit_data):
-    """
-    Verifica si GuardDuty, AWS Config o Security Hub están deshabilitados
-    o suspendidos en alguna de las regiones auditadas.
-    """
+# --- ▼▼▼ NUEVAS FUNCIONES DE CHEQUEO (SEPARADAS) ▼▼▼ ---
+
+def check_guardduty_disabled(audit_data):
+    """Verifica si GuardDuty está deshabilitado o suspendido."""
     failing_resources = []
-
-    # 1. Comprobar GuardDuty
     guardduty_status = audit_data.get("guardduty", {}).get("status", [])
-    # --- LÍNEA MODIFICADA AQUÍ ---
-    # Ahora alerta si el estado NO es 'Habilitado' (cubre 'No Habilitado', 'Suspendido', etc.)
-    disabled_gd_regions = [s.get("Region") for s in guardduty_status if s.get("Status") != "Habilitado"]
-    if disabled_gd_regions:
-        failing_resources.append(f"GuardDuty no está activo en: {', '.join(sorted(list(set(disabled_gd_regions))))}")
+    for status in guardduty_status:
+        if status.get("Status") != "Habilitado":
+            failing_resources.append({
+                "resource": "GuardDuty",
+                "region": status.get("Region")
+            })
+    return failing_resources
 
-    # 2. Comprobar AWS Config y Security Hub
+def check_config_disabled(audit_data):
+    """Verifica si AWS Config está deshabilitado."""
+    failing_resources = []
     config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
     if config_sh_status:
-        disabled_config_regions = [s.get("Region") for s in config_sh_status if not s.get("ConfigEnabled")]
-        if disabled_config_regions:
-            failing_resources.append(f"AWS Config deshabilitado en: {', '.join(sorted(list(set(disabled_config_regions))))}")
-        
-        disabled_sh_regions = [s.get("Region") for s in config_sh_status if not s.get("SecurityHubEnabled")]
-        if disabled_sh_regions:
-            failing_resources.append(f"Security Hub deshabilitado en: {', '.join(sorted(list(set(disabled_sh_regions))))}")
-
+        for status in config_sh_status:
+            if not status.get("ConfigEnabled"):
+                failing_resources.append({
+                    "resource": "AWS Config",
+                    "region": status.get("Region")
+                })
     return failing_resources
+
+def check_security_hub_disabled(audit_data):
+    """Verifica si AWS Security Hub está deshabilitado."""
+    failing_resources = []
+    config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
+    if config_sh_status:
+        for status in config_sh_status:
+            if not status.get("SecurityHubEnabled"):
+                failing_resources.append({
+                    "resource": "Security Hub",
+                    "region": status.get("Region")
+                })
+    return failing_resources
+
+# --- ▲▲▲ FIN DE NUEVAS FUNCIONES DE CHEQUEO ▲▲▲ ---
+
 
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas
@@ -123,13 +141,36 @@ RULES_TO_CHECK = [
         "remediation": "En la consola de IAM, ve a 'Account settings' y edita la política de contraseñas para que cumpla con todos los requisitos: longitud >= 12, uso de mayúsculas, minúsculas, números y símbolos, expiración <= 90 días, reutilización >= 4 y expiración forzada.",
         "check_function": check_password_policy_strength
     },
+    
+    # --- ▼▼▼ NUEVAS REGLAS SEPARADAS ▼▼▼ ---
+    
     {
-        "rule_id": "FOUNDATIONAL_001",
+        "rule_id": "GUARDDUTY_001",
         "section": "Security Services",
-        "name": "Servicios de seguridad fundamentales no habilitados",
+        "name": "GuardDuty no habilitado en alguna región",
         "severity": SEVERITY["LOW"],
-        "description": "GuardDuty, AWS Config o AWS Security Hub no están habilitados en todas las regiones. Estos servicios son la base para la detección de amenazas, el monitoreo de la configuración y la gestión de la postura de seguridad.",
-        "remediation": "Accede a la consola de AWS y habilita el servicio correspondiente en las regiones indicadas para mejorar la visibilidad y la seguridad de tu cuenta.",
-        "check_function": check_foundational_services_disabled
+        "description": "AWS GuardDuty, el servicio de detección de amenazas, no está habilitado o se encuentra suspendido en una o más regiones. Habilitarlo es clave para detectar actividad maliciosa o no autorizada en la cuenta.",
+        "remediation": "Accede a la consola de AWS, ve al servicio GuardDuty y habilítalo en las regiones indicadas para mejorar la detección de amenazas de tu cuenta.",
+        "check_function": check_guardduty_disabled
+    },
+    {
+        "rule_id": "CONFIG_001",
+        "section": "Security Services",
+        "name": "AWS Config no habilitado en alguna región",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "AWS Config no está habilitado en una o más regiones. Este servicio es fundamental para auditar y evaluar las configuraciones de los recursos de AWS, permitiendo el monitoreo continuo de la conformidad.",
+        "remediation": "Accede a la consola de AWS, ve al servicio AWS Config y habilítalo en las regiones indicadas para mejorar la visibilidad y el cumplimiento de la configuración de tus recursos.",
+        "check_function": check_config_disabled
+    },
+    {
+        "rule_id": "SECURITYHUB_001",
+        "section": "Security Services",
+        "name": "AWS Security Hub no habilitado en alguna región",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "AWS Security Hub no está habilitado en una o más regiones. Security Hub proporciona una vista integral de las alertas de seguridad de alta prioridad y del estado de cumplimiento en todos los servicios de AWS.",
+        "remediation": "Accede a la consola de AWS, ve al servicio Security Hub y habilítalo en las regiones indicadas para centralizar y gestionar la postura de seguridad de tu cuenta.",
+        "check_function": check_security_hub_disabled
     }
+    
+    # --- ▲▲▲ FIN DE NUEVAS REGLAS ▲▲▲ ---
 ]
