@@ -214,6 +214,92 @@ def check_no_cloudtrail_in_region(audit_data):
     
     return failing_resources
 
+def check_inspector_ec2_scanning_disabled(audit_data):
+    """
+    Verifica si el escaneo de EC2 de Inspector está desactivado en regiones donde existen instancias EC2.
+    """
+    failing_resources = []
+    
+    # 1. Obtener los datos necesarios
+    ec2_instances = audit_data.get("compute", {}).get("ec2_instances", [])
+    inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
+    
+    # 2. Crear un conjunto de regiones que tienen instancias EC2 para una búsqueda rápida
+    regions_with_ec2 = {instance['Region'] for instance in ec2_instances}
+    
+    # 3. Crear un mapa del estado de escaneo de Inspector por región para un acceso fácil
+    inspector_ec2_scan_status = {status['Region']: status.get('ScanEC2') for status in inspector_status}
+    
+    # 4. Iterar sobre las regiones que SÍ tienen EC2
+    for region in regions_with_ec2:
+        scan_status = inspector_ec2_scan_status.get(region)
+        
+        # 5. Si el estado no es 'ENABLED' (puede ser DISABLED, DISABLING, o no existir), es un hallazgo
+        if scan_status != 'ENABLED':
+            failing_resources.append({
+                "resource": "Inspector EC2 Scanning",
+                "region": region
+            })
+            
+    return failing_resources
+
+def check_inspector_lambda_scanning_disabled(audit_data):
+    """
+    Verifica si el escaneo de Lambda de Inspector está desactivado en regiones donde existen funciones Lambda.
+    """
+    failing_resources = []
+    
+    # 1. Obtener los datos necesarios
+    lambda_functions = audit_data.get("compute", {}).get("lambda_functions", [])
+    inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
+    
+    # 2. Crear un conjunto de regiones que tienen funciones Lambda
+    regions_with_lambdas = {function['Region'] for function in lambda_functions}
+    
+    # 3. Crear un mapa del estado de escaneo de Lambda por región
+    inspector_lambda_scan_status = {status['Region']: status.get('ScanLambda') for status in inspector_status}
+    
+    # 4. Iterar sobre las regiones que SÍ tienen Lambdas
+    for region in regions_with_lambdas:
+        scan_status = inspector_lambda_scan_status.get(region)
+        
+        # 5. Si el estado no es 'ENABLED', es un hallazgo
+        if scan_status != 'ENABLED':
+            failing_resources.append({
+                "resource": "Inspector Lambda Scanning",
+                "region": region
+            })
+            
+    return failing_resources
+
+def check_inspector_ecr_scanning_disabled(audit_data):
+    """
+    Verifica si el escaneo de ECR de Inspector está desactivado en regiones donde existen repositorios.
+    """
+    failing_resources = []
+    
+    # 1. Obtener los datos necesarios
+    ecr_repositories = audit_data.get("ecr", {}).get("repositories", [])
+    inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
+    
+    # 2. Crear un conjunto de regiones que tienen repositorios ECR
+    regions_with_ecr = {repo['Region'] for repo in ecr_repositories}
+    
+    # 3. Crear un mapa del estado de escaneo de ECR por región
+    inspector_ecr_scan_status = {status['Region']: status.get('ScanECR') for status in inspector_status}
+    
+    # 4. Iterar sobre las regiones que SÍ tienen ECR
+    for region in regions_with_ecr:
+        scan_status = inspector_ecr_scan_status.get(region)
+        
+        # 5. Si el estado no es 'ENABLED', es un hallazgo
+        if scan_status != 'ENABLED':
+            failing_resources.append({
+                "resource": "Inspector ECR Scanning",
+                "region": region
+            })
+            
+    return failing_resources
 
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas (Sin cambios aquí, pero se incluye por completitud)
@@ -245,6 +331,15 @@ RULES_TO_CHECK = [
         "description": "La política de contraseñas de la cuenta no cumple con los estándares de seguridad recomendados, haciendo las cuentas de usuario más vulnerables a ataques de fuerza bruta o adivinación.",
         "remediation": "En la consola de IAM, ve a 'Account settings' y edita la política de contraseñas para que cumpla con todos los requisitos: longitud >= 12, uso de mayúsculas, minúsculas, números y símbolos, expiración <= 90 días, reutilización >= 4 y expiración forzada.",
         "check_function": check_password_policy_strength
+    },
+    {
+        "rule_id": "IAM_004",
+        "section": "Identity & Access",
+        "name": "Usuario con políticas adjuntadas directamente",
+        "severity": SEVERITY["LOW"],
+        "description": "Se ha detectado un usuario que tiene una o más políticas de IAM adjuntadas directamente a su identidad. La buena práctica de AWS recomienda gestionar los permisos a través de grupos y roles para simplificar la administración y reducir el riesgo de errores de configuración.",
+        "remediation": "Crea un grupo de IAM que represente la función del usuario, adjunta las políticas necesarias a ese grupo y luego añade al usuario al grupo. Finalmente, elimina las políticas que están directamente adjuntadas al usuario.",
+        "check_function": check_user_has_attached_policies
     },
     {
         "rule_id": "GUARDDUTY_001",
@@ -292,13 +387,31 @@ RULES_TO_CHECK = [
         "check_function": check_inspector_platform_eol
     },
     {
-        "rule_id": "IAM_004",
-        "section": "Identity & Access",
-        "name": "Usuario con políticas adjuntadas directamente",
-        "severity": SEVERITY["LOW"],
-        "description": "Se ha detectado un usuario que tiene una o más políticas de IAM adjuntadas directamente a su identidad. La buena práctica de AWS recomienda gestionar los permisos a través de grupos y roles para simplificar la administración y reducir el riesgo de errores de configuración.",
-        "remediation": "Crea un grupo de IAM que represente la función del usuario, adjunta las políticas necesarias a ese grupo y luego añade al usuario al grupo. Finalmente, elimina las políticas que están directamente adjuntadas al usuario.",
-        "check_function": check_user_has_attached_policies
+        "rule_id": "INSPECTOR_002",
+        "section": "Vulnerability Management",
+        "name": "Escaneo de EC2 en Inspector desactivado en región con instancias",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "Se han detectado instancias EC2 en una región donde el escaneo de vulnerabilidades de Amazon Inspector para EC2 no está activado. Esto representa un punto ciego de seguridad, ya que las nuevas vulnerabilidades en estas instancias no serán descubiertas.",
+        "remediation": "Accede a la consola de Amazon Inspector, ve a 'Configuración de la cuenta' -> 'Estado del escaneo' y asegúrate de que 'Escaneo de Amazon EC2' está activado para la región afectada.",
+        "check_function": check_inspector_ec2_scanning_disabled
+    },
+    {
+        "rule_id": "INSPECTOR_003",
+        "section": "Vulnerability Management",
+        "name": "Escaneo de Lambda en Inspector desactivado en región con funciones",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "Se han detectado funciones Lambda en una región donde el escaneo de vulnerabilidades de Amazon Inspector para Lambda no está activado. Esto puede dejar el código y las dependencias de tus funciones sin analizar en busca de vulnerabilidades conocidas.",
+        "remediation": "Accede a la consola de Amazon Inspector, ve a 'Configuración de la cuenta' -> 'Estado del escaneo' y asegúrate de que 'Escaneo de funciones Lambda' está activado para la región afectada.",
+        "check_function": check_inspector_lambda_scanning_disabled
+    },
+    {
+        "rule_id": "INSPECTOR_004",
+        "section": "Vulnerability Management",
+        "name": "Escaneo de ECR en Inspector desactivado en región con repositorios",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "Se han detectado repositorios de ECR en una región donde el escaneo de imágenes de contenedor de Amazon Inspector no está activado. Las imágenes pueden contener vulnerabilidades en sus paquetes de sistema operativo o software, y no analizarlas representa un riesgo de seguridad significativo.",
+        "remediation": "Accede a la consola de Amazon Inspector, ve a 'Configuración de la cuenta' -> 'Estado del escaneo' y asegúrate de que 'Escaneo de Amazon ECR' está activado para la región afectada.",
+        "check_function": check_inspector_ecr_scanning_disabled
     },
     {
         "rule_id": "CLOUDTRAIL_001",

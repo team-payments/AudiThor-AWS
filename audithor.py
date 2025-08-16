@@ -1377,6 +1377,7 @@ def collect_compute_data(session):
         "eks_clusters": result_eks_clusters, "ecs_clusters": result_ecs_clusters
     }
 
+
 # --- Lógica para Network Security Policies ---
 
 def collect_network_policies_data(session):
@@ -1446,8 +1447,6 @@ def collect_network_policies_data(session):
         "subnets": result_subnets, # <-- AÑADIDO
         "all_regions": regions 
     }
-
-
 
 def collect_connectivity_data(session):
     """
@@ -1549,7 +1548,7 @@ def _format_to_table(headers, rows, title):
            f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+"
 
 
-# --- Network Detail Logic (NUEVA SECCIÓN) ---
+# --- Network Detail Logic ---
 def format_sg_details_table(sg_details):
     sg = sg_details['SecurityGroups'][0]
     title = f"Detalles para Security Group: {sg['GroupId']} ({sg['GroupName']})"
@@ -2054,9 +2053,6 @@ def sh_check_regional_services(session, regions):
         results.append(region_status)
     return results
 
-
-
-
 def collect_config_sh_status_only(session):
     """
     FUNCIÓN RÁPIDA: Obtiene solo el estado de activación de Config y SH por región,
@@ -2069,10 +2065,6 @@ def collect_config_sh_status_only(session):
     return {
         "service_status": service_status_results
     }
-
-
-
-
 
 def get_compliance_for_region(securityhub_client):
     """
@@ -2482,7 +2474,6 @@ def run_sslscan():
     targets = [t.strip() for t in targets_str.split(',')]
     results = []
     
-    # --- INICIO DE LA MODIFICACIÓN ---
     # Importamos la librería 'shutil' para encontrar el ejecutable
     import shutil
     import subprocess
