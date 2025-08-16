@@ -141,6 +141,17 @@ def check_inspector_platform_eol(audit_data):
                 
     return failing_resources
 
+def check_user_has_attached_policies(audit_data):
+    """Verifica si un usuario tiene políticas de IAM adjuntadas directamente."""
+    failing_resources = []
+    users = audit_data.get("iam", {}).get("users", [])
+    for user in users:
+        # Si la lista de políticas adjuntas no está vacía, es un hallazgo.
+        if user.get("AttachedPolicies"):
+            failing_resources.append(user.get("UserName"))
+    return failing_resources
+
+
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas (Sin cambios aquí, pero se incluye por completitud)
 # ------------------------------------------------------------------------------
@@ -207,5 +218,14 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado un recurso (como una instancia EC2) que utiliza un sistema operativo o plataforma que ha alcanzado su 'Fin de Vida' (EOL). Esto significa que ya no recibe actualizaciones de seguridad del proveedor, dejándolo expuesto a vulnerabilidades conocidas y futuras.",
         "remediation": "Migra la aplicación o servicio a una instancia con un sistema operativo o plataforma soportado y que reciba actualizaciones de seguridad. Planifica la actualización de los recursos antes de que alcancen su fecha de EOL.",
         "check_function": check_inspector_platform_eol
+    },
+    {
+        "rule_id": "IAM_004",
+        "section": "Identity & Access",
+        "name": "Usuario con políticas adjuntadas directamente",
+        "severity": SEVERITY["LOW"],
+        "description": "Se ha detectado un usuario que tiene una o más políticas de IAM adjuntadas directamente a su identidad. La buena práctica de AWS recomienda gestionar los permisos a través de grupos y roles para simplificar la administración y reducir el riesgo de errores de configuración.",
+        "remediation": "Crea un grupo de IAM que represente la función del usuario, adjunta las políticas necesarias a ese grupo y luego añade al usuario al grupo. Finalmente, elimina las políticas que están directamente adjuntadas al usuario.",
+        "check_function": check_user_has_attached_policies
     }
 ]
