@@ -58,13 +58,11 @@ def check_password_policy_strength(audit_data):
         policy.get("RequireSymbols") is True,
         policy.get("MaxPasswordAge") is not None and policy.get("MaxPasswordAge") <= 90,
         policy.get("PasswordReusePrevention", 0) >= 4,
-        policy.get("HardExpiry") is True
     ]
     if not all(checks):
         return ["Account Password Policy"]
     return []
 
-# --- ▼▼▼ FUNCIONES CORREGIDAS ▼▼▼ ---
 
 def check_guardduty_disabled(audit_data):
     """Verifica si GuardDuty está deshabilitado o suspendido."""
@@ -121,7 +119,37 @@ def check_security_hub_disabled(audit_data):
             })
     return failing_resources
 
-# --- ▲▲▲ FIN DE FUNCIONES CORREGIDAS ▲▲▲ ---
+def check_inspector_platform_eol(audit_data):
+    """
+    Busca hallazgos de Inspector que indiquen que una plataforma ha llegado al final de su vida útil (End of Life).
+    """
+    failing_resources = []
+    
+    # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+    # Eliminamos el ".get("results", {})" extra para acceder directamente a los hallazgos.
+    inspector_findings = audit_data.get("inspector", {}).get("findings", [])
+    # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
+
+    for finding in inspector_findings:
+        # Comprobamos si el título del hallazgo contiene la frase clave
+        if "Platform End Of Life" in finding.get("title", ""):
+            # Si la encuentra, extraemos el ID del recurso afectado para reportarlo
+            if finding.get("resources"):
+                resource_id = finding["resources"][0].get("id", "ID no encontrado")
+                # Añadimos el recurso a la lista de hallazgos
+                failing_resources.append(resource_id)
+                
+    return failing_resources
+
+def check_user_has_attached_policies(audit_data):
+    """Verifica si un usuario tiene políticas de IAM adjuntadas directamente."""
+    failing_resources = []
+    users = audit_data.get("iam", {}).get("users", [])
+    for user in users:
+        # Si la lista de políticas adjuntas no está vacía, es un hallazgo.
+        if user.get("AttachedPolicies"):
+            failing_resources.append(user.get("UserName"))
+    return failing_resources
 
 
 # ------------------------------------------------------------------------------
@@ -181,5 +209,23 @@ RULES_TO_CHECK = [
         "description": "AWS Security Hub no está habilitado en una o más regiones. Security Hub proporciona una vista integral de las alertas de seguridad de alta prioridad y del estado de cumplimiento en todos los servicios de AWS.",
         "remediation": "Accede a la consola de AWS, ve al servicio Security Hub y habilítalo en las regiones indicadas para centralizar y gestionar la postura de seguridad de tu cuenta.",
         "check_function": check_security_hub_disabled
+    },
+    {
+        "rule_id": "INSPECTOR_001",
+        "section": "Vulnerability Management",
+        "name": "Recurso con plataforma en Fin de Vida (End of Life)",
+        "severity": SEVERITY["CRITICAL"],
+        "description": "Se ha detectado un recurso (como una instancia EC2) que utiliza un sistema operativo o plataforma que ha alcanzado su 'Fin de Vida' (EOL). Esto significa que ya no recibe actualizaciones de seguridad del proveedor, dejándolo expuesto a vulnerabilidades conocidas y futuras.",
+        "remediation": "Migra la aplicación o servicio a una instancia con un sistema operativo o plataforma soportado y que reciba actualizaciones de seguridad. Planifica la actualización de los recursos antes de que alcancen su fecha de EOL.",
+        "check_function": check_inspector_platform_eol
+    },
+    {
+        "rule_id": "IAM_004",
+        "section": "Identity & Access",
+        "name": "Usuario con políticas adjuntadas directamente",
+        "severity": SEVERITY["LOW"],
+        "description": "Se ha detectado un usuario que tiene una o más políticas de IAM adjuntadas directamente a su identidad. La buena práctica de AWS recomienda gestionar los permisos a través de grupos y roles para simplificar la administración y reducir el riesgo de errores de configuración.",
+        "remediation": "Crea un grupo de IAM que represente la función del usuario, adjunta las políticas necesarias a ese grupo y luego añade al usuario al grupo. Finalmente, elimina las políticas que están directamente adjuntadas al usuario.",
+        "check_function": check_user_has_attached_policies
     }
 ]
