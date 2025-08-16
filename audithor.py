@@ -693,7 +693,8 @@ def collect_guardduty_data(session):
             detectors = gd_client.list_detectors()
             
             if not detectors.get("DetectorIds"):
-                status_by_region.append({"Region": region, "Status": "No Habilitado", "S3 Logs": "-", "Kubernetes Logs": "-", "Malware Protection": "-"})
+                # --- MODIFICADO: Añadimos las nuevas claves también al estado por defecto ---
+                status_by_region.append({"Region": region, "Status": "No Habilitado", "S3 Logs": "-", "Kubernetes Logs": "-", "EC2 Malware Protection": "-", "EKS Malware Protection": "-"})
                 continue
 
             detector_id = detectors["DetectorIds"][0]
@@ -706,7 +707,9 @@ def collect_guardduty_data(session):
                 "Status": "Habilitado" if detector_details.get("Status") == "ENABLED" else "Suspendido",
                 "S3 Logs": features.get("S3_DATA_EVENTS", "N/A"),
                 "Kubernetes Logs": features.get("KUBERNETES_AUDIT_LOGS", "N/A"),
-                "Malware Protection": features.get("EKS_RUNTIME_MONITORING", "N/A"),
+                # --- MODIFICADO: Se crean dos claves distintas y claras ---
+                "EC2 Malware Protection": features.get("MALWARE_PROTECTION", "N/A"),
+                "EKS Malware Protection": features.get("EKS_RUNTIME_MONITORING", "N/A"),
             })
 
             if detector_details.get("Status") == "ENABLED":
@@ -718,16 +721,15 @@ def collect_guardduty_data(session):
                         all_findings_raw.extend(findings_details.get("Findings", []))
         except ClientError as e:
             if "endpoint" in str(e) or "OptInRequired" in str(e) or "Location" in str(e): continue
-            status_by_region.append({"Region": region, "Status": f"Error ({type(e).__name__})", "S3 Logs": "-", "Kubernetes Logs": "-", "Malware Protection": "-"})
+            status_by_region.append({"Region": region, "Status": f"Error ({type(e).__name__})", "S3 Logs": "-", "Kubernetes Logs": "-", "EC2 Malware Protection": "-", "EKS Malware Protection": "-"})
 
+    # El resto de la función para procesar findings no cambia
     processed_findings = []
     for f in all_findings_raw:
         severity_map = {1: "LOW", 2: "LOW", 3: "LOW", 4: "MEDIUM", 5: "MEDIUM", 6: "MEDIUM", 7: "HIGH", 8: "HIGH", 9: "CRITICAL", 10: "CRITICAL"}
         severity_score = int(f.get("Severity", 0))
-        
         resource = f.get("Resource", {})
         resource_type = resource.get("ResourceType", "N/A")
-        
         resource_details_str = "N/A"
         if resource_type == "AccessKey":
             details = resource.get('AccessKeyDetails', {})
@@ -741,17 +743,14 @@ def collect_guardduty_data(session):
         elif resource_type == 'S3Bucket':
             details = resource.get('S3BucketDetails', [])
             if details: resource_details_str = f"Bucket: {details[0].get('Name', 'N/A')}"
-
         processed_findings.append({
             "SeverityScore": severity_score, "SeverityLabel": severity_map.get(severity_score, "INFORMATIONAL"),
             "Region": f.get("Region", "N/A"), "Type": f.get("Type", "N/A"),
             "Resource": f"{resource_type} - {resource_details_str}", "LastSeen": f.get("UpdatedAt", "N/A").split("T")[0],
             "Title": f.get("Title", "N/A")
         })
-
     processed_findings.sort(key=lambda x: x["SeverityScore"], reverse=True)
     
-    # La línea de filtrado se ha eliminado y ahora devolvemos la lista completa.
     return {"status": status_by_region, "findings": processed_findings}
 
 # --- Lógica para WAF ---
@@ -2550,6 +2549,15 @@ def run_executive_summary():
     if not audit_data:
         return jsonify({"error": "No audit data provided"}), 400
 
+    # --- LOG AÑADIDO ---
+    # Imprimimos en la terminal los datos que acabamos de recibir.
+    import json
+    print("\n" + "="*50)
+    print("--- DATOS RECIBIDOS EN EL ENDPOINT /run_executive_summary ---")
+    print(json.dumps(audit_data, indent=2))
+    print("="*50 + "\n")
+
+
     executive_summary_findings = []
 
     for rule in RULES_TO_CHECK:
@@ -2559,17 +2567,14 @@ def run_executive_summary():
             violating_resources_raw = check_function(audit_data)
 
             if violating_resources_raw:
-                # Formateamos los recursos para que sean legibles y mantengan la estructura
                 affected_resources_structured = []
                 for resource in violating_resources_raw:
                     if isinstance(resource, dict):
-                        # Para nuestra nueva regla con regiones
                         affected_resources_structured.append({
                             "display": f"{resource['resource']} en {resource['region']}",
                             "region": resource.get("region", "Global")
                         })
                     else:
-                        # Para reglas antiguas (globales)
                         affected_resources_structured.append({
                             "display": str(resource),
                             "region": "Global"
@@ -2582,7 +2587,7 @@ def run_executive_summary():
                     "description": rule.get("description"),
                     "remediation": rule.get("remediation"),
                     "status": "🚩 RED FLAG",
-                    "affected_resources": affected_resources_structured # Usamos la nueva lista estructurada
+                    "affected_resources": affected_resources_structured
                 }
                 executive_summary_findings.append(finding)
 

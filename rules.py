@@ -151,6 +151,44 @@ def check_user_has_attached_policies(audit_data):
             failing_resources.append(user.get("UserName"))
     return failing_resources
 
+def check_guardduty_malware_protection_disabled_with_ec2(audit_data):
+    """
+    Verifica si GuardDuty Malware Protection para EC2 está desactivado en regiones
+    donde existen instancias EC2 y GuardDuty está habilitado.
+    """
+    failing_resources = []
+    guardduty_status = audit_data.get("guardduty", {}).get("status", [])
+    ec2_instances = audit_data.get("compute", {}).get("ec2_instances", [])
+
+    regions_with_ec2 = {instance['Region'] for instance in ec2_instances}
+    
+    # --- LOGS AÑADIDOS ---
+    print("\n--- DEBUG: REGLA GUARDDUTY_002 ---")
+    print(f"Regiones con instancias EC2 detectadas: {regions_with_ec2}")
+    
+    for status in guardduty_status:
+        region = status.get("Region")
+        
+        # --- LOGS AÑADIDOS DENTRO DEL BUCLE ---
+        print(f"\nAnalizando región: {region}...")
+        
+        cond1_gd_enabled = status.get("Status") == "Habilitado"
+        cond2_malware_disabled = status.get("EC2 Malware Protection") in ["Deshabilitado", "N/A"]
+        cond3_ec2_present = region in regions_with_ec2
+        
+        print(f"  - Condición 1 (GuardDuty Habilitado): {cond1_gd_enabled} (Valor: '{status.get('Status')}')")
+        print(f"  - Condición 2 (Malware Deshabilitado o N/A): {cond2_malware_disabled} (Valor: '{status.get('EC2 Malware Protection')}')")
+        print(f"  - Condición 3 (EC2 presente en la región): {cond3_ec2_present}")
+
+        if (cond1_gd_enabled and cond2_malware_disabled and cond3_ec2_present):
+            print(f"  -> ¡HALLAZGO GENERADO PARA {region}!")
+            failing_resources.append({
+                "resource": "GuardDuty Malware Protection para EC2",
+                "region": region
+            })
+
+    print("--- FIN DEBUG: REGLA GUARDDUTY_002 ---\n")
+    return failing_resources
 
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas (Sin cambios aquí, pero se incluye por completitud)
@@ -191,6 +229,15 @@ RULES_TO_CHECK = [
         "description": "AWS GuardDuty, el servicio de detección de amenazas, no está habilitado o se encuentra suspendido en una o más regiones. Habilitarlo es clave para detectar actividad maliciosa o no autorizada en la cuenta.",
         "remediation": "Accede a la consola de AWS, ve al servicio GuardDuty y habilítalo en las regiones indicadas para mejorar la detección de amenazas de tu cuenta.",
         "check_function": check_guardduty_disabled
+    },
+    {
+        "rule_id": "GUARDDUTY_002",
+        "section": "Security Services",
+        "name": "GuardDuty Malware Protection desactivado con instancias EC2 presentes",
+        "severity": SEVERITY["LOW"],
+        "description": "GuardDuty Malware Protection está desactivado en una región donde existen instancias EC2. Aunque GuardDuty esté activo, esta característica específica añade una capa de protección para detectar software malicioso en las cargas de trabajo de EC2, y debería estar habilitada si se utilizan estas instancias.",
+        "remediation": "Accede a la consola de GuardDuty, ve a la configuración del detector para la región afectada y habilita la característica 'Malware Protection'. Esto no tiene coste adicional a no ser que se detecte malware y se inicie un escaneo.",
+        "check_function": check_guardduty_malware_protection_disabled_with_ec2
     },
     {
         "rule_id": "CONFIG_001",
