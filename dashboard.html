@@ -3945,25 +3945,23 @@
 
 
 // --- LÓGICA DE EXPORTACIÓN ---
-
         const exportResultsToJson = () => {
-            // 1. Comprobar si se ha realizado algún análisis
             if (!iamApiData) {
                 alert("Aviso: Primero debes realizar un análisis antes de poder exportar los resultados.");
                 return;
             }
 
-            // 2. Determinar el tipo de análisis y recopilar metadatos
             let scanType = "rapido";
             if (configSHApiData || (inspectorApiData && inspectorApiData.results.findings && inspectorApiData.results.findings.length > 0)) {
                 scanType = "profundo";
             }
             
             const accountId = iamApiData.metadata.accountId;
-            const accountAlias = federationApiData?.results?.account_alias || "NoAlias";
+            const accountAlias = federationApiData?.results?.iam_federation?.account_alias || "NoAlias";
             const timestamp = iamApiData.metadata.executionDate;
 
-            // 3. Construir el objeto de datos completo para la exportación
+            // --- CAMBIO CLAVE AQUÍ ---
+            // Nos aseguramos de exportar solo el contenido de '.results' para cada servicio.
             const exportData = {
                 metadata: {
                     accountId: accountId,
@@ -3973,32 +3971,29 @@
                     exportTimestamp: new Date().toISOString()
                 },
                 results: {
-                    iam: iamApiData || null,
-                    federation: federationApiData || null,
-                    securityhub: securityHubApiData || null,
-                    exposure: exposureApiData || null,
-                    guardduty: guarddutyApiData || null,
-                    waf: wafApiData || null,
-                    cloudtrail: cloudtrailApiData || null,
-                    cloudwatch: cloudwatchApiData || null,
-                    inspector: inspectorApiData || null,
-                    acm: acmApiData || null,
-                    compute: computeApiData || null,
-                    databases: databasesApiData || null,
-                    networkPolicies: networkPoliciesApiData || null,
-                    configAndSecurityHubStatus: configSHStatusApiData || null,
-                    configAndSecurityHubDeepScan: configSHApiData || null,
-                    kms: kmsApiData || null, 
-                    playground: playgroundApiData || null,
-                    connectivity: connectivityApiData || null
+                    iam: iamApiData?.results || null,
+                    federation: federationApiData?.results || null,
+                    securityhub: securityHubApiData?.results || null,
+                    exposure: exposureApiData?.results || null,
+                    guardduty: guarddutyApiData?.results || null,
+                    waf: wafApiData?.results || null,
+                    cloudtrail: cloudtrailApiData?.results || null,
+                    cloudwatch: cloudwatchApiData?.results || null,
+                    inspector: inspectorApiData?.results || null,
+                    acm: acmApiData?.results || null,
+                    compute: computeApiData?.results || null,
+                    databases: databasesApiData?.results || null,
+                    networkPolicies: networkPoliciesApiData?.results || null,
+                    configAndSecurityHubStatus: configSHStatusApiData?.results || null,
+                    configAndSecurityHubDeepScan: configSHApiData?.results || null,
+                    kms: kmsApiData?.results || null, 
+                    playground: playgroundApiData?.results || null,
+                    connectivity: connectivityApiData?.results || null
                 }
             };
             
-            // 4. Generar el nombre del fichero y convertir el objeto a JSON
             const filename = `${accountId}_${accountAlias}_${scanType}.json`;
             const jsonString = JSON.stringify(exportData, null, 2);
-
-            // 5. Crear un "Blob" y simular un clic para descargar el fichero
             const blob = new Blob([jsonString], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             
@@ -4013,7 +4008,6 @@
 
             log(`Resultados exportados correctamente en el fichero: ${filename}`, 'success');
         };
-
 
 // --- LÓGICA DE IMPORTACIÓN ---
 
@@ -4038,33 +4032,36 @@
                     log(`Fichero JSON parseado correctamente. Cuenta: ${importedData.metadata.accountId}`, 'info');
 
                     const results = importedData.results;
-                    iamApiData = results.iam || null;
-                    federationApiData = results.federation || null;
-                    securityHubApiData = results.securityhub || null;
-                    exposureApiData = results.exposure || null;
-                    guarddutyApiData = results.guardduty || null;
-                    wafApiData = results.waf || null;
-                    cloudtrailApiData = results.cloudtrail || null;
-                    cloudwatchApiData = results.cloudwatch || null;
-                    inspectorApiData = results.inspector || null;
-                    acmApiData = results.acm || null;
-                    computeApiData = results.compute || null;
-                    databasesApiData = results.databases || null;
-                    networkPoliciesApiData = results.networkPolicies || null;
-                    configSHStatusApiData = results.configAndSecurityHubStatus || null;
-                    configSHApiData = results.configAndSecurityHubDeepScan || null;
-                    kmsApiData = results.kms || null;
-                    playgroundApiData = results.playground || null;
-                    connectivityApiData = results.connectivity || null;
+                    
+                    // --- CAMBIO CLAVE AQUÍ ---
+                    // Ahora asignamos directamente el objeto del servicio, ya que no tiene la capa extra de 'metadata' y 'results'.
+                    // Creamos un objeto metadata genérico para mantener la consistencia interna.
+                    const metadata = { accountId: importedData.metadata.accountId, executionDate: importedData.metadata.analysisTimestamp };
+
+                    iamApiData = results.iam ? { metadata: metadata, results: results.iam } : null;
+                    federationApiData = results.federation ? { metadata: metadata, results: results.federation } : null;
+                    securityHubApiData = results.securityhub ? { metadata: metadata, results: results.securityhub } : null;
+                    exposureApiData = results.exposure ? { metadata: metadata, results: results.exposure } : null;
+                    guarddutyApiData = results.guardduty ? { metadata: metadata, results: results.guardduty } : null;
+                    wafApiData = results.waf ? { metadata: metadata, results: results.waf } : null;
+                    cloudtrailApiData = results.cloudtrail ? { metadata: metadata, results: results.cloudtrail } : null;
+                    cloudwatchApiData = results.cloudwatch ? { metadata: metadata, results: results.cloudwatch } : null;
+                    inspectorApiData = results.inspector ? { metadata: metadata, results: results.inspector } : null;
+                    acmApiData = results.acm ? { metadata: metadata, results: results.acm } : null;
+                    computeApiData = results.compute ? { metadata: metadata, results: results.compute } : null;
+                    databasesApiData = results.databases ? { metadata: metadata, results: results.databases } : null;
+                    networkPoliciesApiData = results.networkPolicies ? { metadata: metadata, results: results.networkPolicies } : null;
+                    configSHStatusApiData = results.configAndSecurityHubStatus ? { metadata: metadata, results: results.configAndSecurityHubStatus } : null;
+                    configSHApiData = results.configAndSecurityHubDeepScan ? { metadata: metadata, results: results.configAndSecurityHubDeepScan } : null;
+                    kmsApiData = results.kms ? { metadata: metadata, results: results.kms } : null;
+                    playgroundApiData = results.playground ? { metadata: metadata, results: results.playground } : null;
+                    connectivityApiData = results.connectivity ? { metadata: metadata, results: results.connectivity } : null;
                     
                     allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
 
                     log('Datos importados en el estado de la aplicación.', 'success');
                     
-                    // Renderizamos todas las vistas con los datos cargados
                     buildAndRenderAllViews();
-                    
-                    // --- ✨ LÍNEA AÑADIDA QUE SOLUCIONA EL BUG ---
                     runAndDisplayHealthyStatus();
 
                 } catch (error) {
@@ -4084,6 +4081,9 @@
             reader.readAsText(file);
             event.target.value = '';
         };
+
+
+
 
         const displayHealthyStatus = (selectedRegion) => {
             const container = document.getElementById('healthy-status-container');
@@ -4161,8 +4161,13 @@
                     guardduty: guarddutyApiData?.results,
                     config_sh: configSHStatusApiData?.results,
                     exposure: exposureApiData?.results,
-                    inspector: inspectorApiData?.results
+                    inspector: inspectorApiData?.results,
+                    compute: computeApiData?.results
                 };
+
+                // --- LOG AÑADIDO ---
+                // Mostramos en la consola del navegador el objeto que vamos a enviar.
+                console.log('Enviando estos datos al motor de reglas:', fullAuditData);
 
                 const summaryResponse = await fetch('http://127.0.0.1:5001/run_executive_summary', {
                     method: 'POST',
@@ -4175,13 +4180,11 @@
                     throw new Error(summaryFindings.error || 'Error al generar el resumen de estado.');
                 }
 
-                // ▼▼▼ CAMBIOS AQUÍ ▼▼▼
-                lastHealthyStatusFindings = summaryFindings; // Guardamos los resultados globales
+                lastHealthyStatusFindings = summaryFindings;
                 log(`Análisis de reglas completado. Encontrados ${summaryFindings.length} hallazgos.`, 'success');
                 
-                populateHealthyStatusFilter(); // Llenamos el dropdown del filtro
-                displayHealthyStatus('all'); // Mostramos todos por defecto
-                // ▲▲▲ FIN DE LOS CAMBIOS ▲▲▲
+                populateHealthyStatusFilter();
+                displayHealthyStatus('all');
 
             } catch (error) {
                 log(`Error al generar el Healthy Status: ${error.message}`, 'error');
@@ -4191,7 +4194,7 @@
                 }
             }
         };
-  
+
         const populateHealthyStatusFilter = () => {
             const filterSelect = document.getElementById('healthy-status-region-filter');
             if (!filterSelect || !allAvailableRegions) return;
