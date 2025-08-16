@@ -190,6 +190,31 @@ def check_guardduty_malware_protection_disabled_with_ec2(audit_data):
     print("--- FIN DEBUG: REGLA GUARDDUTY_002 ---\n")
     return failing_resources
 
+def check_no_cloudtrail_in_region(audit_data):
+    """Verifica cada región para asegurar que al menos un trail de CloudTrail está definido."""
+    failing_resources = []
+    
+    # 1. Obtener la lista de TODAS las regiones de AWS
+    all_regions = audit_data.get("networkPolicies", {}).get("all_regions", [])
+    if not all_regions:
+        return [] # No se puede continuar si no tenemos la lista de regiones
+
+    # 2. Obtener los trails existentes y crear un conjunto con sus regiones "Home"
+    trails = audit_data.get("cloudtrail", {}).get("trails", [])
+    regions_with_trails = {trail.get("HomeRegion") for trail in trails}
+
+    # 3. Comparar la lista completa de regiones con las que tienen trails
+    for region in all_regions:
+        if region not in regions_with_trails:
+            # Si una región no está en el conjunto, significa que no tiene trail
+            failing_resources.append({
+                "resource": "CloudTrail",
+                "region": region
+            })
+    
+    return failing_resources
+
+
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas (Sin cambios aquí, pero se incluye por completitud)
 # ------------------------------------------------------------------------------
@@ -274,5 +299,14 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado un usuario que tiene una o más políticas de IAM adjuntadas directamente a su identidad. La buena práctica de AWS recomienda gestionar los permisos a través de grupos y roles para simplificar la administración y reducir el riesgo de errores de configuración.",
         "remediation": "Crea un grupo de IAM que represente la función del usuario, adjunta las políticas necesarias a ese grupo y luego añade al usuario al grupo. Finalmente, elimina las políticas que están directamente adjuntadas al usuario.",
         "check_function": check_user_has_attached_policies
+    },
+    {
+        "rule_id": "CLOUDTRAIL_001",
+        "section": "Logging & Monitoring",
+        "name": "Región sin un trail de CloudTrail definido",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "Se ha detectado una región de AWS que no tiene definido ningún trail de CloudTrail. Tener un registro de auditoría de todas las llamadas a la API en cada región es una práctica de seguridad fundamental para la investigación de incidentes y el monitoreo de actividades.",
+        "remediation": "Crea un trail de CloudTrail en la región afectada. Se recomienda encarecidamente crear un trail multi-región desde la región principal para consolidar los logs de todas las regiones en un solo bucket de S3.",
+        "check_function": check_no_cloudtrail_in_region
     }
 ]
