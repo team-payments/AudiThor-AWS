@@ -301,6 +301,26 @@ def check_inspector_ecr_scanning_disabled(audit_data):
             
     return failing_resources
 
+def check_network_connectivity_exists(audit_data):
+    """
+    Verifica si existen componentes de red avanzados que justifiquen una revisión de segmentación.
+    """
+    # Accedemos a los datos recopilados por el módulo de conectividad
+    connectivity_data = audit_data.get("connectivity", {})
+    
+    # Comprobamos si alguna de las listas de recursos de conectividad tiene elementos
+    peering_exists = len(connectivity_data.get("peering_connections", [])) > 0
+    tgw_exists = len(connectivity_data.get("tgw_attachments", [])) > 0
+    vpn_exists = len(connectivity_data.get("vpn_connections", [])) > 0
+    endpoints_exist = len(connectivity_data.get("vpc_endpoints", [])) > 0
+
+    # Si se encuentra cualquiera de ellos, se genera un único hallazgo informativo.
+    if peering_exists or tgw_exists or vpn_exists or endpoints_exist:
+        return ["Servicios de Conectividad de Red Avanzada"]
+        
+    return []
+
+
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas (Sin cambios aquí, pero se incluye por completitud)
 # ------------------------------------------------------------------------------
@@ -421,5 +441,14 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado una región de AWS que no tiene definido ningún trail de CloudTrail. Tener un registro de auditoría de todas las llamadas a la API en cada región es una práctica de seguridad fundamental para la investigación de incidentes y el monitoreo de actividades.",
         "remediation": "Crea un trail de CloudTrail en la región afectada. Se recomienda encarecidamente crear un trail multi-región desde la región principal para consolidar los logs de todas las regiones en un solo bucket de S3.",
         "check_function": check_no_cloudtrail_in_region
+    },
+    {
+        "rule_id": "CONNECTIVITY_001",
+        "section": "Network & Connectivity",
+        "name": "Revisión de segmentación de red recomendada",
+        "severity": SEVERITY["INFO"],
+        "description": "Se ha detectado el uso de componentes de red avanzados como VPC Peering, Transit Gateway, VPNs o VPC Endpoints. Estos servicios indican una arquitectura de red compleja que interconecta diferentes entornos. Es una buena práctica realizar pruebas de segmentación de red para asegurar que el aislamiento entre VPCs y redes on-premises es el esperado y no existen rutas de comunicación no deseadas.",
+        "remediation": "Planifica y ejecuta un test de segmentación de red. Verifica que solo los flujos de tráfico explícitamente permitidos son posibles entre los diferentes segmentos de red (ej: desarrollo, pre-producción, producción) y con las redes corporativas.",
+        "check_function": check_network_connectivity_exists
     }
 ]
