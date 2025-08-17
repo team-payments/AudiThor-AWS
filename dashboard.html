@@ -1472,7 +1472,75 @@
             </div>`;
         const updateCloudwatchSummaryCards = (alarms, topics, findings) => { document.getElementById('cw-total-alarms').textContent = alarms.length; document.getElementById('cw-state-alarms').textContent = alarms.filter(a => a.StateValue === 'ALARM').length; document.getElementById('cw-total-topics').textContent = topics.length; const criticalHighFindings = findings.filter(f => f.Severity?.Label === 'CRITICAL' || f.Severity?.Label === 'HIGH').length; document.getElementById('cw-critical-findings').textContent = criticalHighFindings; };
         const createCloudwatchSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Findings de Seguridad Activos (CloudWatch)</h3><div id="sh-cloudwatch-findings-container" class="overflow-x-auto"></div></div>`;
-        const renderCloudwatchAlarmsTable = (alarms) => { if (!alarms || alarms.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron alarmas de CloudWatch.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre Alarma</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Métrica</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Condición</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones SNS</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; alarms.sort((a, b) => a.Region.localeCompare(b.Region) || a.AlarmName.localeCompare(b.AlarmName)).forEach(alarm => { const metric = `${alarm.Namespace}/${alarm.MetricName}`; const condition = `${alarm.ComparisonOperator} ${alarm.Threshold}`; const snsActions = alarm.AlarmActions.filter(a => a.includes("arn:aws:sns")).map(arn => arn.split(':').pop()).join(', ') || '-'; table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${alarm.Region}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${createAlarmStateBadge(alarm.StateValue)}</td><td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${alarm.AlarmName}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${metric}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${condition}</td><td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${snsActions}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
+        
+        const renderCloudwatchAlarmsTable = (alarms) => {
+            if (!alarms || alarms.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron alarmas de CloudWatch.</p></div>';
+            
+            let table = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre Alarma</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Métrica</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Condición</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones SNS</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">`;
+
+            alarms.sort((a, b) => a.Region.localeCompare(b.Region) || a.AlarmName.localeCompare(b.AlarmName))
+                  .forEach((alarm, index) => {
+                const metric = `${alarm.Namespace}/${alarm.MetricName}`;
+                const condition = `${alarm.ComparisonOperator} ${alarm.Threshold}`;
+                const snsActions = alarm.AlarmActions.filter(a => a.includes("arn:aws:sns")).map(arn => arn.split(':').pop()).join(', ') || '-';
+                
+                // --- INICIO DE LA MODIFICACIÓN ---
+                table += `
+                    <tr class="hover:bg-blue-50 cursor-pointer" onclick="toggleAlarmDetails(${index})">
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${alarm.Region}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${createAlarmStateBadge(alarm.StateValue)}</td>
+                        <td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${alarm.AlarmName}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${metric}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${condition}</td>
+                        <td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${snsActions}</td>
+                    </tr>
+                    <tr id="cw-alarm-details-${index}" class="hidden">
+                        <td colspan="6" class="p-0 bg-slate-50">
+                            <div class="p-4">
+                               <pre class="bg-[#204071] text-white text-xs font-mono rounded-md p-3 overflow-x-auto"></pre>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                // --- FIN DE LA MODIFICACIÓN ---
+            });
+
+            table += '</tbody></table></div>';
+            return table;
+        };
+        
+        const toggleAlarmDetails = (index) => {
+            // Busca la fila de detalles específica para el índice de la alarma
+            const detailsRow = document.getElementById(`cw-alarm-details-${index}`);
+            if (!detailsRow) return;
+
+            // Muestra u oculta la fila
+            const isHidden = detailsRow.classList.toggle('hidden');
+
+            // Si la fila se acaba de mostrar y no tiene contenido, lo rellenamos
+            if (!isHidden && detailsRow.querySelector('pre').textContent === '') {
+                log(`Mostrando detalles para la alarma índice ${index}`, 'info');
+                // Busca los datos completos de la alarma en el objeto global
+                const alarmData = cloudwatchApiData.results.alarms[index];
+                // Formatea el JSON para que se vea bien
+                const formattedJson = JSON.stringify(alarmData, null, 2);
+                // Inserta el JSON en la etiqueta <pre>
+                detailsRow.querySelector('pre').textContent = formattedJson;
+            }
+        };
+        
         const renderCloudwatchTopicsTable = (topics) => { if (!topics || topics.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron topics de SNS con suscripciones de email.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic ARN</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Emails Suscritos</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; topics.sort((a, b) => a.Region.localeCompare(b.Region) || a.TopicArn.localeCompare(b.TopicArn)).forEach(topic => { const emails = topic.Subscriptions.map(s => s.Endpoint).join(', '); table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${topic.Region}</td><td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${topic.TopicArn}</td><td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${emails}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
 
         // --- SECCIÓN DE INSPECTOR ---
