@@ -11,6 +11,7 @@ import pytz
 from botocore.exceptions import ClientError
 import ipaddress
 import socket
+import re
 
 # --- Configuración de la aplicación Flask ---
 app = Flask(__name__)
@@ -1981,22 +1982,21 @@ def analyze_network_path_data(session, source_arn, target_arn):
 
 def sh_check_regional_services(session, regions):
     """
-    Verifica el estado de AWS Config y AWS Security Hub en cada región.
-    MODIFICADO: Ahora calcula el resumen de cumplimiento para cada estándar de SH.
+    MODIFICADO: Ahora también devuelve un mapa para relacionar cada control con su estándar.
     """
     results = []
+    # Este mapa nos ayudará a saber a qué estándar pertenece cada control (ej: 'ACM.1' -> 'arn:aws:.../aws-foundational-security-best-practices/v/1.0.0')
+    control_to_standard_map = {}
+
     for region in regions:
         region_status = {
-            "Region": region,
-            "ConfigEnabled": False,
-            "SecurityHubEnabled": False,
-            "EnabledStandards": [],
-            "EnabledConformancePacks": [],
-            "ComplianceSummaries": []  # <-- CAMPO CLAVE AÑADIDO
+            "Region": region, "ConfigEnabled": False, "SecurityHubEnabled": False,
+            "EnabledStandards": [], "EnabledConformancePacks": [],
+            "ComplianceSummaries": []
         }
-        # Verificar AWS Config (sin cambios en esta parte)
         try:
             config_client = session.client("config", region_name=region)
+            # ... (el resto del chequeo de Config no cambia)
             status = config_client.describe_configuration_recorder_status()
             if status.get("ConfigurationRecordersStatus") and status["ConfigurationRecordersStatus"][0].get("recording"):
                 region_status["ConfigEnabled"] = True
@@ -2004,54 +2004,48 @@ def sh_check_regional_services(session, regions):
                     cp_response = config_client.describe_conformance_packs()
                     for cp in cp_response.get('ConformancePackDetails', []):
                         region_status["EnabledConformancePacks"].append(cp.get('ConformancePackName'))
-                except ClientError:
-                    pass
-        except ClientError:
-            pass
+                except ClientError: pass
+        except ClientError: pass
             
-        # Verificar AWS Security Hub
         try:
             securityhub_client = session.client("securityhub", region_name=region)
             securityhub_client.describe_hub()
             region_status["SecurityHubEnabled"] = True
             
-            # --- INICIO DE LA LÓGICA DE CUMPLIMIENTO MODIFICADA ---
             try:
                 standards_response = securityhub_client.get_enabled_standards()
                 for standard in standards_response.get('StandardsSubscriptions', []):
-                    # --- LÍNEA MODIFICADA ---
-                    # Ahora guardamos el ARN completo para procesarlo en el frontend.
-                    region_status["EnabledStandards"].append(standard.get('StandardsArn', 'unknown'))
+                    standard_arn_full = standard.get('StandardsArn', 'unknown')
+                    region_status["EnabledStandards"].append(standard_arn_full)
                     
-                    # Ahora, calculamos el cumplimiento para este estándar
-                    standard_arn = standard.get('StandardsSubscriptionArn')
+                    standard_subscription_arn = standard.get('StandardsSubscriptionArn')
                     controls = securityhub_client.describe_standards_controls(
-                        StandardsSubscriptionArn=standard_arn
+                        StandardsSubscriptionArn=standard_subscription_arn
                     ).get('Controls', [])
 
                     if not controls: continue
 
+                    # --- Lógica de mapeo añadida ---
+                    for control in controls:
+                        control_id = control.get('ControlId')
+                        if control_id:
+                            control_to_standard_map[control_id] = standard_arn_full
+                    
+                    # El cálculo de contadores aquí ya no es necesario para el gráfico, 
+                    # pero lo dejamos por si se usa en otro lado.
                     passed_count = sum(1 for c in controls if c.get('ControlStatus') == 'PASSED')
-                    total_controls = len(controls)
-                    compliance_percentage = (passed_count / total_controls * 100) if total_controls > 0 else 100
-
-                    # Guardamos el resumen en el nuevo campo
                     region_status["ComplianceSummaries"].append({
-                        "standardName": standard.get('StandardsArn', 'N/A').split('/standard/')[-1].replace('-', ' ').title(),
-                        "compliancePercentage": round(compliance_percentage, 2),
-                        "passedCount": passed_count,
-                        "totalControls": total_controls,
+                        "standardArn": standard_arn_full,
+                        "standardName": standard_arn_full.split('/standard/')[-1].replace('-', ' ').title(),
+                        "totalControls": len(controls),
+                        "passedCount": passed_count
                     })
-
-            except ClientError:
-                pass
-            # --- FIN DE LA LÓGICA DE CUMPLIMIENTO MODIFICADA ---
-
-        except ClientError:
-            pass
+            except ClientError: pass
+        except ClientError: pass
             
         results.append(region_status)
-    return results
+    # Devolvemos tanto los resultados como el mapa de controles
+    return results, control_to_standard_map
 
 def collect_config_sh_status_only(session):
     """
@@ -2122,29 +2116,61 @@ def sh_get_security_hub_findings(session, service_status):
 
 def collect_config_sh_data(session):
     """
-    Función orquestadora para recolectar todos los datos de Config y Security Hub.
-    MODIFICADA: Ahora también calcula el cumplimiento real desde los findings.
+    MODIFICADO: Reconstruye el resumen de cumplimiento basándose en los hallazgos
+    para asegurar consistencia entre las pestañas.
     """
     regions = get_all_aws_regions(session)
-    service_status_results = sh_check_regional_services(session, regions)
+    service_status_results, control_map = sh_check_regional_services(session, regions)
     findings = sh_get_security_hub_findings(session, service_status_results)
     
-    # --- INICIO DE LA MODIFICACIÓN ---
-    # 1. Llamamos a nuestra nueva función para que calcule el cumplimiento
-    compliance_summary = calculate_compliance_from_findings(findings)
-    # --- FIN DE LA MODIFICACIÓN ---
+    compliance_summary_map = {}
+    for region_data in service_status_results:
+        for summary in region_data.get("ComplianceSummaries", []):
+            arn = summary['standardArn']
+            if arn not in compliance_summary_map:
+                compliance_summary_map[arn] = {
+                    "standardArn": arn,
+                    "standardName": summary['standardName'],
+                    "totalControls": summary.get('totalControls', 0),
+                    "passedCount": 0, "failedCount": 0, "warningCount": 0, 
+                    "notAvailableCount": 0, "otherCount": 0
+                }
 
-    # Ordenar findings por severidad para la presentación
+    for finding in findings:
+        status = finding.get('Compliance', {}).get('Status')
+        control_id = finding.get('Compliance', {}).get('SecurityControlId')
+        
+        standard_arn = control_map.get(control_id)
+
+        if standard_arn and standard_arn in compliance_summary_map:
+            if status == 'PASSED':
+                compliance_summary_map[standard_arn]['passedCount'] += 1
+            elif status == 'FAILED':
+                compliance_summary_map[standard_arn]['failedCount'] += 1
+            elif status == 'WARNING':
+                compliance_summary_map[standard_arn]['warningCount'] += 1
+            elif status == 'NOT_AVAILABLE':
+                compliance_summary_map[standard_arn]['notAvailableCount'] += 1
+
+    final_summary = []
+    for arn, data in compliance_summary_map.items():
+        counted = data['passedCount'] + data['failedCount'] + data['warningCount'] + data['notAvailableCount']
+        
+        # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+        # Nos aseguramos de que el resultado de la resta nunca sea menor que 0.
+        data['otherCount'] = max(0, data['totalControls'] - counted)
+        # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
+
+        final_summary.append(data)
+
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
     findings.sort(key=lambda x: severity_order.get(x.get('Severity', {}).get('Label', 'INFORMATIONAL'), 99))
 
     return {
         "service_status": service_status_results,
         "findings": findings,
-        "compliance_summary": compliance_summary # <-- 2. Añadimos el nuevo resultado
+        "compliance_summary": final_summary
     }
-
-
 
 # --- FIN: NUEVA LÓGICA PARA AWS CONFIG & SECURITY HUB ---
 
@@ -2352,7 +2378,11 @@ def run_config_sh_status_audit():
     try:
         # Llamamos a una función que solo obtiene el estado, es mucho más rápida
         regions = get_all_aws_regions(session)
-        service_status = sh_check_regional_services(session, regions)
+        
+        # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+        # Ahora desempaquetamos la tupla, ignorando el segundo valor (el mapa) que no necesitamos aquí.
+        service_status, _ = sh_check_regional_services(session, regions)
+        # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
         
         sts = session.client("sts")
         return jsonify({
@@ -2366,6 +2396,8 @@ def run_config_sh_status_audit():
         })
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar el estado de Config & SH: {str(e)}"}), 500
+
+
 
 @app.route('/api/run-network-detail-audit', methods=['POST'])
 def run_network_detail_audit():

@@ -6,6 +6,7 @@
     <title>AudiThor - Security Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-stacked100@1.0.0"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
@@ -3124,82 +3125,92 @@
             }, 0);
         };
         
+
         const createUnifiedBarChart = (complianceData) => {
             const ctx = document.getElementById('unifiedComplianceChart');
             if (!ctx) return;
 
-            // 1. Preparamos los datos para Chart.js (sin cambios aquí)
-            const labels = complianceData.map(d => {
-                const arn = d.standardArn || '';
-                return arn.split(/[/:]standards\//).pop() || arn;
-            });
-            const percentages = complianceData.map(d => d.compliancePercentage);
+            const labels = complianceData.map(d => d.standardName || 'Desconocido');
+            
+            const passedData = complianceData.map(d => d.passedCount || 0);
+            const failedData = complianceData.map(d => d.failedCount || 0);
+            const warningData = complianceData.map(d => d.warningCount || 0);
+            const otherData = complianceData.map(d => d.otherCount || 0);
+            const notAvailableData = complianceData.map(d => d.notAvailableCount || 0);
 
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // 2. Definimos una paleta de colores fijos para los estándares.
-            //    Chart.js automáticamente usará un color para cada barra y reciclará
-            //    los colores si hay más barras que colores en la paleta.
-            const colorPalette = [
-                'rgba(59, 130, 246, 0.7)',  // Blue
-                'rgba(22, 163, 74, 0.7)',   // Green
-                'rgba(249, 115, 22, 0.7)',  // Orange
-                'rgba(139, 92, 246, 0.7)',  // Purple
-                'rgba(236, 72, 153, 0.7)',  // Pink
-                'rgba(20, 184, 166, 0.7)',  // Teal
-                'rgba(250, 204, 21, 0.7)',  // Yellow
-                'rgba(107, 114, 128, 0.7)'  // Gray
-            ];
-            const borderPalette = colorPalette.map(color => color.replace('0.7', '1')); // Versión sólida para el borde
-
-            // 3. Configuramos el gráfico
             new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: '% Cumplimiento',
-                        data: percentages,
-                        backgroundColor: colorPalette, // Usamos la nueva paleta
-                        borderColor: borderPalette,    // Usamos la paleta para los bordes
-                        borderWidth: 1
-                    }]
+                    datasets: [
+                        {
+                            label: 'Aprobado',
+                            data: passedData,
+                            backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                        },
+                        {
+                            label: 'Fallido',
+                            data: failedData,
+                            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        },
+                        {
+                            label: 'Advertencia',
+                            data: warningData,
+                            backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                        },
+                        {
+                            label: 'Otros (Sin Datos)',
+                            data: otherData,
+                            backgroundColor: 'rgba(156, 163, 175, 0.7)',
+                        },
+                        {
+                            label: 'No Disponible',
+                            data: notAvailableData,
+                            backgroundColor: 'rgba(209, 213, 219, 0.7)',
+                        }
+                    ]
                 },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + "%"
-                                }
-                            }
+                    // --- ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼ ---
+                    plugins: {
+                        // Activamos el plugin para que la suma sea 100%
+                        stacked100: { enable: true, replaceTooltipLabel: true },
+                        legend: {
+                            display: true,
+                            position: 'top',
                         },
-                        y: {
-                            ticks: {
-                                autoSkip: false
+                        tooltip: {
+                             // Tooltip mejorado para mostrar el porcentaje y el valor real
+                            callbacks: {
+                                label: function(context) {
+                                    const originalValue = context.raw;
+                                    const percentage = context.dataset.data[context.dataIndex];
+                                    return `${context.dataset.label}: ${originalValue} controles`;
+                                }
                             }
                         }
                     },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Cumplimiento: ${context.raw.toFixed(2)}%`;
-                                }
+                    scales: {
+                        x: {
+                            // Volvemos a apilar las barras
+                            stacked: true,
+                            // Los ticks ahora representarán porcentajes
+                            ticks: {
+                                callback: value => value + '%'
                             }
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: { autoSkip: false }
                         }
                     }
+                    // --- ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲ ---
                 }
             });
         };
-
 
         const getStandardNameFromArn = (arn) => {
             if (!arn || !arn.includes('/standard/')) return 'Estándar Desconocido';

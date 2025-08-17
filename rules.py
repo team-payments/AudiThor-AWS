@@ -63,23 +63,18 @@ def check_password_policy_strength(audit_data):
         return ["Account Password Policy"]
     return []
 
-
 def check_guardduty_disabled(audit_data):
     """Verifica si GuardDuty está deshabilitado o suspendido."""
     failing_resources = []
     guardduty_status = audit_data.get("guardduty", {}).get("status", [])
-    
-    # CORRECCIÓN: Si la lista está vacía, significa que no está habilitado en NINGUNA parte.
+
     if not guardduty_status:
-        failing_resources.append({"resource": "GuardDuty", "region": "Todas las regiones"})
+        failing_resources.append("GuardDuty (Todas las regiones)")
         return failing_resources
 
     for status in guardduty_status:
         if status.get("Status") != "Habilitado":
-            failing_resources.append({
-                "resource": "GuardDuty",
-                "region": status.get("Region")
-            })
+            failing_resources.append(f"GuardDuty en {status.get('Region')}")
     return failing_resources
 
 def check_config_disabled(audit_data):
@@ -87,18 +82,13 @@ def check_config_disabled(audit_data):
     failing_resources = []
     config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
 
-    # CORRECCIÓN: Comprobamos si hay alguna región con el servicio activo.
-    # Si ninguna lo está, se devuelve un hallazgo global.
     if not any(s.get("ConfigEnabled") for s in config_sh_status):
-         failing_resources.append({"resource": "AWS Config", "region": "Todas las regiones"})
+         failing_resources.append("AWS Config (Todas las regiones)")
          return failing_resources
 
     for status in config_sh_status:
         if not status.get("ConfigEnabled"):
-            failing_resources.append({
-                "resource": "AWS Config",
-                "region": status.get("Region")
-            })
+            failing_resources.append(f"AWS Config en {status.get('Region')}")
     return failing_resources
 
 def check_security_hub_disabled(audit_data):
@@ -106,17 +96,13 @@ def check_security_hub_disabled(audit_data):
     failing_resources = []
     config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
 
-    # CORRECCIÓN: Misma lógica que para AWS Config.
     if not any(s.get("SecurityHubEnabled") for s in config_sh_status):
-         failing_resources.append({"resource": "Security Hub", "region": "Todas las regiones"})
+         failing_resources.append("Security Hub (Todas las regiones)")
          return failing_resources
 
     for status in config_sh_status:
         if not status.get("SecurityHubEnabled"):
-            failing_resources.append({
-                "resource": "Security Hub",
-                "region": status.get("Region")
-            })
+            failing_resources.append(f"Security Hub en {status.get('Region')}")
     return failing_resources
 
 def check_inspector_platform_eol(audit_data):
@@ -162,56 +148,38 @@ def check_guardduty_malware_protection_disabled_with_ec2(audit_data):
 
     regions_with_ec2 = {instance['Region'] for instance in ec2_instances}
     
-    # --- LOGS AÑADIDOS ---
-    print("\n--- DEBUG: REGLA GUARDDUTY_002 ---")
-    print(f"Regiones con instancias EC2 detectadas: {regions_with_ec2}")
-    
     for status in guardduty_status:
         region = status.get("Region")
-        
-        # --- LOGS AÑADIDOS DENTRO DEL BUCLE ---
-        print(f"\nAnalizando región: {region}...")
         
         cond1_gd_enabled = status.get("Status") == "Habilitado"
         cond2_malware_disabled = status.get("EC2 Malware Protection") in ["Deshabilitado", "N/A"]
         cond3_ec2_present = region in regions_with_ec2
-        
-        print(f"  - Condición 1 (GuardDuty Habilitado): {cond1_gd_enabled} (Valor: '{status.get('Status')}')")
-        print(f"  - Condición 2 (Malware Deshabilitado o N/A): {cond2_malware_disabled} (Valor: '{status.get('EC2 Malware Protection')}')")
-        print(f"  - Condición 3 (EC2 presente en la región): {cond3_ec2_present}")
 
         if (cond1_gd_enabled and cond2_malware_disabled and cond3_ec2_present):
-            print(f"  -> ¡HALLAZGO GENERADO PARA {region}!")
-            failing_resources.append({
-                "resource": "GuardDuty Malware Protection para EC2",
-                "region": region
-            })
+            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+            # Ahora añadimos un string formateado en lugar de un diccionario.
+            failing_resources.append(f"GuardDuty Malware Protection para EC2 en {region}")
+            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
 
-    print("--- FIN DEBUG: REGLA GUARDDUTY_002 ---\n")
     return failing_resources
 
 def check_no_cloudtrail_in_region(audit_data):
     """Verifica cada región para asegurar que al menos un trail de CloudTrail está definido."""
     failing_resources = []
-    
-    # 1. Obtener la lista de TODAS las regiones de AWS
+
     all_regions = audit_data.get("networkPolicies", {}).get("all_regions", [])
     if not all_regions:
-        return [] # No se puede continuar si no tenemos la lista de regiones
+        return [] 
 
-    # 2. Obtener los trails existentes y crear un conjunto con sus regiones "Home"
     trails = audit_data.get("cloudtrail", {}).get("trails", [])
     regions_with_trails = {trail.get("HomeRegion") for trail in trails}
 
-    # 3. Comparar la lista completa de regiones con las que tienen trails
     for region in all_regions:
         if region not in regions_with_trails:
-            # Si una región no está en el conjunto, significa que no tiene trail
-            failing_resources.append({
-                "resource": "CloudTrail",
-                "region": region
-            })
-    
+            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+            failing_resources.append(f"CloudTrail en {region}")
+            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
+
     return failing_resources
 
 def check_inspector_ec2_scanning_disabled(audit_data):
@@ -219,28 +187,20 @@ def check_inspector_ec2_scanning_disabled(audit_data):
     Verifica si el escaneo de EC2 de Inspector está desactivado en regiones donde existen instancias EC2.
     """
     failing_resources = []
-    
-    # 1. Obtener los datos necesarios
     ec2_instances = audit_data.get("compute", {}).get("ec2_instances", [])
     inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
-    
-    # 2. Crear un conjunto de regiones que tienen instancias EC2 para una búsqueda rápida
+
     regions_with_ec2 = {instance['Region'] for instance in ec2_instances}
-    
-    # 3. Crear un mapa del estado de escaneo de Inspector por región para un acceso fácil
     inspector_ec2_scan_status = {status['Region']: status.get('ScanEC2') for status in inspector_status}
-    
-    # 4. Iterar sobre las regiones que SÍ tienen EC2
+
     for region in regions_with_ec2:
         scan_status = inspector_ec2_scan_status.get(region)
-        
-        # 5. Si el estado no es 'ENABLED' (puede ser DISABLED, DISABLING, o no existir), es un hallazgo
+
         if scan_status != 'ENABLED':
-            failing_resources.append({
-                "resource": "Inspector EC2 Scanning",
-                "region": region
-            })
-            
+            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+            failing_resources.append(f"Inspector EC2 Scanning en {region}")
+            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
+
     return failing_resources
 
 def check_inspector_lambda_scanning_disabled(audit_data):
@@ -248,28 +208,20 @@ def check_inspector_lambda_scanning_disabled(audit_data):
     Verifica si el escaneo de Lambda de Inspector está desactivado en regiones donde existen funciones Lambda.
     """
     failing_resources = []
-    
-    # 1. Obtener los datos necesarios
     lambda_functions = audit_data.get("compute", {}).get("lambda_functions", [])
     inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
-    
-    # 2. Crear un conjunto de regiones que tienen funciones Lambda
+
     regions_with_lambdas = {function['Region'] for function in lambda_functions}
-    
-    # 3. Crear un mapa del estado de escaneo de Lambda por región
     inspector_lambda_scan_status = {status['Region']: status.get('ScanLambda') for status in inspector_status}
-    
-    # 4. Iterar sobre las regiones que SÍ tienen Lambdas
+
     for region in regions_with_lambdas:
         scan_status = inspector_lambda_scan_status.get(region)
-        
-        # 5. Si el estado no es 'ENABLED', es un hallazgo
+
         if scan_status != 'ENABLED':
-            failing_resources.append({
-                "resource": "Inspector Lambda Scanning",
-                "region": region
-            })
-            
+            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+            failing_resources.append(f"Inspector Lambda Scanning en {region}")
+            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
+
     return failing_resources
 
 def check_inspector_ecr_scanning_disabled(audit_data):
