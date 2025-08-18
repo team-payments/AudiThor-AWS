@@ -178,6 +178,7 @@ def check_inspector_platform_eol(audit_data):
     inspector_findings = audit_data.get("inspector", {}).get("findings", [])
 
     for finding in inspector_findings:
+        # Comparamos si la cadena de texto está presente en el título
         if "Platform End Of Life" in finding.get("title", ""):
             if finding.get("resources"):
                 resource_id = finding["resources"][0].get("id", "ID no encontrado")

@@ -1627,10 +1627,13 @@
                 
                 const inspectorFindingsSH = securityHubApiData ? securityHubApiData.results.findings.inspectorFindings : [];
 
-                // Ahora simplemente llamamos a la nueva función
                 renderFullInspectorView(inspectorApiData.results.findings, inspectorFindingsSH);
 
                 log('Resultados del análisis profundo de Inspector renderizados.', 'success');
+
+                // --- LÍNEA AÑADIDA ---
+                // Volvemos a ejecutar el motor de reglas con los nuevos datos de Inspector.
+                runAndDisplayHealthyStatus();
 
             } catch(e) {
                 log(`Error en la búsqueda profunda de Inspector: ${e.message}`, 'error');
@@ -1638,6 +1641,7 @@
                 deepScanContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
             }
         };
+
 
         const renderSecurityHubFindingsPage = (tbodyContainer, findings, page, rowsPerPage) => {
             tbodyContainer.innerHTML = '';
@@ -2958,9 +2962,11 @@
                 }
                 
                 log('Análisis profundo de Config & Security Hub completado.', 'success');
-                // Simplemente volvemos a llamar a la función de renderizado.
-                // Ella sola sabrá que ahora tiene que mostrar la vista completa.
                 buildConfigSHView();
+
+                // --- LÍNEA AÑADIDA ---
+                // Volvemos a ejecutar el motor de reglas con los nuevos datos.
+                runAndDisplayHealthyStatus();
 
             } catch (e) {
                 log(`Error en el análisis profundo: ${e.message}`, 'error');
@@ -2974,6 +2980,7 @@
                 btnText.textContent = 'Ejecutar Análisis Profundo';
             }
         };
+
 
         const createConfigSHSummaryCardsHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -3093,9 +3100,7 @@
             tableHtml += '</tbody></table></div>';
             return tableHtml;
         };
-
-
-         const renderComplianceStatus = (complianceSummary, allFindings) => {
+        const renderComplianceStatus = (complianceSummary, allFindings) => {
             const container = document.getElementById('config-sh-compliance-content');
             if (!container) return;
 
@@ -3104,74 +3109,128 @@
                 return;
             }
 
-            // --- El cálculo de totales se mantiene igual ---
-            let totalPassed = 0;
-            let totalFailed = 0;
-            let totalWarning = 0;
-            let totalOther = 0;
-            let grandTotal = 0;
-
-            complianceSummary.forEach(standard => {
-                totalPassed += standard.passedCount || 0;
-                totalFailed += standard.failedCount || 0;
-                totalWarning += standard.warningCount || 0;
-                totalOther += (standard.otherCount || 0) + (standard.notAvailableCount || 0);
-                grandTotal += standard.totalControls || 0;
-            });
-
             const getPercentage = (count, total) => total > 0 ? ((count / total) * 100).toFixed(1) : 0;
-            
-            // --- INICIO: HTML MODIFICADO ---
-            // Se han cambiado los textos por píldoras y se ha eliminado el div del gráfico.
+
             let contentHtml = `
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-xl font-bold text-[#204071] mb-4">Resumen de Controles</h3>
-                    <div class="space-y-4">
-                        <div class="flex items-center">
-                            <span class="w-32">
-                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Aprobado</span>
-                            </span>
-                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
-                                <div class="bg-green-500 h-4 rounded-full" style="width: ${getPercentage(totalPassed, grandTotal)}%"></div>
-                            </div>
-                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalPassed.toLocaleString()} (${getPercentage(totalPassed, grandTotal)}%)</span>
-                        </div>
-                        <div class="flex items-center">
-                            <span class="w-32">
-                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Fallido</span>
-                            </span>
-                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
-                                <div class="bg-red-500 h-4 rounded-full" style="width: ${getPercentage(totalFailed, grandTotal)}%"></div>
-                            </div>
-                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalFailed.toLocaleString()} (${getPercentage(totalFailed, grandTotal)}%)</span>
-                        </div>
-                        <div class="flex items-center">
-                            <span class="w-32">
-                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Advertencia</span>
-                            </span>
-                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
-                                <div class="bg-yellow-500 h-4 rounded-full" style="width: ${getPercentage(totalWarning, grandTotal)}%"></div>
-                            </div>
-                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalWarning.toLocaleString()} (${getPercentage(totalWarning, grandTotal)}%)</span>
-                        </div>
-                        <div class="flex items-center">
-                            <span class="w-32">
-                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Otros</span>
-                            </span>
-                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
-                                <div class="bg-gray-400 h-4 rounded-full" style="width: ${getPercentage(totalOther, grandTotal)}%"></div>
-                            </div>
-                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalOther.toLocaleString()} (${getPercentage(totalOther, grandTotal)}%)</span>
-                        </div>
-                    </div>
-                </div>
+                    <h3 class="text-xl font-bold text-[#204071] mb-6">Resumen de Controles por Estándar</h3>
+                    <div class="space-y-8">
             `;
-            // --- FIN: HTML MODIFICADO ---
-            
-            container.innerHTML = contentHtml;
 
-            // La llamada a la función del gráfico ha sido eliminada.
+            complianceSummary.sort((a, b) => a.standardName.localeCompare(b.standardName)).forEach((standard, index) => {
+                const totalControls = standard.totalControls || 0;
+                const passedCount = standard.passedCount || 0;
+                const failedCount = standard.failedCount || 0;
+                const warningCount = standard.warningCount || 0;
+                const otherCount = (standard.otherCount || 0) + (standard.notAvailableCount || 0);
+
+                // --- INICIO DE LA MODIFICACIÓN ---
+                // Se ha añadido un ID único al contenedor de detalles y a cada fila de estado.
+                // Cada fila ahora tiene un evento onclick que llama a la nueva función showComplianceDetails.
+                const detailContainerId = `detail-container-${index}`;
+                
+                contentHtml += `
+                    <div>
+                        <h4 class="text-md font-bold text-gray-800 mb-3 pb-2 border-b border-gray-200">${standard.standardName} <span class="text-sm font-normal text-gray-500">(${totalControls} controles)</span></h4>
+                        <div class="space-y-4">
+                            <div id="row-passed-${index}" class="flex items-center p-2 rounded-md cursor-pointer hover:bg-gray-100 transition" onclick="showComplianceDetails('${standard.standardArn}', 'PASSED', 'row-passed-${index}', '${detailContainerId}')">
+                                <span class="w-32"><span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Aprobado</span></span>
+                                <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4"><div class="bg-green-500 h-4 rounded-full" style="width: ${getPercentage(passedCount, totalControls)}%"></div></div>
+                                <span class="w-24 text-sm font-semibold text-gray-800 text-right">${passedCount.toLocaleString()} (${getPercentage(passedCount, totalControls)}%)</span>
+                            </div>
+                            <div id="row-failed-${index}" class="flex items-center p-2 rounded-md cursor-pointer hover:bg-gray-100 transition" onclick="showComplianceDetails('${standard.standardArn}', 'FAILED', 'row-failed-${index}', '${detailContainerId}')">
+                                <span class="w-32"><span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Fallido</span></span>
+                                <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4"><div class="bg-red-500 h-4 rounded-full" style="width: ${getPercentage(failedCount, totalControls)}%"></div></div>
+                                <span class="w-24 text-sm font-semibold text-gray-800 text-right">${failedCount.toLocaleString()} (${getPercentage(failedCount, totalControls)}%)</span>
+                            </div>
+                            <div id="row-warning-${index}" class="flex items-center p-2 rounded-md cursor-pointer hover:bg-gray-100 transition" onclick="showComplianceDetails('${standard.standardArn}', 'WARNING', 'row-warning-${index}', '${detailContainerId}')">
+                                <span class="w-32"><span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Advertencia</span></span>
+                                <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4"><div class="bg-yellow-500 h-4 rounded-full" style="width: ${getPercentage(warningCount, totalControls)}%"></div></div>
+                                <span class="w-24 text-sm font-semibold text-gray-800 text-right">${warningCount.toLocaleString()} (${getPercentage(warningCount, totalControls)}%)</span>
+                            </div>
+                        </div>
+                        <div id="${detailContainerId}" class="hidden mt-4 ml-6 border-l-2 pl-4"></div>
+                    </div>
+                `;
+                 // --- FIN DE LA MODIFICACIÓN ---
+            });
+
+            contentHtml += `</div></div>`;
+            container.innerHTML = contentHtml;
         };
+
+        const showComplianceDetails = (standardArn, status, rowId, containerId) => {
+            const detailContainer = document.getElementById(containerId);
+            const clickedRow = document.getElementById(rowId);
+
+            // --- INICIO DEL CÓDIGO DE DEPURACIÓN ---
+            console.clear(); // Limpiamos la consola para ver mejor los resultados
+            console.log("--- INICIANDO DEPURACIÓN DE DETALLES DE CUMPLIMIENTO ---");
+
+            // 1. Mostramos los datos con los que se llama a la función
+            console.log("Valores recibidos al hacer clic:");
+            console.log(`   -> standardArn: '${standardArn}'`);
+            console.log(`   -> status: '${status}'`);
+
+            // 2. Mostramos un ejemplo de los datos contra los que vamos a comparar
+            if (configSHApiData && configSHApiData.results.findings.length > 0) {
+                console.log("\nEjemplo de un finding de la lista completa (para comparar formato):");
+                const sampleFinding = configSHApiData.results.findings[0];
+                console.log(`   -> ARN del finding: '${sampleFinding.ProductFields?.StandardsArn}'`);
+                console.log(`   -> Status del finding: '${sampleFinding.Compliance?.Status}'`);
+            } else {
+                console.log("\n¡AVISO! La lista global de findings está vacía.");
+            }
+            // --- FIN DEL CÓDIGO DE DEPURACIÓN ---
+
+
+            if (!detailContainer.classList.contains('hidden') && clickedRow.classList.contains('bg-blue-50')) {
+                detailContainer.classList.add('hidden');
+                clickedRow.classList.remove('bg-blue-50', 'font-semibold');
+                detailContainer.innerHTML = '';
+                return;
+            }
+
+            clickedRow.parentElement.querySelectorAll('[id^="row-"]').forEach(row => {
+                row.classList.remove('bg-blue-50', 'font-semibold');
+            });
+            
+            clickedRow.classList.add('bg-blue-50', 'font-semibold');
+
+            const getStandardIdentifier = (arn) => arn ? (arn.split('/standard/')[1] || arn) : null;
+            const targetIdentifier = getStandardIdentifier(standardArn);
+
+            const relevantFindings = configSHApiData.results.findings.filter(f => {
+                const findingIdentifier = getStandardIdentifier(f.ProductFields?.StandardsArn);
+                return findingIdentifier === targetIdentifier && f.Compliance?.Status === status;
+            });
+            
+            // --- INICIO DEL CÓDIGO DE DEPURACIÓN ---
+            // 3. Mostramos el resultado del filtro
+            console.log(`\nResultado: Se encontraron ${relevantFindings.length} findings que coinciden.`);
+            console.log("--- FIN DE LA DEPURACIÓN ---");
+            // --- FIN DEL CÓDIGO DE DEPURACIÓN ---
+
+            let detailsHtml = '<ul class="space-y-3 text-sm">';
+            if (relevantFindings.length > 0) {
+                relevantFindings.forEach(f => {
+                    detailsHtml += `
+                        <li class="p-3 bg-gray-50 rounded-md border border-gray-200">
+                            <p class="font-bold text-gray-800">${f.Title}</p>
+                            <p class="text-gray-600 mt-1">${f.Description}</p>
+                            ${f.Remediation?.Recommendation?.Url ? `<a href="${f.Remediation.Recommendation.Url}" target="_blank" class="text-blue-600 hover:underline text-xs mt-1 inline-block">Ver recomendación ↗</a>` : ''}
+                        </li>
+                    `;
+                });
+            } else {
+                detailsHtml += `<li class="text-gray-500">No se encontraron controles detallados para este estado.</li>`;
+            }
+            detailsHtml += '</ul>';
+
+            detailContainer.innerHTML = detailsHtml;
+            detailContainer.classList.remove('hidden');
+        };
+
 
         const createUnifiedBarChart = (complianceData) => {
             const ctx = document.getElementById('unifiedComplianceChart');
@@ -4292,6 +4351,7 @@
                     connectivity: connectivityApiData?.results,
                     acm: acmApiData?.results,
                     cloudtrail: cloudtrailApiData?.results,
+                    databases: databaseApiData?.results, // <-- LÍNEA AÑADIDA
                 };
 
                 // --- LOG AÑADIDO ---
@@ -4323,6 +4383,7 @@
                 }
             }
         };
+
 
         const populateHealthyStatusFilter = () => {
             const filterSelect = document.getElementById('healthy-status-region-filter');

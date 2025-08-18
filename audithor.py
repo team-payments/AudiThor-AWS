@@ -1186,7 +1186,6 @@ def collect_acm_data_web(session):
     return {"certificates": result_certificates}
 
 
-
 # --- Lógica para Databases ---
 def collect_database_data(session):
     rds_instances = []
@@ -2162,6 +2161,20 @@ def collect_config_sh_data(session):
         # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
 
         final_summary.append(data)
+
+    # --- INICIO DE LA CORRECCIÓN ---
+    # Enriquecer cada finding con el ARN del estándar correspondiente usando el mapa.
+    # Esto asegura que el frontend siempre tenga el ARN para poder filtrar.
+    for finding in findings:
+        control_id = finding.get('Compliance', {}).get('SecurityControlId')
+        if control_id in control_map:
+            standard_arn = control_map[control_id]
+            # Asegurarse de que ProductFields existe antes de añadir la clave
+            if 'ProductFields' not in finding:
+                finding['ProductFields'] = {}
+            # Añadimos o sobreescribimos el StandardsArn para asegurar que esté presente
+            finding['ProductFields']['StandardsArn'] = standard_arn
+    # --- FIN DE LA CORRECCIÓN ---
 
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
     findings.sort(key=lambda x: severity_order.get(x.get('Severity', {}).get('Label', 'INFORMATIONAL'), 99))
