@@ -156,6 +156,20 @@ def check_cis_1_2_0_standard_enabled(audit_data):
     
     return ["CIS AWS Foundations Benchmark v1.2.0 Standard"]
 
+def check_aws_foundational_security_standard_enabled(audit_data):
+    """
+    Verifica si el estándar 'AWS Foundational Security Best Practices v1.0.0' está habilitado.
+    """
+    service_status = audit_data.get("config_sh", {}).get("service_status", [])
+
+    for region_status in service_status:
+        for standard_arn in region_status.get("EnabledStandards", []):
+            arn_lower = standard_arn.lower()
+            if "aws-foundational-security-best-practices" in arn_lower:
+                return [] 
+    
+    return ["AWS Foundational Security Best Practices Standard"]
+
 def check_inspector_platform_eol(audit_data):
     """
     Busca hallazgos de Inspector que indiquen que una plataforma ha llegado al final de su vida útil (End of Life).
@@ -403,6 +417,15 @@ RULES_TO_CHECK = [
         "description": "El estándar de seguridad 'CIS AWS Foundations Benchmark v1.2.0' no está habilitado en Security Hub. Este benchmark proporciona un conjunto de recomendaciones de seguridad para configurar AWS y ayuda a alinear la cuenta con las mejores prácticas de la industria.",
         "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'CIS AWS Foundations Benchmark v1.2.0'.",
         "check_function": check_cis_1_2_0_standard_enabled
+    },
+    {
+        "rule_id": "SECURITYHUB_005",
+        "section": "Security Services",
+        "name": "Estándar AWS Foundational Security Best Practices no habilitado",
+        "severity": SEVERITY["HIGH"],
+        "description": "El estándar 'AWS Foundational Security Best Practices' no está habilitado en Security Hub. Este es el estándar principal de AWS que ayuda a detectar cuándo las cuentas y los recursos se desvían de las mejores prácticas de seguridad. Es fundamental tenerlo activado.",
+        "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'AWS Foundational Security Best Practices v1.0.0'.",
+        "check_function": check_aws_foundational_security_standard_enabled
     },
     {
         "rule_id": "INSPECTOR_001",
