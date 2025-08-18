@@ -69,12 +69,15 @@ def check_guardduty_disabled(audit_data):
     guardduty_status = audit_data.get("guardduty", {}).get("status", [])
 
     if not guardduty_status:
-        failing_resources.append("GuardDuty (Todas las regiones)")
+        failing_resources.append({"resource": "GuardDuty (Todas las regiones)", "region": "Global"})
         return failing_resources
 
     for status in guardduty_status:
         if status.get("Status") != "Habilitado":
-            failing_resources.append(f"GuardDuty en {status.get('Region')}")
+            failing_resources.append({
+                "resource": "GuardDuty",
+                "region": status.get('Region')
+            })
     return failing_resources
 
 def check_config_disabled(audit_data):
@@ -83,12 +86,15 @@ def check_config_disabled(audit_data):
     config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
 
     if not any(s.get("ConfigEnabled") for s in config_sh_status):
-         failing_resources.append("AWS Config (Todas las regiones)")
+         failing_resources.append({"resource": "AWS Config (Todas las regiones)", "region": "Global"})
          return failing_resources
 
     for status in config_sh_status:
         if not status.get("ConfigEnabled"):
-            failing_resources.append(f"AWS Config en {status.get('Region')}")
+            failing_resources.append({
+                "resource": "AWS Config",
+                "region": status.get('Region')
+            })
     return failing_resources
 
 def check_security_hub_disabled(audit_data):
@@ -97,32 +103,42 @@ def check_security_hub_disabled(audit_data):
     config_sh_status = audit_data.get("config_sh", {}).get("service_status", [])
 
     if not any(s.get("SecurityHubEnabled") for s in config_sh_status):
-         failing_resources.append("Security Hub (Todas las regiones)")
+         failing_resources.append({"resource": "Security Hub (Todas las regiones)", "region": "Global"})
          return failing_resources
 
     for status in config_sh_status:
         if not status.get("SecurityHubEnabled"):
-            failing_resources.append(f"Security Hub en {status.get('Region')}")
+            failing_resources.append({
+                "resource": "Security Hub",
+                "region": status.get('Region')
+            })
     return failing_resources
+
+def check_pci_dss_standard_enabled(audit_data):
+    """
+    Verifica si el estándar de Security Hub 'PCI DSS v3.2.1' está habilitado.
+    """
+    service_status = audit_data.get("config_sh", {}).get("service_status", [])
+
+    for region_status in service_status:
+        for standard_arn in region_status.get("EnabledStandards", []):
+            arn_lower = standard_arn.lower()
+            if "pci-dss" in arn_lower and "3.2.1" in arn_lower:
+                return [] 
+    
+    return ["PCI DSS v3.2.1 Standard"]
 
 def check_inspector_platform_eol(audit_data):
     """
     Busca hallazgos de Inspector que indiquen que una plataforma ha llegado al final de su vida útil (End of Life).
     """
     failing_resources = []
-    
-    # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
-    # Eliminamos el ".get("results", {})" extra para acceder directamente a los hallazgos.
     inspector_findings = audit_data.get("inspector", {}).get("findings", [])
-    # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
 
     for finding in inspector_findings:
-        # Comprobamos si el título del hallazgo contiene la frase clave
         if "Platform End Of Life" in finding.get("title", ""):
-            # Si la encuentra, extraemos el ID del recurso afectado para reportarlo
             if finding.get("resources"):
                 resource_id = finding["resources"][0].get("id", "ID no encontrado")
-                # Añadimos el recurso a la lista de hallazgos
                 failing_resources.append(resource_id)
                 
     return failing_resources
@@ -132,7 +148,6 @@ def check_user_has_attached_policies(audit_data):
     failing_resources = []
     users = audit_data.get("iam", {}).get("users", [])
     for user in users:
-        # Si la lista de políticas adjuntas no está vacía, es un hallazgo.
         if user.get("AttachedPolicies"):
             failing_resources.append(user.get("UserName"))
     return failing_resources
@@ -156,17 +171,15 @@ def check_guardduty_malware_protection_disabled_with_ec2(audit_data):
         cond3_ec2_present = region in regions_with_ec2
 
         if (cond1_gd_enabled and cond2_malware_disabled and cond3_ec2_present):
-            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
-            # Ahora añadimos un string formateado en lugar de un diccionario.
-            failing_resources.append(f"GuardDuty Malware Protection para EC2 en {region}")
-            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
-
+            failing_resources.append({
+                "resource": "GuardDuty Malware Protection para EC2",
+                "region": region
+            })
     return failing_resources
 
 def check_no_cloudtrail_in_region(audit_data):
     """Verifica cada región para asegurar que al menos un trail de CloudTrail está definido."""
     failing_resources = []
-
     all_regions = audit_data.get("networkPolicies", {}).get("all_regions", [])
     if not all_regions:
         return [] 
@@ -176,10 +189,10 @@ def check_no_cloudtrail_in_region(audit_data):
 
     for region in all_regions:
         if region not in regions_with_trails:
-            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
-            failing_resources.append(f"CloudTrail en {region}")
-            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
-
+            failing_resources.append({
+                "resource": "CloudTrail",
+                "region": region
+            })
     return failing_resources
 
 def check_inspector_ec2_scanning_disabled(audit_data):
@@ -195,12 +208,11 @@ def check_inspector_ec2_scanning_disabled(audit_data):
 
     for region in regions_with_ec2:
         scan_status = inspector_ec2_scan_status.get(region)
-
         if scan_status != 'ENABLED':
-            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
-            failing_resources.append(f"Inspector EC2 Scanning en {region}")
-            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
-
+            failing_resources.append({
+                "resource": "Inspector EC2 Scanning",
+                "region": region
+            })
     return failing_resources
 
 def check_inspector_lambda_scanning_disabled(audit_data):
@@ -216,12 +228,11 @@ def check_inspector_lambda_scanning_disabled(audit_data):
 
     for region in regions_with_lambdas:
         scan_status = inspector_lambda_scan_status.get(region)
-
         if scan_status != 'ENABLED':
-            # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
-            failing_resources.append(f"Inspector Lambda Scanning en {region}")
-            # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
-
+            failing_resources.append({
+                "resource": "Inspector Lambda Scanning",
+                "region": region
+            })
     return failing_resources
 
 def check_inspector_ecr_scanning_disabled(audit_data):
@@ -229,22 +240,14 @@ def check_inspector_ecr_scanning_disabled(audit_data):
     Verifica si el escaneo de ECR de Inspector está desactivado en regiones donde existen repositorios.
     """
     failing_resources = []
-    
-    # 1. Obtener los datos necesarios
     ecr_repositories = audit_data.get("ecr", {}).get("repositories", [])
     inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
     
-    # 2. Crear un conjunto de regiones que tienen repositorios ECR
     regions_with_ecr = {repo['Region'] for repo in ecr_repositories}
-    
-    # 3. Crear un mapa del estado de escaneo de ECR por región
     inspector_ecr_scan_status = {status['Region']: status.get('ScanECR') for status in inspector_status}
     
-    # 4. Iterar sobre las regiones que SÍ tienen ECR
     for region in regions_with_ecr:
         scan_status = inspector_ecr_scan_status.get(region)
-        
-        # 5. Si el estado no es 'ENABLED', es un hallazgo
         if scan_status != 'ENABLED':
             failing_resources.append({
                 "resource": "Inspector ECR Scanning",
@@ -257,16 +260,13 @@ def check_network_connectivity_exists(audit_data):
     """
     Verifica si existen componentes de red avanzados que justifiquen una revisión de segmentación.
     """
-    # Accedemos a los datos recopilados por el módulo de conectividad
     connectivity_data = audit_data.get("connectivity", {})
     
-    # Comprobamos si alguna de las listas de recursos de conectividad tiene elementos
     peering_exists = len(connectivity_data.get("peering_connections", [])) > 0
     tgw_exists = len(connectivity_data.get("tgw_attachments", [])) > 0
     vpn_exists = len(connectivity_data.get("vpn_connections", [])) > 0
     endpoints_exist = len(connectivity_data.get("vpc_endpoints", [])) > 0
 
-    # Si se encuentra cualquiera de ellos, se genera un único hallazgo informativo.
     if peering_exists or tgw_exists or vpn_exists or endpoints_exist:
         return ["Servicios de Conectividad de Red Avanzada"]
         
@@ -274,7 +274,7 @@ def check_network_connectivity_exists(audit_data):
 
 
 # ------------------------------------------------------------------------------
-# 3. Lista Maestra de Reglas (Sin cambios aquí, pero se incluye por completitud)
+# 3. Lista Maestra de Reglas
 # ------------------------------------------------------------------------------
 RULES_TO_CHECK = [
     {
@@ -348,6 +348,15 @@ RULES_TO_CHECK = [
         "description": "AWS Security Hub no está habilitado en una o más regiones. Security Hub proporciona una vista integral de las alertas de seguridad de alta prioridad y del estado de cumplimiento en todos los servicios de AWS.",
         "remediation": "Accede a la consola de AWS, ve al servicio Security Hub y habilítalo en las regiones indicadas para centralizar y gestionar la postura de seguridad de tu cuenta.",
         "check_function": check_security_hub_disabled
+    },
+    {
+        "rule_id": "SECURITYHUB_002",
+        "section": "Security Services",
+        "name": "Estándar PCI DSS 3.2.1 de Security Hub no habilitado",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "El estándar de seguridad 'PCI DSS v3.2.1' no se encuentra habilitado en AWS Security Hub. Si en la cuenta se procesan, almacenan o transmiten datos de tarjetas de crédito, habilitar este estándar es fundamental para monitorizar el cumplimiento de los controles de seguridad requeridos.",
+        "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'PCI DSS v3.2.1'.",
+        "check_function": check_pci_dss_standard_enabled
     },
     {
         "rule_id": "INSPECTOR_001",
