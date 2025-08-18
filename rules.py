@@ -413,15 +413,6 @@ def check_rds_publicly_accessible(audit_data):
     """
     Verifica si existen instancias de RDS configuradas con acceso público.
     """
-    # --- INICIO DEL CÓDIGO DE DEPURACIÓN ---
-    import json
-    print("\n--- [DEBUG] Entrando a la regla DB_001: check_rds_publicly_accessible ---")
-    databases_data = audit_data.get("databases", {})
-    print("Datos recibidos en la clave 'databases':")
-    print(json.dumps(databases_data, indent=2))
-    print("--- [DEBUG] Fin de la regla DB_001 ---\n")
-    # --- FIN DEL CÓDIGO DE DEPURACIÓN ---
-
     failing_resources = []
     # Navegamos de forma segura hasta la lista de instancias RDS
     rds_instances = audit_data.get("databases", {}).get("rds_instances", [])
@@ -433,6 +424,30 @@ def check_rds_publicly_accessible(audit_data):
                 "resource": instance.get("DBInstanceIdentifier", "ID Desconocido"),
                 "region": instance.get("Region", "Región Desconocida")
             })
+            
+    return failing_resources
+
+def check_alb_outdated_tls_policy(audit_data):
+    """
+    Revisa los balanceadores de carga públicos (ALB/NLB) en busca de listeners
+    que soporten versiones de TLS obsoletas (inferiores a TLSv1.2).
+    """
+    failing_resources = []
+    # Navegamos de forma segura hasta los datos de balanceadores de carga por región
+    lb_data_by_region = audit_data.get("exposure", {}).get("details", {}).get("ALB/NLB Public", {})
+
+    # Iteramos sobre cada región que tiene balanceadores públicos
+    for region, load_balancers in lb_data_by_region.items():
+        for lb in load_balancers:
+            # Iteramos sobre cada listener del balanceador
+            for listener in lb.get("listeners", []):
+                tls_versions = listener.get("tlsVersions", [])
+                # Comprobamos si alguna de las versiones es obsoleta
+                if any(version in ['TLSv1.0', 'TLSv1.1', 'SSLv3'] for version in tls_versions):
+                    failing_resources.append({
+                        "resource": f"{lb.get('name')} (Listener en puerto: {listener.get('port')})",
+                        "region": region
+                    })
             
     return failing_resources
 
@@ -637,6 +652,15 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado una instancia de base de datos RDS que está configurada para ser accesible públicamente desde Internet. Esto expone la base de datos a ataques directos, como intentos de fuerza bruta, inyección de SQL o explotación de vulnerabilidades, y aumenta significativamente el riesgo de una brecha de datos.",
         "remediation": "Navega a la consola de RDS, selecciona la instancia afectada y haz clic en 'Modificar'. En la sección de 'Conectividad', cambia la opción 'Acceso público' de 'Sí' a 'No'. Asegúrate de que tus recursos dentro de la VPC (como instancias EC2 o funciones Lambda) tengan la conectividad de red necesaria para acceder a la base de datos de forma privada.",
         "check_function": check_rds_publicly_accessible
+    },
+    {
+        "rule_id": "EXPOSURE_001",
+        "section": "Internet Exposure",
+        "name": "Balanceador de Carga con Política TLS obsoleta",
+        "severity": SEVERITY["HIGH"],
+        "description": "Se ha detectado un balanceador de carga (ALB/NLB) público cuyo listener HTTPS/TLS permite el uso de versiones de TLS obsoletas (TLS 1.0 o TLS 1.1). Estos protocolos tienen vulnerabilidades conocidas (como POODLE y BEAST) y no soportan los algoritmos de cifrado modernos, lo que expone el tráfico a posibles ataques de interceptación y descifrado.",
+        "remediation": "Navega a la consola de EC2 -> Balanceadores de carga. Selecciona el listener afectado y edita su configuración para asignarle una política de seguridad moderna que exija como mínimo TLSv1.2, como 'ELBSecurityPolicy-TLS-1-2-2017-01' o una posterior.",
+        "check_function": check_alb_outdated_tls_policy
     },
     {
         "rule_id": "ACM_001",
