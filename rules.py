@@ -220,15 +220,29 @@ def check_guardduty_malware_protection_disabled_with_ec2(audit_data):
     return failing_resources
 
 def check_no_cloudtrail_in_region(audit_data):
-    """Verifica cada región para asegurar que al menos un trail de CloudTrail está definido."""
-    failing_resources = []
+    """
+    Verifica cada región para asegurar que al menos un trail de CloudTrail está definido,
+    teniendo en cuenta los trails multi-región.
+    """
     all_regions = audit_data.get("networkPolicies", {}).get("all_regions", [])
     if not all_regions:
         return [] 
 
     trails = audit_data.get("cloudtrail", {}).get("trails", [])
-    regions_with_trails = {trail.get("HomeRegion") for trail in trails}
 
+    # Si no se recibe ningún trail, todas las regiones fallan.
+    if not trails:
+        return [{"resource": "CloudTrail", "region": region} for region in all_regions]
+
+    # Comprobar si existe algún trail multi-región.
+    is_any_trail_multiregion = any(trail.get("IsMultiRegionTrail") for trail in trails)
+    if is_any_trail_multiregion:
+        # Si existe, todas las regiones están cubiertas.
+        return [] 
+    
+    # Si no hay trail multi-región, verificamos región por región.
+    failing_resources = []
+    regions_with_trails = {trail.get("HomeRegion") for trail in trails}
     for region in all_regions:
         if region not in regions_with_trails:
             failing_resources.append({
