@@ -2862,20 +2862,19 @@
                                 <a href="#" data-tab="config-sh-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
                                 <a href="#" data-tab="config-sh-status-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Estado de Servicios</a>
                                 <a href="#" data-tab="config-sh-compliance-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Estado de Cumplimiento</a>
-                                <a href="#" data-tab="config-sh-failed-controls-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Controles Fallidos</a>
                             </nav>
                         </div>
                         <div id="config-sh-tab-content-container">
                             <div id="config-sh-summary-content" class="config-sh-tab-content">${createConfigSHSummaryCardsHtml()}</div>
                             <div id="config-sh-status-content" class="config-sh-tab-content hidden">${renderConfigSHStatusTable(service_status)}</div>
                             <div id="config-sh-compliance-content" class="config-sh-tab-content hidden"></div>
-                            <div id="config-sh-failed-controls-content" class="config-sh-tab-content hidden"></div>
                         </div>
                     </div>`;
 
                 updateConfigSHSummaryCards(service_status, findings);
                 renderComplianceStatus(compliance_summary, findings);
-                renderFailedControlsByStandard(findings);
+                
+                // La llamada a renderFailedControlsByStandard(findings); ha sido eliminada.
 
                 const tabsNav = container.querySelector('#config-sh-tabs');
                 if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.config-sh-tab-content'));
@@ -3096,35 +3095,83 @@
         };
 
 
-
-        const renderComplianceStatus = (complianceSummary, allFindings) => {
+         const renderComplianceStatus = (complianceSummary, allFindings) => {
             const container = document.getElementById('config-sh-compliance-content');
             if (!container) return;
 
             if (!complianceSummary || complianceSummary.length === 0) {
-                container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron datos de cumplimiento para generar el gráfico.</p></div>`;
+                container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron datos de cumplimiento para mostrar.</p></div>`;
                 return;
             }
 
-            // Creamos la nueva estructura HTML con un solo canvas para el gráfico unificado
+            // --- El cálculo de totales se mantiene igual ---
+            let totalPassed = 0;
+            let totalFailed = 0;
+            let totalWarning = 0;
+            let totalOther = 0;
+            let grandTotal = 0;
+
+            complianceSummary.forEach(standard => {
+                totalPassed += standard.passedCount || 0;
+                totalFailed += standard.failedCount || 0;
+                totalWarning += standard.warningCount || 0;
+                totalOther += (standard.otherCount || 0) + (standard.notAvailableCount || 0);
+                grandTotal += standard.totalControls || 0;
+            });
+
+            const getPercentage = (count, total) => total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+            
+            // --- INICIO: HTML MODIFICADO ---
+            // Se han cambiado los textos por píldoras y se ha eliminado el div del gráfico.
             let contentHtml = `
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-xl font-bold text-[#204071] mb-2">Cumplimiento General por Estándar de Seguridad</h3>
-                    <p class="text-sm text-gray-500 mb-6">Comparativa del porcentaje de controles superados para cada estándar habilitado.</p>
-                    <div class="h-96">
-                        <canvas id="unifiedComplianceChart"></canvas>
+                    <h3 class="text-xl font-bold text-[#204071] mb-4">Resumen de Controles</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center">
+                            <span class="w-32">
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Aprobado</span>
+                            </span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
+                                <div class="bg-green-500 h-4 rounded-full" style="width: ${getPercentage(totalPassed, grandTotal)}%"></div>
+                            </div>
+                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalPassed.toLocaleString()} (${getPercentage(totalPassed, grandTotal)}%)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-32">
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Fallido</span>
+                            </span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
+                                <div class="bg-red-500 h-4 rounded-full" style="width: ${getPercentage(totalFailed, grandTotal)}%"></div>
+                            </div>
+                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalFailed.toLocaleString()} (${getPercentage(totalFailed, grandTotal)}%)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-32">
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Advertencia</span>
+                            </span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
+                                <div class="bg-yellow-500 h-4 rounded-full" style="width: ${getPercentage(totalWarning, grandTotal)}%"></div>
+                            </div>
+                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalWarning.toLocaleString()} (${getPercentage(totalWarning, grandTotal)}%)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-32">
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Otros</span>
+                            </span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-4 mr-4">
+                                <div class="bg-gray-400 h-4 rounded-full" style="width: ${getPercentage(totalOther, grandTotal)}%"></div>
+                            </div>
+                            <span class="w-24 text-sm font-semibold text-gray-800 text-right">${totalOther.toLocaleString()} (${getPercentage(totalOther, grandTotal)}%)</span>
+                        </div>
                     </div>
                 </div>
             `;
+            // --- FIN: HTML MODIFICADO ---
             
             container.innerHTML = contentHtml;
 
-            // Esperamos un instante para que el canvas esté en el DOM y luego llamamos a la función que lo dibujará
-            setTimeout(() => {
-                createUnifiedBarChart(complianceSummary);
-            }, 0);
+            // La llamada a la función del gráfico ha sido eliminada.
         };
-        
 
         const createUnifiedBarChart = (complianceData) => {
             const ctx = document.getElementById('unifiedComplianceChart');
@@ -3207,7 +3254,6 @@
                             ticks: { autoSkip: false }
                         }
                     }
-                    // --- ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲ ---
                 }
             });
         };
