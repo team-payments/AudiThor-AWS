@@ -314,6 +314,21 @@ def check_network_connectivity_exists(audit_data):
         
     return []
 
+def check_acm_expired_certificates(audit_data):
+    """
+    Verifica si existen certificados de ACM que han expirado.
+    """
+    failing_resources = []
+    # Navegamos de forma segura hasta la lista de certificados
+    certificates = audit_data.get("acm", {}).get("certificates", [])
+
+    for cert in certificates:
+        if cert.get("Status") == "EXPIRED":
+            # Añadimos el dominio del certificado expirado a la lista de recursos fallidos
+            failing_resources.append(cert.get("DomainName", cert.get("CertificateArn")))
+            
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas
@@ -480,5 +495,14 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado el uso de componentes de red avanzados como VPC Peering, Transit Gateway, VPNs o VPC Endpoints. Estos servicios indican una arquitectura de red compleja que interconecta diferentes entornos. Es una buena práctica realizar pruebas de segmentación de red para asegurar que el aislamiento entre VPCs y redes on-premises es el esperado y no existen rutas de comunicación no deseadas.",
         "remediation": "Planifica y ejecuta un test de segmentación de red. Verifica que solo los flujos de tráfico explícitamente permitidos son posibles entre los diferentes segmentos de red (ej: desarrollo, pre-producción, producción) y con las redes corporativas.",
         "check_function": check_network_connectivity_exists
+    },
+    {
+        "rule_id": "ACM_001",
+        "section": "Security Services",
+        "name": "Certificado de ACM expirado detectado",
+        "severity": SEVERITY["HIGH"],
+        "description": "Se ha detectado un certificado gestionado por AWS Certificate Manager (ACM) que ha expirado. Los certificados expirados provocan errores de confianza en los navegadores y pueden interrumpir el servicio para las aplicaciones que los utilizan.",
+        "remediation": "Navega a la consola de ACM, localiza el certificado afectado por su nombre de dominio y procede a renovarlo. Si el certificado ya no está en uso, elimínalo para evitar alertas.",
+        "check_function": check_acm_expired_certificates
     }
 ]
