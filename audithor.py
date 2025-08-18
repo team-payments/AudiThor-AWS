@@ -1155,7 +1155,7 @@ def collect_inspector_findings(session):
 def collect_acm_data_web(session):
     all_regions = session.get_available_regions('acm')
     result_certificates = []
-    
+
     for region in all_regions:
         try:
             acm_client = session.client("acm", region_name=region)
