@@ -114,7 +114,7 @@ def check_security_hub_disabled(audit_data):
             })
     return failing_resources
 
-def check_pci_dss_standard_enabled(audit_data):
+def check_pci_dss_3_2_1_standard_enabled(audit_data):
     """
     Verifica si el estándar de Security Hub 'PCI DSS v3.2.1' está habilitado.
     """
@@ -127,6 +127,20 @@ def check_pci_dss_standard_enabled(audit_data):
                 return [] 
     
     return ["PCI DSS v3.2.1 Standard"]
+
+def check_pci_dss_4_0_1_standard_enabled(audit_data):
+    """
+    Verifica si el estándar de Security Hub 'PCI DSS v4.0.1' está habilitado.
+    """
+    service_status = audit_data.get("config_sh", {}).get("service_status", [])
+
+    for region_status in service_status:
+        for standard_arn in region_status.get("EnabledStandards", []):
+            arn_lower = standard_arn.lower()
+            if "pci-dss" in arn_lower and "4.0.1" in arn_lower:
+                return [] 
+    
+    return ["PCI DSS v4.0.1 Standard"]
 
 def check_inspector_platform_eol(audit_data):
     """
@@ -356,7 +370,16 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "El estándar de seguridad 'PCI DSS v3.2.1' no se encuentra habilitado en AWS Security Hub. Si en la cuenta se procesan, almacenan o transmiten datos de tarjetas de crédito, habilitar este estándar es fundamental para monitorizar el cumplimiento de los controles de seguridad requeridos.",
         "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'PCI DSS v3.2.1'.",
-        "check_function": check_pci_dss_standard_enabled
+        "check_function": check_pci_dss_3_2_1_standard_enabled # <-- Nombre de función actualizado
+    },
+    {
+        "rule_id": "SECURITYHUB_003",
+        "section": "Security Services",
+        "name": "Estándar PCI DSS 4.0.1 de Security Hub no habilitado",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "El estándar de seguridad 'PCI DSS v4.0.1' no se encuentra habilitado en AWS Security Hub. Si en la cuenta se procesan, almacenan o transmiten datos de tarjetas de crédito, habilitar este estándar es fundamental para monitorizar el cumplimiento de los controles de seguridad requeridos.",
+        "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'PCI DSS v4.0.1'.",
+        "check_function": check_pci_dss_4_0_1_standard_enabled # <-- Llama a la nueva función
     },
     {
         "rule_id": "INSPECTOR_001",
