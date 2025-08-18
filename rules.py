@@ -452,223 +452,223 @@ def check_alb_outdated_tls_policy(audit_data):
     return failing_resources
 
 # ------------------------------------------------------------------------------
-# 3. Lista Maestra de Reglas
+# 3. Master Rule List
 # ------------------------------------------------------------------------------
 RULES_TO_CHECK = [
     {
         "rule_id": "IAM_001",
         "section": "Identity & Access",
-        "name": "Usuario sin MFA activado",
+        "name": "User without MFA enabled",
         "severity": SEVERITY["HIGH"],
-        "description": "Un usuario de IAM no tiene la Autenticación Multi-Factor (MFA) activada. Requerir MFA para todos los usuarios es una práctica de seguridad fundamental para añadir una capa extra de protección contra accesos no autorizados.",
-        "remediation": "Navega al servicio de IAM en la consola de AWS, selecciona el usuario afectado y, en la pestaña 'Security credentials', asigna un dispositivo MFA.",
+        "description": "An IAM user does not have Multi-Factor Authentication (MFA) enabled. Requiring MFA for all users is a fundamental security best practice to add an extra layer of protection against unauthorized access.",
+        "remediation": "Navigate to the IAM service in the AWS console, select the affected user, and on the 'Security credentials' tab, assign an MFA device.",
         "check_function": check_mfa_for_all_users
     },
     {
         "rule_id": "IAM_002",
         "section": "Identity & Access",
-        "name": "Clave de acceso (Access Key) con más de 90 días",
+        "name": "Access Key older than 90 days",
         "severity": SEVERITY["MEDIUM"],
-        "description": "Existen claves de acceso programático con una antigüedad superior a 90 días. Es una buena práctica de seguridad rotar las credenciales regularmente para limitar el riesgo en caso de que una clave se vea expuesta.",
-        "remediation": "En la consola de IAM, crea una nueva clave de acceso para el usuario, actualiza las aplicaciones que la usan, y luego desactiva y elimina la clave antigua.",
+        "description": "Programmatic access keys older than 90 days exist. It is a security best practice to rotate credentials regularly to limit the risk in case a key is compromised.",
+        "remediation": "In the IAM console, create a new access key for the user, update the applications that use it, and then deactivate and delete the old key.",
         "check_function": check_iam_access_key_age
     },
     {
         "rule_id": "IAM_003",
         "section": "Identity & Access",
-        "name": "Política de contraseñas no es suficientemente robusta",
+        "name": "Password policy is not strong enough",
         "severity": SEVERITY["HIGH"],
-        "description": "La política de contraseñas de la cuenta no cumple con los estándares de seguridad recomendados, haciendo las cuentas de usuario más vulnerables a ataques de fuerza bruta o adivinación.",
-        "remediation": "En la consola de IAM, ve a 'Account settings' y edita la política de contraseñas para que cumpla con todos los requisitos: longitud >= 12, uso de mayúsculas, minúsculas, números y símbolos, expiración <= 90 días, reutilización >= 4 y expiración forzada.",
+        "description": "The account's password policy does not meet recommended security standards, making user accounts more vulnerable to brute-force or guessing attacks.",
+        "remediation": "In the IAM console, go to 'Account settings' and edit the password policy to meet all requirements: length >= 12, use of uppercase, lowercase, numbers, and symbols, expiration <= 90 days, reuse prevention >= 4, and hard expiry.",
         "check_function": check_password_policy_strength
     },
     {
         "rule_id": "IAM_004",
         "section": "Identity & Access",
-        "name": "Usuario con políticas adjuntadas directamente",
+        "name": "User with directly attached policies",
         "severity": SEVERITY["LOW"],
-        "description": "Se ha detectado un usuario que tiene una o más políticas de IAM adjuntadas directamente a su identidad. La buena práctica de AWS recomienda gestionar los permisos a través de grupos y roles para simplificar la administración y reducir el riesgo de errores de configuración.",
-        "remediation": "Crea un grupo de IAM que represente la función del usuario, adjunta las políticas necesarias a ese grupo y luego añade al usuario al grupo. Finalmente, elimina las políticas que están directamente adjuntadas al usuario.",
+        "description": "A user has been detected with one or more IAM policies attached directly to their identity. AWS best practice recommends managing permissions through groups and roles to simplify administration and reduce the risk of configuration errors.",
+        "remediation": "Create an IAM group that represents the user's role, attach the necessary policies to that group, and then add the user to the group. Finally, remove the policies that are directly attached to the user.",
         "check_function": check_user_has_attached_policies
     },
     {
         "rule_id": "GUARDDUTY_001",
         "section": "Security Services",
-        "name": "GuardDuty no habilitado en alguna región",
+        "name": "GuardDuty not enabled in some regions",
         "severity": SEVERITY["LOW"],
-        "description": "AWS GuardDuty, el servicio de detección de amenazas, no está habilitado o se encuentra suspendido en una o más regiones. Habilitarlo es clave para detectar actividad maliciosa o no autorizada en la cuenta.",
-        "remediation": "Accede a la consola de AWS, ve al servicio GuardDuty y habilítalo en las regiones indicadas para mejorar la detección de amenazas de tu cuenta.",
+        "description": "AWS GuardDuty, the threat detection service, is not enabled or is suspended in one or more regions. Enabling it is key to detecting malicious or unauthorized activity in the account.",
+        "remediation": "Access the AWS console, go to the GuardDuty service, and enable it in the indicated regions to improve your account's threat detection.",
         "check_function": check_guardduty_disabled
     },
     {
         "rule_id": "GUARDDUTY_002",
         "section": "Security Services",
-        "name": "GuardDuty Malware Protection desactivado con instancias EC2 presentes",
+        "name": "GuardDuty Malware Protection disabled with EC2 instances present",
         "severity": SEVERITY["LOW"],
-        "description": "GuardDuty Malware Protection está desactivado en una región donde existen instancias EC2. Aunque GuardDuty esté activo, esta característica específica añade una capa de protección para detectar software malicioso en las cargas de trabajo de EC2, y debería estar habilitada si se utilizan estas instancias.",
-        "remediation": "Accede a la consola de GuardDuty, ve a la configuración del detector para la región afectada y habilita la característica 'Malware Protection'. Esto no tiene coste adicional a no ser que se detecte malware y se inicie un escaneo.",
+        "description": "GuardDuty Malware Protection is disabled in a region where EC2 instances exist. Although GuardDuty is active, this specific feature adds a layer of protection to detect malicious software on EC2 workloads and should be enabled if these instances are used.",
+        "remediation": "Access the GuardDuty console, go to the detector settings for the affected region, and enable the 'Malware Protection' feature. This has no additional cost unless malware is detected and a scan is initiated.",
         "check_function": check_guardduty_malware_protection_disabled_with_ec2
     },
     {
         "rule_id": "CONFIG_001",
         "section": "Security Services",
-        "name": "AWS Config no habilitado en alguna región",
+        "name": "AWS Config not enabled in some regions",
         "severity": SEVERITY["MEDIUM"],
-        "description": "AWS Config no está habilitado en una o más regiones. Este servicio es fundamental para auditar y evaluar las configuraciones de los recursos de AWS, permitiendo el monitoreo continuo de la conformidad.",
-        "remediation": "Accede a la consola de AWS, ve al servicio AWS Config y habilítalo en las regiones indicadas para mejorar la visibilidad y el cumplimiento de la configuración de tus recursos.",
+        "description": "AWS Config is not enabled in one or more regions. This service is essential for auditing and evaluating the configurations of AWS resources, allowing for continuous compliance monitoring.",
+        "remediation": "Access the AWS console, go to the AWS Config service, and enable it in the indicated regions to improve visibility and configuration compliance of your resources.",
         "check_function": check_config_disabled
     },
     {
         "rule_id": "SECURITYHUB_001",
         "section": "Security Services",
-        "name": "AWS Security Hub no habilitado en alguna región",
+        "name": "AWS Security Hub not enabled in some regions",
         "severity": SEVERITY["MEDIUM"],
-        "description": "AWS Security Hub no está habilitado en una o más regiones. Security Hub proporciona una vista integral de las alertas de seguridad de alta prioridad y del estado de cumplimiento en todos los servicios de AWS.",
-        "remediation": "Accede a la consola de AWS, ve al servicio Security Hub y habilítalo en las regiones indicadas para centralizar y gestionar la postura de seguridad de tu cuenta.",
+        "description": "AWS Security Hub is not enabled in one or more regions. Security Hub provides a comprehensive view of high-priority security alerts and compliance status across all AWS services.",
+        "remediation": "Access the AWS console, go to the Security Hub service, and enable it in the indicated regions to centralize and manage your account's security posture.",
         "check_function": check_security_hub_disabled
     },
     {
         "rule_id": "SECURITYHUB_002",
         "section": "Security Services",
-        "name": "Estándar PCI DSS 3.2.1 de Security Hub no habilitado",
+        "name": "Security Hub Standard PCI DSS 3.2.1 not enabled",
         "severity": SEVERITY["MEDIUM"],
-        "description": "El estándar de seguridad 'PCI DSS v3.2.1' no se encuentra habilitado en AWS Security Hub. Si en la cuenta se procesan, almacenan o transmiten datos de tarjetas de crédito, habilitar este estándar es fundamental para monitorizar el cumplimiento de los controles de seguridad requeridos.",
-        "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'PCI DSS v3.2.1'.",
-        "check_function": check_pci_dss_3_2_1_standard_enabled # <-- Nombre de función actualizado
+        "description": "The 'PCI DSS v3.2.1' security standard is not enabled in AWS Security Hub. If the account processes, stores, or transmits credit card data, enabling this standard is crucial for monitoring compliance with the required security controls.",
+        "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'PCI DSS v3.2.1' standard.",
+        "check_function": check_pci_dss_3_2_1_standard_enabled
     },
     {
         "rule_id": "SECURITYHUB_003",
         "section": "Security Services",
-        "name": "Estándar PCI DSS 4.0.1 de Security Hub no habilitado",
+        "name": "Security Hub Standard PCI DSS 4.0.1 not enabled",
         "severity": SEVERITY["MEDIUM"],
-        "description": "El estándar de seguridad 'PCI DSS v4.0.1' no se encuentra habilitado en AWS Security Hub. Si en la cuenta se procesan, almacenan o transmiten datos de tarjetas de crédito, habilitar este estándar es fundamental para monitorizar el cumplimiento de los controles de seguridad requeridos.",
-        "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'PCI DSS v4.0.1'.",
-        "check_function": check_pci_dss_4_0_1_standard_enabled # <-- Llama a la nueva función
+        "description": "The 'PCI DSS v4.0.1' security standard is not enabled in AWS Security Hub. If the account processes, stores, or transmits credit card data, enabling this standard is crucial for monitoring compliance with the required security controls.",
+        "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'PCI DSS v4.0.1' standard.",
+        "check_function": check_pci_dss_4_0_1_standard_enabled
     },
     {
         "rule_id": "SECURITYHUB_004",
         "section": "Security Services",
-        "name": "Estándar CIS AWS Foundations Benchmark v1.2.0 no habilitado",
+        "name": "CIS AWS Foundations Benchmark v1.2.0 Standard not enabled",
         "severity": SEVERITY["MEDIUM"],
-        "description": "El estándar de seguridad 'CIS AWS Foundations Benchmark v1.2.0' no está habilitado en Security Hub. Este benchmark proporciona un conjunto de recomendaciones de seguridad para configurar AWS y ayuda a alinear la cuenta con las mejores prácticas de la industria.",
-        "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'CIS AWS Foundations Benchmark v1.2.0'.",
+        "description": "The 'CIS AWS Foundations Benchmark v1.2.0' security standard is not enabled in Security Hub. This benchmark provides a set of security recommendations for configuring AWS and helps align the account with industry best practices.",
+        "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'CIS AWS Foundations Benchmark v1.2.0' standard.",
         "check_function": check_cis_1_2_0_standard_enabled
     },
     {
         "rule_id": "SECURITYHUB_005",
         "section": "Security Services",
-        "name": "Estándar AWS Foundational Security Best Practices no habilitado",
+        "name": "AWS Foundational Security Best Practices Standard not enabled",
         "severity": SEVERITY["HIGH"],
-        "description": "El estándar 'AWS Foundational Security Best Practices' no está habilitado en Security Hub. Este es el estándar principal de AWS que ayuda a detectar cuándo las cuentas y los recursos se desvían de las mejores prácticas de seguridad. Es fundamental tenerlo activado.",
-        "remediation": "Accede a la consola de AWS Security Hub, navega a la sección de 'Estándares de seguridad' y busca y habilita el estándar 'AWS Foundational Security Best Practices v1.0.0'.",
+        "description": "The 'AWS Foundational Security Best Practices' standard is not enabled in Security Hub. This is the primary AWS standard that helps detect when accounts and resources deviate from security best practices. It is essential to have it activated.",
+        "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'AWS Foundational Security Best Practices v1.0.0' standard.",
         "check_function": check_aws_foundational_security_standard_enabled
     },
     {
         "rule_id": "INSPECTOR_001",
         "section": "Vulnerability Management",
-        "name": "Recurso con plataforma en Fin de Vida (End of Life)",
+        "name": "Resource with End of Life (EOL) platform",
         "severity": SEVERITY["CRITICAL"],
-        "description": "Se ha detectado un recurso (como una instancia EC2) que utiliza un sistema operativo o plataforma que ha alcanzado su 'Fin de Vida' (EOL). Esto significa que ya no recibe actualizaciones de seguridad del proveedor, dejándolo expuesto a vulnerabilidades conocidas y futuras.",
-        "remediation": "Migra la aplicación o servicio a una instancia con un sistema operativo o plataforma soportado y que reciba actualizaciones de seguridad. Planifica la actualización de los recursos antes de que alcancen su fecha de EOL.",
+        "description": "A resource (such as an EC2 instance) has been detected using an operating system or platform that has reached its 'End of Life' (EOL). This means it no longer receives security updates from the provider, leaving it exposed to known and future vulnerabilities.",
+        "remediation": "Migrate the application or service to an instance with a supported operating system or platform that receives security updates. Plan to upgrade resources before they reach their EOL date.",
         "check_function": check_inspector_platform_eol
     },
     {
         "rule_id": "INSPECTOR_002",
         "section": "Vulnerability Management",
-        "name": "Escaneo de EC2 en Inspector desactivado en región con instancias",
+        "name": "Inspector EC2 scanning disabled in region with instances",
         "severity": SEVERITY["MEDIUM"],
-        "description": "Se han detectado instancias EC2 en una región donde el escaneo de vulnerabilidades de Amazon Inspector para EC2 no está activado. Esto representa un punto ciego de seguridad, ya que las nuevas vulnerabilidades en estas instancias no serán descubiertas.",
-        "remediation": "Accede a la consola de Amazon Inspector, ve a 'Configuración de la cuenta' -> 'Estado del escaneo' y asegúrate de que 'Escaneo de Amazon EC2' está activado para la región afectada.",
+        "description": "EC2 instances have been detected in a region where Amazon Inspector vulnerability scanning for EC2 is not activated. This represents a security blind spot, as new vulnerabilities in these instances will not be discovered.",
+        "remediation": "Access the Amazon Inspector console, go to 'Account settings' -> 'Scan status', and ensure that 'Amazon EC2 scanning' is activated for the affected region.",
         "check_function": check_inspector_ec2_scanning_disabled
     },
     {
         "rule_id": "INSPECTOR_003",
         "section": "Vulnerability Management",
-        "name": "Escaneo de Lambda en Inspector desactivado en región con funciones",
+        "name": "Inspector Lambda scanning disabled in region with functions",
         "severity": SEVERITY["MEDIUM"],
-        "description": "Se han detectado funciones Lambda en una región donde el escaneo de vulnerabilidades de Amazon Inspector para Lambda no está activado. Esto puede dejar el código y las dependencias de tus funciones sin analizar en busca de vulnerabilidades conocidas.",
-        "remediation": "Accede a la consola de Amazon Inspector, ve a 'Configuración de la cuenta' -> 'Estado del escaneo' y asegúrate de que 'Escaneo de funciones Lambda' está activado para la región afectada.",
+        "description": "Lambda functions have been detected in a region where Amazon Inspector vulnerability scanning for Lambda is not activated. This can leave your functions' code and dependencies unscanned for known vulnerabilities.",
+        "remediation": "Access the Amazon Inspector console, go to 'Account settings' -> 'Scan status', and ensure that 'Lambda functions scanning' is activated for the affected region.",
         "check_function": check_inspector_lambda_scanning_disabled
     },
     {
         "rule_id": "INSPECTOR_004",
         "section": "Vulnerability Management",
-        "name": "Escaneo de ECR en Inspector desactivado en región con repositorios",
+        "name": "Inspector ECR scanning disabled in region with repositories",
         "severity": SEVERITY["MEDIUM"],
-        "description": "Se han detectado repositorios de ECR en una región donde el escaneo de imágenes de contenedor de Amazon Inspector no está activado. Las imágenes pueden contener vulnerabilidades en sus paquetes de sistema operativo o software, y no analizarlas representa un riesgo de seguridad significativo.",
-        "remediation": "Accede a la consola de Amazon Inspector, ve a 'Configuración de la cuenta' -> 'Estado del escaneo' y asegúrate de que 'Escaneo de Amazon ECR' está activado para la región afectada.",
+        "description": "ECR repositories have been detected in a region where Amazon Inspector container image scanning is not activated. Images can contain vulnerabilities in their operating system or software packages, and not scanning them represents a significant security risk.",
+        "remediation": "Access the Amazon Inspector console, go to 'Account settings' -> 'Scan status', and ensure that 'Amazon ECR scanning' is activated for the affected region.",
         "check_function": check_inspector_ecr_scanning_disabled
     },
     {
         "rule_id": "INSPECTOR_005",
         "section": "Vulnerability Management",
-        "name": "Vulnerabilidad crítica o alta sin remediar por más de 30 días",
+        "name": "Critical or High vulnerability unpatched for over 30 days",
         "severity": SEVERITY["HIGH"],
-        "description": "Se han detectado hallazgos de Inspector con severidad 'Crítica' o 'Alta' que no han sido remediados en más de 30 días. Esto representa un riesgo de seguridad significativo y prolongado, indicando una posible brecha en el proceso de gestión de vulnerabilidades y parches.",
-        "remediation": "Prioriza y remedia inmediatamente estos hallazgos antiguos. Revisa los procesos de gestión de parches para asegurar que las vulnerabilidades de alto impacto se solucionan dentro de un plazo aceptable (SLA).",
+        "description": "Inspector findings with 'Critical' or 'High' severity have been detected that have not been remediated in over 30 days. This represents a significant and prolonged security risk, indicating a potential gap in the vulnerability and patch management process.",
+        "remediation": "Immediately prioritize and remediate these old findings. Review your patch management processes to ensure high-impact vulnerabilities are addressed within an acceptable timeframe (SLA).",
         "check_function": check_inspector_old_critical_findings
     },
     {
         "rule_id": "CLOUDTRAIL_001",
         "section": "Logging & Monitoring",
-        "name": "Región sin un trail de CloudTrail definido",
+        "name": "Region without a defined CloudTrail trail",
         "severity": SEVERITY["MEDIUM"],
-        "description": "Se ha detectado una región de AWS que no tiene definido ningún trail de CloudTrail. Tener un registro de auditoría de todas las llamadas a la API en cada región es una práctica de seguridad fundamental para la investigación de incidentes y el monitoreo de actividades.",
-        "remediation": "Crea un trail de CloudTrail en la región afectada. Se recomienda encarecidamente crear un trail multi-región desde la región principal para consolidar los logs de todas las regiones en un solo bucket de S3.",
+        "description": "An AWS region has been detected that does not have any CloudTrail trail defined. Having an audit log of all API calls in every region is a fundamental security practice for incident investigation and activity monitoring.",
+        "remediation": "Create a CloudTrail trail in the affected region. It is highly recommended to create a multi-region trail from the primary region to consolidate logs from all regions into a single S3 bucket.",
         "check_function": check_no_cloudtrail_in_region
     },
     {
         "rule_id": "CLOUDTRAIL_002",
         "section": "Logging & Monitoring",
-        "name": "CloudTrail trail sin cifrado KMS habilitado",
+        "name": "CloudTrail trail without KMS encryption enabled",
         "severity": SEVERITY["MEDIUM"],
-        "description": "Se ha detectado un trail de CloudTrail que no utiliza el cifrado de AWS KMS para proteger los ficheros de log. Cifrar los logs en reposo es una práctica de seguridad fundamental para proteger la información de auditoría sensible contra el acceso no autorizado en caso de que el bucket S3 se vea comprometido.",
-        "remediation": "Navega a la consola de CloudTrail, selecciona el trail afectado y edita su configuración. En la sección de almacenamiento, habilita el cifrado de los datos del log con AWS KMS, ya sea utilizando una clave gestionada por AWS o una clave gestionada por el cliente (CMK).",
+        "description": "A CloudTrail trail has been detected that does not use AWS KMS encryption to protect the log files. Encrypting logs at rest is a fundamental security practice to protect sensitive audit information from unauthorized access if the S3 bucket is compromised.",
+        "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the storage section, enable log data encryption with AWS KMS, using either an AWS-managed key or a customer-managed key (CMK).",
         "check_function": check_cloudtrail_kms_encryption_disabled
     },
     {
         "rule_id": "CLOUDTRAIL_003",
         "section": "Logging & Monitoring",
-        "name": "Validación de integridad de logs de CloudTrail desactivada",
+        "name": "CloudTrail log file integrity validation disabled",
         "severity": SEVERITY["HIGH"],
-        "description": "Se ha detectado un trail de CloudTrail que no tiene activada la validación de integridad de ficheros de log. Esta característica es crucial para asegurar que los logs no han sido alterados o eliminados después de su entrega al bucket S3. Sin ella, no se puede garantizar la fiabilidad de los registros de auditoría.",
-        "remediation": "Navega a la consola de CloudTrail, selecciona el trail afectado y edita su configuración. En la sección de 'Propiedades de almacenamiento', asegúrate de que la opción 'Habilitar la validación de la integridad de los archivos de log' esté activada.",
+        "description": "A CloudTrail trail has been detected that does not have log file integrity validation enabled. This feature is crucial to ensure that logs have not been altered or deleted after being delivered to the S3 bucket. Without it, the reliability of the audit records cannot be guaranteed.",
+        "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the 'Storage properties' section, ensure that the 'Enable log file integrity validation' option is checked.",
         "check_function": check_cloudtrail_log_file_validation_disabled
     },
     {
         "rule_id": "CONNECTIVITY_001",
         "section": "Network & Connectivity",
-        "name": "Revisión de segmentación de red recomendada",
+        "name": "Network segmentation review recommended",
         "severity": SEVERITY["INFO"],
-        "description": "Se ha detectado el uso de componentes de red avanzados como VPC Peering, Transit Gateway, VPNs o VPC Endpoints. Estos servicios indican una arquitectura de red compleja que interconecta diferentes entornos. Es una buena práctica realizar pruebas de segmentación de red para asegurar que el aislamiento entre VPCs y redes on-premises es el esperado y no existen rutas de comunicación no deseadas.",
-        "remediation": "Planifica y ejecuta un test de segmentación de red. Verifica que solo los flujos de tráfico explícitamente permitidos son posibles entre los diferentes segmentos de red (ej: desarrollo, pre-producción, producción) y con las redes corporativas.",
+        "description": "The use of advanced network components such as VPC Peering, Transit Gateway, VPNs, or VPC Endpoints has been detected. These services indicate a complex network architecture that interconnects different environments. It is a good practice to perform network segmentation tests to ensure that the isolation between VPCs and on-premises networks is as expected and that no unintended communication paths exist.",
+        "remediation": "Plan and execute a network segmentation test. Verify that only explicitly permitted traffic flows are possible between the different network segments (e.g., development, pre-production, production) and with corporate networks.",
         "check_function": check_network_connectivity_exists
     },
     {
         "rule_id": "DB_001",
         "section": "Network & Connectivity",
-        "name": "Instancia RDS con acceso público",
+        "name": "RDS instance with public access",
         "severity": SEVERITY["HIGH"],
-        "description": "Se ha detectado una instancia de base de datos RDS que está configurada para ser accesible públicamente desde Internet. Esto expone la base de datos a ataques directos, como intentos de fuerza bruta, inyección de SQL o explotación de vulnerabilidades, y aumenta significativamente el riesgo de una brecha de datos.",
-        "remediation": "Navega a la consola de RDS, selecciona la instancia afectada y haz clic en 'Modificar'. En la sección de 'Conectividad', cambia la opción 'Acceso público' de 'Sí' a 'No'. Asegúrate de que tus recursos dentro de la VPC (como instancias EC2 o funciones Lambda) tengan la conectividad de red necesaria para acceder a la base de datos de forma privada.",
+        "description": "An RDS database instance has been detected that is configured to be publicly accessible from the Internet. This exposes the database to direct attacks, such as brute-force attempts, SQL injection, or vulnerability exploitation, and significantly increases the risk of a data breach.",
+        "remediation": "Navigate to the RDS console, select the affected instance, and click 'Modify'. In the 'Connectivity' section, change the 'Public access' option from 'Yes' to 'No'. Ensure that your resources within the VPC (such as EC2 instances or Lambda functions) have the necessary network connectivity to access the database privately.",
         "check_function": check_rds_publicly_accessible
     },
     {
         "rule_id": "EXPOSURE_001",
         "section": "Internet Exposure",
-        "name": "Balanceador de Carga con Política TLS obsoleta",
+        "name": "Load Balancer with outdated TLS Policy",
         "severity": SEVERITY["HIGH"],
-        "description": "Se ha detectado un balanceador de carga (ALB/NLB) público cuyo listener HTTPS/TLS permite el uso de versiones de TLS obsoletas (TLS 1.0 o TLS 1.1). Estos protocolos tienen vulnerabilidades conocidas (como POODLE y BEAST) y no soportan los algoritmos de cifrado modernos, lo que expone el tráfico a posibles ataques de interceptación y descifrado.",
-        "remediation": "Navega a la consola de EC2 -> Balanceadores de carga. Selecciona el listener afectado y edita su configuración para asignarle una política de seguridad moderna que exija como mínimo TLSv1.2, como 'ELBSecurityPolicy-TLS-1-2-2017-01' o una posterior.",
+        "description": "A public load balancer (ALB/NLB) has been detected whose HTTPS/TLS listener allows the use of outdated TLS versions (TLS 1.0 or TLS 1.1). These protocols have known vulnerabilities (such as POODLE and BEAST) and do not support modern encryption algorithms, exposing traffic to potential interception and decryption attacks.",
+        "remediation": "Navigate to the EC2 console -> Load Balancers. Select the affected listener and edit its configuration to assign a modern security policy that requires at least TLSv1.2, such as 'ELBSecurityPolicy-TLS-1-2-2017-01' or a later version.",
         "check_function": check_alb_outdated_tls_policy
     },
     {
         "rule_id": "ACM_001",
         "section": "Security Services",
-        "name": "Certificado de ACM expirado detectado",
+        "name": "Expired ACM certificate detected",
         "severity": SEVERITY["HIGH"],
-        "description": "Se ha detectado un certificado gestionado por AWS Certificate Manager (ACM) que ha expirado. Los certificados expirados provocan errores de confianza en los navegadores y pueden interrumpir el servicio para las aplicaciones que los utilizan.",
-        "remediation": "Navega a la consola de ACM, localiza el certificado afectado por su nombre de dominio y procede a renovarlo. Si el certificado ya no está en uso, elimínalo para evitar alertas.",
+        "description": "A certificate managed by AWS Certificate Manager (ACM) has been detected that has expired. Expired certificates cause trust errors in browsers and can disrupt service for applications that use them.",
+        "remediation": "Navigate to the ACM console, locate the affected certificate by its domain name, and proceed to renew it. If the certificate is no longer in use, delete it to avoid alerts.",
         "check_function": check_acm_expired_certificates
     }
 ]

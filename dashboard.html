@@ -170,8 +170,8 @@
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
                         <div><label for="access-key-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Access Key ID</label><input type="text" id="access-key-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="AKIA..."></div>
                         <div><label for="secret-key-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Secret Access Key</label><input type="password" id="secret-key-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="••••••••••••••••"></div>
-                        <div><label for="session-token-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Session Token (Opcional)</label><input type="password" id="session-token-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Token de sesión si es necesario"></div>
-                        <div class="flex items-center"><div class="flex items-center space-x-2"><button id="run-analysis-button" class="w-full bg-[#eb3496] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"><span id="button-text">Analizar Cuenta</span><div id="loading-spinner" class="spinner hidden"></div></button><button id="import-results-button" title="Importar resultados desde JSON" class="w-auto bg-gray-600 text-white p-2.5 rounded-lg hover:bg-gray-700 transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload w-5 h-5" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/></svg></button><input type="file" id="json-file-input" class="hidden" accept="application/json"><button id="export-results-button" title="Exportar resultados a JSON" class="w-auto bg-[#204071] text-white p-2.5 rounded-lg hover:bg-[#1a335a] transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download w-5 h-5" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg></button></div></div>
+                        <div><label for="session-token-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Session Token (Optional)</label><input type="password" id="session-token-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Token de sesión si es necesario"></div>
+                        <div class="flex items-center"><div class="flex items-center space-x-2"><button id="run-analysis-button" class="w-full bg-[#eb3496] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"><span id="button-text">Scan Account</span><div id="loading-spinner" class="spinner hidden"></div></button><button id="import-results-button" title="Importar resultados desde JSON" class="w-auto bg-gray-600 text-white p-2.5 rounded-lg hover:bg-gray-700 transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload w-5 h-5" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/></svg></button><input type="file" id="json-file-input" class="hidden" accept="application/json"><button id="export-results-button" title="Exportar resultados a JSON" class="w-auto bg-[#204071] text-white p-2.5 rounded-lg hover:bg-[#1a335a] transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download w-5 h-5" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg></button></div></div>
                     </div>
                     <div id="error-message" class="text-red-600 text-sm mt-2 font-medium hidden"></div>
                 </div>
@@ -260,7 +260,7 @@
             if (!accessKey || !secretKey) { const msg = 'Por favor, introduce el Access Key ID y el Secret Access Key.'; errorMessageDiv.textContent = msg; errorMessageDiv.classList.remove('hidden'); log(msg, 'error'); return; }
             const payload = { access_key: accessKey, secret_key: secretKey };
             if (sessionToken) { payload.session_token = sessionToken; log('Se ha detectado un Session Token.', 'info'); }
-            runAnalysisBtn.disabled = true; loadingSpinner.classList.remove('hidden'); buttonText.textContent = 'Analizando...'; errorMessageDiv.classList.add('hidden');
+            runAnalysisBtn.disabled = true; loadingSpinner.classList.remove('hidden'); buttonText.textContent = 'Scanning...'; errorMessageDiv.classList.add('hidden');
             // ... (toda la lógica de las llamadas a la API es igual)
             try {
                 log('Llamando a las APIs de AWS...', 'info');
@@ -309,7 +309,7 @@
             } finally {
                 runAnalysisBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
-                buttonText.textContent = 'Analizar Cuenta';
+                buttonText.textContent = 'Scan Account';
             }
         };
 
@@ -341,7 +341,7 @@
         };
         
         
-        const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><h3 class="mt-2 text-lg font-medium text-[#204071]">Bienvenido a AudiThor</h3><p class="mt-1 text-sm text-gray-500">Introduce credenciales y haz clic en "Analizar".</p></div>`;
+        const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><h3 class="mt-2 text-lg font-medium text-[#204071]">Welcome to AudiThor</h3><p class="mt-1 text-sm text-gray-500">Enter your credentials and click "Scan Account"</p></div>`;
         const createStatusBadge = (statusText) => { if (!statusText) { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>`; } const lowerStatus = statusText.toLowerCase(); if (lowerStatus === 'habilitado' || lowerStatus === 'enabled' || lowerStatus === 'running' || lowerStatus === 'active') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${statusText}</span>`; } if (lowerStatus === 'deshabilitado' || lowerStatus === 'suspendido' || lowerStatus.includes('error') || lowerStatus === 'not_available' || lowerStatus === 'stopped' || lowerStatus === 'terminated' || lowerStatus === 'shutting-down' || lowerStatus === 'failed') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${statusText}</span>`; } if (lowerStatus === 'pending' || lowerStatus === 'enabling' || lowerStatus === 'stopping') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${statusText}</span>`; } return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${statusText}</span>`; };
         const createAlarmStateBadge = (state) => { if (state === 'ALARM') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${state}</span>`; if (state === 'OK') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${state}</span>`; return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${state}</span>`; };
 
@@ -358,14 +358,14 @@
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="iam-tabs">
-                        <a href="#" data-tab="resumen-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
-                        <a href="#" data-tab="usuarios-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Usuarios</a>
-                        <a href="#" data-tab="grupos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Grupos</a>
+                        <a href="#" data-tab="resumen-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
+                        <a href="#" data-tab="usuarios-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Users</a>
+                        <a href="#" data-tab="grupos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Groups</a>
                         <a href="#" data-tab="roles-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Roles</a>
-                        <a href="#" data-tab="politicas-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Políticas de Contraseñas</a>
-                        <a href="#" data-tab="detalle-permisos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Detalle de Permisos</a>
-                        <a href="#" data-tab="critical-perms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Usuarios con Permisos Críticos</a>
-                        <a href="#" data-tab="federation-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Federación</a>
+                        <a href="#" data-tab="politicas-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Password Policies</a>
+                        <a href="#" data-tab="detalle-permisos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Permission Details</a>
+                        <a href="#" data-tab="critical-perms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Users with Critical Permissions</a>
+                        <a href="#" data-tab="federation-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Federation</a>
                         <a href="#" data-tab="securityhub-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub</a>
                     </nav>
                 </div>
@@ -850,7 +850,7 @@
             const securityHubFindings = securityHubApiData.results.findings.exposureFindings;
 
             // 2. Construimos el HTML para las pestañas de navegación
-            let tabsHtml = `<a href="#" data-tab="exposure-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>`;
+            let tabsHtml = `<a href="#" data-tab="exposure-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>`;
             
             // CAMBIO CLAVE 2: Iteramos sobre nuestra lista fija de servicios, no sobre las claves del resultado.
             allExposureServices.forEach(service => {
@@ -1171,7 +1171,7 @@
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="waf-tabs">
-                        <a href="#" data-tab="waf-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
+                        <a href="#" data-tab="waf-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
                         <a href="#" data-tab="waf-acls-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Web ACLs (${acls.length})</a>
                         <a href="#" data-tab="waf-ipsets-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">IP Sets (${ip_sets.length})</a>
                         <a href="#" data-tab="waf-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${wafFindings.length})</a>
@@ -1231,7 +1231,7 @@
             // Extraemos todas las regiones únicas de los trails para usarlas en los filtros
             const allRegions = allAvailableRegions;
 
-            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">CloudTrail Analysis</h2><p class="text-sm text-gray-500">${cloudtrailApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudtrail-tabs"><a href="#" data-tab="ct-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a><a href="#" data-tab="ct-trails-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Trails (${trails.length})</a><a href="#" data-tab="ct-events-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Eventos (${events.length})</a><a href="#" data-tab="ct-lookup-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Buscador de logs</a><a href="#" data-tab="ct-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudtrailFindings.length})</a></nav></div><div id="cloudtrail-tab-content-container"><div id="ct-summary-content" class="cloudtrail-tab-content">${createCloudtrailSummaryCardsHtml()}</div><div id="ct-trails-content" class="cloudtrail-tab-content hidden">${renderCloudtrailTrailsView(trails)}</div><div id="ct-events-content" class="cloudtrail-tab-content hidden">${renderCloudtrailEventsTable(events)}</div><div id="ct-lookup-content" class="cloudtrail-tab-content hidden"></div><div id="ct-sh-content" class="cloudtrail-tab-content hidden">${createCloudtrailSecurityHubHtml()}</div></div>`;
+            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">CloudTrail Analysis</h2><p class="text-sm text-gray-500">${cloudtrailApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudtrail-tabs"><a href="#" data-tab="ct-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="ct-trails-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Trails (${trails.length})</a><a href="#" data-tab="ct-events-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Events (${events.length})</a><a href="#" data-tab="ct-lookup-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Log Finder</a><a href="#" data-tab="ct-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudtrailFindings.length})</a></nav></div><div id="cloudtrail-tab-content-container"><div id="ct-summary-content" class="cloudtrail-tab-content">${createCloudtrailSummaryCardsHtml()}</div><div id="ct-trails-content" class="cloudtrail-tab-content hidden">${renderCloudtrailTrailsView(trails)}</div><div id="ct-events-content" class="cloudtrail-tab-content hidden">${renderCloudtrailEventsTable(events)}</div><div id="ct-lookup-content" class="cloudtrail-tab-content hidden"></div><div id="ct-sh-content" class="cloudtrail-tab-content hidden">${createCloudtrailSecurityHubHtml()}</div></div>`;
             
             updateCloudtrailSummaryCards(trails, events); 
             renderSecurityHubFindings(cloudtrailFindings, 'sh-cloudtrail-findings-container', 'No se encontraron findings de Security Hub para CloudTrail.');
@@ -1461,7 +1461,7 @@
         const buildCloudwatchView = () => {
             const container = document.getElementById('cloudwatch-view'); if (!cloudwatchApiData || !securityHubApiData) return;
             const { alarms, topics } = cloudwatchApiData.results; const cloudwatchFindings = securityHubApiData.results.findings.cloudwatchFindings;
-            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">Cloudwatch & SNS</h2><p class="text-sm text-gray-500">${cloudwatchApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudwatch-tabs"><a href="#" data-tab="cw-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a><a href="#" data-tab="cw-alarms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Alarmas (${alarms.length})</a><a href="#" data-tab="cw-topics-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Topics SNS (${topics.length})</a><a href="#" data-tab="cw-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudwatchFindings.length})</a></nav></div><div id="cloudwatch-tab-content-container"><div id="cw-summary-content" class="cloudwatch-tab-content">${createCloudwatchSummaryCardsHtml()}</div><div id="cw-alarms-content" class="cloudwatch-tab-content hidden">${renderCloudwatchAlarmsTable(alarms)}</div><div id="cw-topics-content" class="cloudwatch-tab-content hidden">${renderCloudwatchTopicsTable(topics)}</div><div id="cw-sh-content" class="cloudwatch-tab-content hidden">${createCloudwatchSecurityHubHtml()}</div></div>`;
+            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">Cloudwatch & SNS</h2><p class="text-sm text-gray-500">${cloudwatchApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudwatch-tabs"><a href="#" data-tab="cw-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="cw-alarms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Alarms (${alarms.length})</a><a href="#" data-tab="cw-topics-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Topics SNS (${topics.length})</a><a href="#" data-tab="cw-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudwatchFindings.length})</a></nav></div><div id="cloudwatch-tab-content-container"><div id="cw-summary-content" class="cloudwatch-tab-content">${createCloudwatchSummaryCardsHtml()}</div><div id="cw-alarms-content" class="cloudwatch-tab-content hidden">${renderCloudwatchAlarmsTable(alarms)}</div><div id="cw-topics-content" class="cloudwatch-tab-content hidden">${renderCloudwatchTopicsTable(topics)}</div><div id="cw-sh-content" class="cloudwatch-tab-content hidden">${createCloudwatchSecurityHubHtml()}</div></div>`;
             updateCloudwatchSummaryCards(alarms, topics, cloudwatchFindings); renderSecurityHubFindings(cloudwatchFindings, 'sh-cloudwatch-findings-container', 'No se encontraron findings de Security Hub para CloudWatch.');
             const tabsNav = container.querySelector('#cloudwatch-tabs'); if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.cloudwatch-tab-content'));
         };
@@ -1822,7 +1822,7 @@
                 <div id="inspector-tab-content-container-results">
                     <div id="inspector-findings-content" class="inspector-tab-content">
                         <div id="inspector-filter-controls" class="flex flex-wrap items-center gap-2 mb-4">
-                            <span class="text-sm font-medium text-gray-700 mr-2">Filtrar por severidad:</span>
+                            <span class="text-sm font-medium text-gray-700 mr-2">Filter by Severity:</span>
                             <button data-severity="ALL" class="inspector-filter-btn px-3 py-1 text-sm font-semibold rounded-md shadow-sm bg-[#eb3496] text-white">Todos</button>
                             <button data-severity="CRITICAL" class="inspector-filter-btn px-3 py-1 text-sm font-semibold rounded-md shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50">Critical</button>
                             <button data-severity="HIGH" class="inspector-filter-btn px-3 py-1 text-sm font-semibold rounded-md shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50">High</button>
@@ -1879,8 +1879,8 @@
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="acm-tabs">
-                        <a href="#" data-tab="acm-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
-                        <a href="#" data-tab="acm-certificates-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Certificados (${certificates.length})</a>
+                        <a href="#" data-tab="acm-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
+                        <a href="#" data-tab="acm-certificates-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Digital Certificates (${certificates.length})</a>
                         <a href="#" data-tab="acm-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${acmSecurityHubFindings.length})</a>
                     </nav>
                 </div>
@@ -1983,7 +1983,7 @@
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="compute-tabs">
-                        <a href="#" data-tab="compute-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
+                        <a href="#" data-tab="compute-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
                         <a href="#" data-tab="compute-ec2-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">EC2 (${ec2_instances.length})</a>
                         <a href="#" data-tab="compute-lambda-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Lambda (${lambda_functions.length})</a>
                         <a href="#" data-tab="compute-eks-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">EKS (${eks_clusters.length})</a>
@@ -2255,7 +2255,7 @@
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="network-policies-tabs">
-                        <a href="#" data-tab="np-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
+                        <a href="#" data-tab="np-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
                         <a href="#" data-tab="np-vpcs-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">VPCs (${vpcs.length})</a>
                         <a href="#" data-tab="np-acls-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Network ACLs (${acls.length})</a>
                         <a href="#" data-tab="np-sgs-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Groups (${security_groups.length})</a>
@@ -2864,9 +2864,9 @@
                     <div id="config-sh-results-view">
                         <div class="border-b border-gray-200 mb-6">
                             <nav class="-mb-px flex flex-wrap space-x-6" id="config-sh-tabs">
-                                <a href="#" data-tab="config-sh-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
-                                <a href="#" data-tab="config-sh-status-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Estado de Servicios</a>
-                                <a href="#" data-tab="config-sh-compliance-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Estado de Cumplimiento</a>
+                                <a href="#" data-tab="config-sh-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
+                                <a href="#" data-tab="config-sh-status-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Service Status</a>
+                                <a href="#" data-tab="config-sh-compliance-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Compliance Status</a>
                             </nav>
                         </div>
                         <div id="config-sh-tab-content-container">
@@ -3480,7 +3480,7 @@
                 <div id="pg-tracer-content" class="playground-tab-content">
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                         <h3 class="font-bold text-lg mb-4 text-[#204071]">Analizador de Conectividad entre recursos</h3>
-                        <p class="text-sm text-gray-600 mb-4">Introduce los ARN de las instancias de origen y destino (puedes copiarlos desde la sección de Compute -> EC2) para verificar si existe una ruta de red permitida entre ellas.</p>
+                        <p class="text-sm text-gray-600 mb-4">Enter the ARNs of the source and destination instances (you can copy them from the Compute -> EC2 section) to verify whether a network route is allowed between them..</p>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label for="pg-source-arn" class="block text-sm font-medium text-gray-700 mb-1">ARN de Origen</label>
@@ -3724,8 +3724,8 @@
                 
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex space-x-6" id="healthy-status-tabs">
-                        <a href="#" data-tab="hs-findings-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Hallazgos</a>
-                        <a href="#" data-tab="hs-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Generar Informe</a>
+                        <a href="#" data-tab="hs-findings-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Findings</a>
+                        <a href="#" data-tab="hs-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Generate Report</a>
                     </nav>
                 </div>
 
@@ -3914,8 +3914,8 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="kms-tabs">
-                        <a href="#" data-tab="kms-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
-                        <a href="#" data-tab="kms-keys-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Claves KMS (${keys.length})</a>
+                        <a href="#" data-tab="kms-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
+                        <a href="#" data-tab="kms-keys-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">KMS Keys (${keys.length})</a>
                     </nav>
                 </div>
                 <div id="kms-tab-content-container">
@@ -4052,7 +4052,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="databases-tabs">
-                        <a href="#" data-tab="db-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Resumen</a>
+                        <a href="#" data-tab="db-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
                         <a href="#" data-tab="db-rds-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">RDS Instances (${rds_instances.length})</a>
                         <a href="#" data-tab="db-aurora-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Aurora Clusters (${aurora_clusters.length})</a>
                         <a href="#" data-tab="db-dynamodb-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">DynamoDB Tables (${dynamodb_tables.length})</a>
@@ -4479,7 +4479,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                             <details class="group">
                                 <summary class="font-semibold text-gray-800 text-sm cursor-pointer list-none flex items-center">
                                     <svg class="w-4 h-4 mr-2 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    Recursos Afectados (${resourcesCount}):
+                                    Affected Resources (${resourcesCount}):
                                 </summary>
                                 <ul class="list-disc list-inside text-sm text-gray-700 bg-gray-50 p-2 rounded-md mt-2 font-mono ml-6">
                                     ${affectedResourcesHtml}
@@ -4487,7 +4487,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                             </details>
                         </div>
                         <div class="mt-4">
-                            <h4 class="font-semibold text-gray-800 text-sm">Solución Recomendada:</h4>
+                            <h4 class="font-semibold text-gray-800 text-sm">Recommended Solution:</h4>
                             <p class="text-gray-600 text-sm">${finding.remediation}</p>
                         </div>
                     </div>
