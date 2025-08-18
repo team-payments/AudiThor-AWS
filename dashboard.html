@@ -319,6 +319,7 @@
             try {
                 log('Renderizando todas las vistas...', 'info');
                 buildHealthyStatusView();
+                buildGeminiReportView();
                 buildIamView();
                 buildExposureView();
                 buildGuarddutyView();
@@ -3712,31 +3713,189 @@
             const container = document.getElementById('healthy-status-view');
             if (!container) return;
 
-            // --- ▼▼▼ CÓDIGO AÑADIDO QUE SOLUCIONA EL BUG ▼▼▼ ---
-            // Este HTML reconstruye la estructura interna de la vista, incluyendo
-            // el div "healthy-status-container" que se había borrado.
+            // Nueva estructura con pestañas
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Healthy Status</h2>
-                        <p class="text-sm text-gray-500">Resumen de hallazgos de seguridad encontrados.</p>
-                        <div class="mt-4">
-                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filtrar por Región:</label>
-                            <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md">
-                                </select>
-                        </div>
+                        <p class="text-sm text-gray-500">Resumen de hallazgos y generación de informes.</p>
                     </div>
                 </header>
-                <div id="healthy-status-container">
-                    <div class="text-center py-16 bg-white rounded-lg">
-                        <h3 class="mt-2 text-lg font-medium text-[#204071]">Esperando análisis</h3>
-                        <p class="mt-1 text-sm text-gray-500">Los hallazgos de estado aparecerán aquí después de analizar una cuenta.</p>
+                
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="-mb-px flex space-x-6" id="healthy-status-tabs">
+                        <a href="#" data-tab="hs-findings-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Hallazgos</a>
+                        <a href="#" data-tab="hs-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Generar Informe</a>
+                    </nav>
+                </div>
+
+                <div id="healthy-status-tab-content-container">
+                    <div id="hs-findings-content" class="healthy-status-tab-content">
+                        <div class="mb-4">
+                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                            <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md"></select>
+                        </div>
+                        <div id="healthy-status-container">
+                            <div class="text-center py-16 bg-white rounded-lg">
+                                <h3 class="mt-2 text-lg font-medium text-[#204071]">Esperando análisis</h3>
+                                <p class="mt-1 text-sm text-gray-500">Los hallazgos de estado aparecerán aquí después de analizar una cuenta.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="hs-report-content" class="healthy-status-tab-content hidden">
+                        </div>
+                </div>
+            `;
+
+            // Añadir el listener para que el cambio entre pestañas funcione
+            const tabsNav = container.querySelector('#healthy-status-tabs');
+            if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.healthy-status-tab-content'));
+        };
+
+        const buildGeminiReportView = () => {
+            const container = document.getElementById('hs-report-content');
+            if (!container) return;
+
+            const defaultPrompt = `Actúa como un consultor de ciberseguridad senior de la empresa [Nombre de tu Empresa]. El destinatario de este correo es nuestro cliente, una persona con un rol de liderazgo técnico (CTO, Tech Lead).
+
+Tu tarea es redactar un borrador de correo electrónico claro y conciso para notificar al cliente sobre los hallazgos de seguridad identificados en su cuenta de AWS.
+
+El correo debe tener la siguiente estructura:
+
+**Asunto:** Resumen Ejecutivo: Hallazgos de Seguridad en su Cuenta de AWS
+
+**Cuerpo del Correo:**
+
+* **Saludo:** Un saludo profesional (ej: "Estimado/a [Nombre del Cliente],").
+* **Introducción (1 párrafo):** Informa brevemente que se ha completado una revisión de seguridad y que a continuación se presentan los resultados clave.
+* **Resumen de Hallazgos:** Presenta una lista de viñetas (bullet points). Para **cada tipo de hallazgo** identificado en el JSON que te proporciono, incluye una viñeta con:
+    * El **título del hallazgo**.
+    * Entre paréntesis, su **severidad**.
+    * Una **breve descripción (1-2 frases)** del riesgo de negocio asociado. **No incluyas la lista detallada de recursos afectados**, solo el resumen del problema.
+* **Recomendación Principal:** Basado en los hallazgos, ofrece una recomendación general y priorizada (ej: "Recomendamos centrar los esfuerzos iniciales en solucionar los hallazgos de severidad Crítica y Alta, especialmente los relacionados con la gestión de identidades y accesos.").
+* **Próximos Pasos:** Propón agendar una reunión para revisar el informe técnico completo y coordinar el plan de remediación.
+* **Cierre:** Un cierre cordial y profesional.
+
+El objetivo es que el cliente entienda rápidamente qué problemas existen y cuál es su impacto, sin abrumarlo con detalles técnicos en el primer contacto. Asegúrate de que **todos los tipos de hallazgos** estén listados.
+
+A continuación te proporciono los hallazgos en formato JSON:`;
+
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="font-bold text-lg mb-1 text-[#204071]">Generar Informe con IA (Gemini)</h3>
+                    <p class="text-sm text-gray-500 mb-4">Esta herramienta utilizará los hallazgos encontrados para generar un borrador de informe ejecutivo.</p>
+                    
+                    <div class="mb-4">
+                        <label for="gemini-api-key" class="block text-sm font-medium text-gray-700 mb-1">Tu API Key de Google AI Studio (Gemini)</label>
+                        <input type="password" id="gemini-api-key" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Pega aquí tu clave de API">
+                        <p class="text-xs text-gray-500 mt-1">Tu clave se usa directamente desde tu navegador para llamar a la API de Google y no se almacena en ningún sitio.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="gemini-region-filter" class="block text-sm font-medium text-gray-700 mb-1">Filtrar Hallazgos por Región (Opcional)</label>
+                        <select id="gemini-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
+                            <option value="all">Todas las Regiones</option>
+                            </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="gemini-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt para Gemini (Editable)</label>
+                        <textarea id="gemini-prompt" rows="10" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono">${defaultPrompt}</textarea>
+                    </div>
+
+                    <button id="generate-gemini-report-btn" class="bg-[#eb3496] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition flex items-center justify-center space-x-2">
+                        <span id="gemini-btn-text">Generar Borrador de Correo</span>
+                        <div id="gemini-spinner" class="spinner hidden"></div>
+                    </button>
+
+                    <div id="gemini-report-output" class="mt-6 hidden">
+                         <h4 class="font-bold text-lg mb-2 text-[#204071]">Borrador del Correo:</h4>
+                         <div id="gemini-report-content" class="bg-slate-50 p-4 rounded-lg border text-sm whitespace-pre-wrap"></div>
                     </div>
                 </div>
             `;
-            // --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
         };
-        
+
+        const generateGeminiReport = async () => {
+            const apiKey = document.getElementById('gemini-api-key').value.trim();
+            const userPrompt = document.getElementById('gemini-prompt').value.trim();
+            const reportOutputContainer = document.getElementById('gemini-report-output');
+            const reportContentDiv = document.getElementById('gemini-report-content');
+            const runBtn = document.getElementById('generate-gemini-report-btn');
+            const btnText = document.getElementById('gemini-btn-text');
+            const spinner = document.getElementById('gemini-spinner');
+
+            if (!apiKey) {
+                alert('Por favor, introduce tu API Key de Gemini.');
+                return;
+            }
+            if (lastHealthyStatusFindings.length === 0) {
+                alert('No hay hallazgos para generar un informe. Por favor, ejecuta un análisis primero.');
+                return;
+            }
+
+            runBtn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.textContent = 'Generando...';
+            reportOutputContainer.classList.add('hidden');
+            reportContentDiv.textContent = 'Contactando con la API de Gemini...';
+            log('Generando informe con Gemini...', 'info');
+
+            // --- INICIO DE LA LÓGICA DE FILTRADO ---
+            const selectedRegion = document.getElementById('gemini-region-filter').value;
+            let findingsForReport = lastHealthyStatusFindings;
+
+            if (selectedRegion !== 'all') {
+                log(`Filtrando hallazgos para la región: ${selectedRegion}`, 'info');
+                findingsForReport = lastHealthyStatusFindings.map(finding => {
+                    // Mantenemos solo los recursos de la región seleccionada (o los globales)
+                    const affectedInRegion = finding.affected_resources.filter(res => res.region === selectedRegion || res.region === 'Global');
+                    
+                    // Si después del filtro, el hallazgo todavía tiene recursos, lo incluimos
+                    if (affectedInRegion.length > 0) {
+                        return { ...finding, affected_resources: affectedInRegion };
+                    }
+                    return null;
+                }).filter(Boolean); // filter(Boolean) elimina las entradas nulas
+            }
+            // --- FIN DE LA LÓGICA DE FILTRADO ---
+
+            const findingsJson = JSON.stringify(findingsForReport, null, 2);
+            const fullPrompt = `${userPrompt}\n\n${findingsJson}`;
+            const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: fullPrompt }] }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error de la API de Gemini: ${errorData.error.message}`);
+                }
+
+                const data = await response.json();
+                const reportText = data.candidates[0].content.parts[0].text;
+                
+                reportContentDiv.textContent = reportText;
+                reportOutputContainer.classList.remove('hidden');
+                log('Informe generado por Gemini correctamente.', 'success');
+
+            } catch (error) {
+                reportContentDiv.textContent = `Error al generar el informe:\n${error.message}`;
+                reportOutputContainer.classList.remove('hidden');
+                log(`Error en la llamada a Gemini: ${error.message}`, 'error');
+            } finally {
+                runBtn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.textContent = 'Generar Borrador de Correo';
+            }
+        };
 
         // --- SECCIÓN DE KMS
         const buildKmsView = () => {
@@ -4374,6 +4533,7 @@
                 
                 populateHealthyStatusFilter();
                 displayHealthyStatus('all');
+                document.getElementById('generate-gemini-report-btn').addEventListener('click', generateGeminiReport);
 
             } catch (error) {
                 log(`Error al generar el Healthy Status: ${error.message}`, 'error');
@@ -4384,26 +4544,31 @@
             }
         };
 
-
         const populateHealthyStatusFilter = () => {
             const filterSelect = document.getElementById('healthy-status-region-filter');
-            if (!filterSelect || !allAvailableRegions) return;
+            const geminiFilterSelect = document.getElementById('gemini-region-filter'); // Nuevo selector
 
-            // Limpiamos opciones anteriores (excepto la de "Todas")
+            if (!filterSelect || !geminiFilterSelect || !allAvailableRegions) return;
+
+            // Limpiamos opciones anteriores
             filterSelect.innerHTML = '<option value="all">Todas las Regiones</option>';
+            geminiFilterSelect.innerHTML = '<option value="all">Todas las Regiones</option>';
 
             allAvailableRegions.sort().forEach(region => {
                 const option = document.createElement('option');
                 option.value = region;
                 option.textContent = region;
-                filterSelect.appendChild(option);
+
+                filterSelect.appendChild(option.cloneNode(true)); // Añadimos al filtro de hallazgos
+                geminiFilterSelect.appendChild(option);             // Añadimos al nuevo filtro de Gemini
             });
 
-            // Añadimos el listener para que se ejecute al cambiar de opción
+            // Añadimos el listener para el filtro de hallazgos
             filterSelect.addEventListener('change', (e) => {
                 displayHealthyStatus(e.target.value);
             });
         };
+
 
         document.addEventListener('DOMContentLoaded', () => {
             // Selectores del DOM (todos juntos)
