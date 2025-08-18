@@ -378,6 +378,21 @@ def check_acm_expired_certificates(audit_data):
             
     return failing_resources
 
+def check_cloudtrail_kms_encryption_disabled(audit_data):
+    """
+    Verifica si los trails de CloudTrail tienen el cifrado con KMS habilitado.
+    """
+    failing_resources = []
+    # Obtenemos la lista de trails del análisis
+    trails = audit_data.get("cloudtrail", {}).get("trails", [])
+
+    for trail in trails:
+        # La ausencia de una KmsKeyId indica que el cifrado KMS no está activado
+        if not trail.get("KmsKeyId"):
+            # Añadimos el nombre del trail a la lista de recursos que fallan la comprobación
+            failing_resources.append(trail.get("Name", trail.get("TrailARN")))
+            
+    return failing_resources
 
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas
@@ -544,6 +559,15 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado una región de AWS que no tiene definido ningún trail de CloudTrail. Tener un registro de auditoría de todas las llamadas a la API en cada región es una práctica de seguridad fundamental para la investigación de incidentes y el monitoreo de actividades.",
         "remediation": "Crea un trail de CloudTrail en la región afectada. Se recomienda encarecidamente crear un trail multi-región desde la región principal para consolidar los logs de todas las regiones en un solo bucket de S3.",
         "check_function": check_no_cloudtrail_in_region
+    },
+    {
+        "rule_id": "CLOUDTRAIL_002",
+        "section": "Logging & Monitoring",
+        "name": "CloudTrail trail sin cifrado KMS habilitado",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "Se ha detectado un trail de CloudTrail que no utiliza el cifrado de AWS KMS para proteger los ficheros de log. Cifrar los logs en reposo es una práctica de seguridad fundamental para proteger la información de auditoría sensible contra el acceso no autorizado en caso de que el bucket S3 se vea comprometido.",
+        "remediation": "Navega a la consola de CloudTrail, selecciona el trail afectado y edita su configuración. En la sección de almacenamiento, habilita el cifrado de los datos del log con AWS KMS, ya sea utilizando una clave gestionada por AWS o una clave gestionada por el cliente (CMK).",
+        "check_function": check_cloudtrail_kms_encryption_disabled
     },
     {
         "rule_id": "CONNECTIVITY_001",
