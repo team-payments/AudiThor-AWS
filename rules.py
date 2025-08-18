@@ -409,6 +409,33 @@ def check_cloudtrail_log_file_validation_disabled(audit_data):
             
     return failing_resources
 
+def check_rds_publicly_accessible(audit_data):
+    """
+    Verifica si existen instancias de RDS configuradas con acceso público.
+    """
+    # --- INICIO DEL CÓDIGO DE DEPURACIÓN ---
+    import json
+    print("\n--- [DEBUG] Entrando a la regla DB_001: check_rds_publicly_accessible ---")
+    databases_data = audit_data.get("databases", {})
+    print("Datos recibidos en la clave 'databases':")
+    print(json.dumps(databases_data, indent=2))
+    print("--- [DEBUG] Fin de la regla DB_001 ---\n")
+    # --- FIN DEL CÓDIGO DE DEPURACIÓN ---
+
+    failing_resources = []
+    # Navegamos de forma segura hasta la lista de instancias RDS
+    rds_instances = audit_data.get("databases", {}).get("rds_instances", [])
+
+    for instance in rds_instances:
+        # La clave 'PubliclyAccessible' será True si la opción está activada
+        if instance.get("PubliclyAccessible"):
+            failing_resources.append({
+                "resource": instance.get("DBInstanceIdentifier", "ID Desconocido"),
+                "region": instance.get("Region", "Región Desconocida")
+            })
+            
+    return failing_resources
+
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas
 # ------------------------------------------------------------------------------
@@ -601,6 +628,15 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado el uso de componentes de red avanzados como VPC Peering, Transit Gateway, VPNs o VPC Endpoints. Estos servicios indican una arquitectura de red compleja que interconecta diferentes entornos. Es una buena práctica realizar pruebas de segmentación de red para asegurar que el aislamiento entre VPCs y redes on-premises es el esperado y no existen rutas de comunicación no deseadas.",
         "remediation": "Planifica y ejecuta un test de segmentación de red. Verifica que solo los flujos de tráfico explícitamente permitidos son posibles entre los diferentes segmentos de red (ej: desarrollo, pre-producción, producción) y con las redes corporativas.",
         "check_function": check_network_connectivity_exists
+    },
+    {
+        "rule_id": "DB_001",
+        "section": "Network & Connectivity",
+        "name": "Instancia RDS con acceso público",
+        "severity": SEVERITY["HIGH"],
+        "description": "Se ha detectado una instancia de base de datos RDS que está configurada para ser accesible públicamente desde Internet. Esto expone la base de datos a ataques directos, como intentos de fuerza bruta, inyección de SQL o explotación de vulnerabilidades, y aumenta significativamente el riesgo de una brecha de datos.",
+        "remediation": "Navega a la consola de RDS, selecciona la instancia afectada y haz clic en 'Modificar'. En la sección de 'Conectividad', cambia la opción 'Acceso público' de 'Sí' a 'No'. Asegúrate de que tus recursos dentro de la VPC (como instancias EC2 o funciones Lambda) tengan la conectividad de red necesaria para acceder a la base de datos de forma privada.",
+        "check_function": check_rds_publicly_accessible
     },
     {
         "rule_id": "ACM_001",

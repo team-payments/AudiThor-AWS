@@ -76,9 +76,7 @@ def collect_identity_center_data(session):
     Recopila datos de AWS Identity Center, buscando primero la instancia en todas las regiones.
     """
     try:
-        # --- INICIO DE LA MODIFICACIÓN ---
-        
-        # OBTENEMOS TODAS LAS REGIONES DE AWS
+
         # Reutilizamos la función que ya tienes para obtener la lista de regiones.
         all_regions = get_all_aws_regions(session)
         
@@ -384,7 +382,6 @@ def check_security_hub_status_in_regions(session, regions):
             # Si la línea anterior no falla, Security Hub está habilitado
             region_status["SecurityHubEnabled"] = True
             
-            # --- INICIO DE LA NUEVA LÓGICA AÑADIDA ---
             # 1. Obtenemos los estándares habilitados (CIS, PCI, etc.)
             enabled_standards = securityhub_client.get_enabled_standards().get('StandardsSubscriptions', [])
             
@@ -440,7 +437,6 @@ def get_and_filter_security_hub_findings(session, region_statuses):
     cloudtrail_findings = [f for f in all_findings if 'cloudtrail' in f.get('Compliance', {}).get('SecurityControlId', '').lower()]
     cloudwatch_findings = [f for f in all_findings if 'cloudwatch' in f.get('Compliance', {}).get('SecurityControlId', '').lower()]
     
-    # --- INICIO DEL CÓDIGO MODIFICADO ---
     # Lista de IDs de control de Security Hub específicos para la configuración de Inspector
     # Basado en: https://docs.aws.amazon.com/es_es/securityhub/latest/userguide/inspector-controls.html
     inspector_control_ids = [
@@ -455,7 +451,6 @@ def get_and_filter_security_hub_findings(session, region_statuses):
         f for f in all_findings 
         if f.get('Compliance', {}).get('SecurityControlId') in inspector_control_ids
     ]
-    # --- FIN DEL CÓDIGO MODIFICADO ---
 
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
     for findings_list in [iam_findings, exposure_findings, waf_findings, cloudtrail_findings, cloudwatch_findings, inspector_findings]:
@@ -1032,8 +1027,6 @@ def collect_inspector_findings(session):
                     result_findings.append(finding)
         except ClientError:
             continue
-
-    # --- INICIO DE LA LÓGICA AÑADIDA ---
     # Agrupar IDs de instancias EC2 por región para una consulta eficiente
     ec2_findings_by_region = defaultdict(list)
     for f in result_findings:
@@ -1417,8 +1410,6 @@ def collect_network_policies_data(session):
                     "Region": region, "GroupId": sg.get("GroupId"), "GroupName": sg.get("GroupName"),
                     "VpcId": sg.get("VpcId"), "Description": sg.get("Description"), "Tags": tags_dict
                 })
-            
-            # --- INICIO DEL CÓDIGO AÑADIDO ---
             # Recopilar Subredes
             subnets = ec2_client.describe_subnets().get("Subnets", [])
             for subnet in subnets:
@@ -1431,8 +1422,6 @@ def collect_network_policies_data(session):
                     "AvailabilityZone": subnet.get("AvailabilityZone"),
                     "Tags": tags_dict
                 })
-            # --- FIN DEL CÓDIGO AÑADIDO ---
-
         except ClientError as e:
             if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
                 continue
@@ -1680,8 +1669,6 @@ def pg_get_rds_details(session, region, db_identifier, ec2_client):
     rds_client = session.client('rds', region_name=region)
     try:
         db = rds_client.describe_db_instances(DBInstanceIdentifier=db_identifier)['DBInstances'][0]
-
-        # --- INICIO DE LA MODIFICACIÓN: Comprobación de acceso público ---
         # Primero, verificamos si la instancia es públicamente accesible.
         if db.get('PubliclyAccessible', False):
             public_ip = "No resuelta"
@@ -1698,7 +1685,6 @@ def pg_get_rds_details(session, region, db_identifier, ec2_client):
                            "Esta herramienta solo puede analizar rutas de red privadas dentro de una VPC. "
                            "Para poder realizar el análisis, la base de datos debería tener el 'Acceso público' configurado en 'No' en la consola de AWS.")
             raise ValueError(error_message)
-        # --- FIN DE LA MODIFICACIÓN ---
 
         endpoint = db.get('Endpoint', {}).get('Address')
         if not endpoint:
