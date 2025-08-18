@@ -2155,14 +2155,11 @@ def collect_config_sh_data(session):
     for arn, data in compliance_summary_map.items():
         counted = data['passedCount'] + data['failedCount'] + data['warningCount'] + data['notAvailableCount']
         
-        # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
         # Nos aseguramos de que el resultado de la resta nunca sea menor que 0.
         data['otherCount'] = max(0, data['totalControls'] - counted)
-        # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
 
         final_summary.append(data)
 
-    # --- INICIO DE LA CORRECCIÓN ---
     # Enriquecer cada finding con el ARN del estándar correspondiente usando el mapa.
     # Esto asegura que el frontend siempre tenga el ARN para poder filtrar.
     for finding in findings:
@@ -2174,7 +2171,6 @@ def collect_config_sh_data(session):
                 finding['ProductFields'] = {}
             # Añadimos o sobreescribimos el StandardsArn para asegurar que esté presente
             finding['ProductFields']['StandardsArn'] = standard_arn
-    # --- FIN DE LA CORRECCIÓN ---
 
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
     findings.sort(key=lambda x: severity_order.get(x.get('Severity', {}).get('Label', 'INFORMATIONAL'), 99))

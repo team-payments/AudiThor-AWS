@@ -394,6 +394,21 @@ def check_cloudtrail_kms_encryption_disabled(audit_data):
             
     return failing_resources
 
+def check_cloudtrail_log_file_validation_disabled(audit_data):
+    """
+    Verifica si los trails de CloudTrail tienen la validación de integridad de logs activada.
+    """
+    failing_resources = []
+    trails = audit_data.get("cloudtrail", {}).get("trails", [])
+
+    for trail in trails:
+        # La clave 'LogFileValidationEnabled' será False si la opción no está activada.
+        if not trail.get("LogFileValidationEnabled"):
+            # Añadimos el nombre del trail que no cumple con la regla.
+            failing_resources.append(trail.get("Name", trail.get("TrailARN")))
+            
+    return failing_resources
+
 # ------------------------------------------------------------------------------
 # 3. Lista Maestra de Reglas
 # ------------------------------------------------------------------------------
@@ -568,6 +583,15 @@ RULES_TO_CHECK = [
         "description": "Se ha detectado un trail de CloudTrail que no utiliza el cifrado de AWS KMS para proteger los ficheros de log. Cifrar los logs en reposo es una práctica de seguridad fundamental para proteger la información de auditoría sensible contra el acceso no autorizado en caso de que el bucket S3 se vea comprometido.",
         "remediation": "Navega a la consola de CloudTrail, selecciona el trail afectado y edita su configuración. En la sección de almacenamiento, habilita el cifrado de los datos del log con AWS KMS, ya sea utilizando una clave gestionada por AWS o una clave gestionada por el cliente (CMK).",
         "check_function": check_cloudtrail_kms_encryption_disabled
+    },
+    {
+        "rule_id": "CLOUDTRAIL_003",
+        "section": "Logging & Monitoring",
+        "name": "Validación de integridad de logs de CloudTrail desactivada",
+        "severity": SEVERITY["HIGH"],
+        "description": "Se ha detectado un trail de CloudTrail que no tiene activada la validación de integridad de ficheros de log. Esta característica es crucial para asegurar que los logs no han sido alterados o eliminados después de su entrega al bucket S3. Sin ella, no se puede garantizar la fiabilidad de los registros de auditoría.",
+        "remediation": "Navega a la consola de CloudTrail, selecciona el trail afectado y edita su configuración. En la sección de 'Propiedades de almacenamiento', asegúrate de que la opción 'Habilitar la validación de la integridad de los archivos de log' esté activada.",
+        "check_function": check_cloudtrail_log_file_validation_disabled
     },
     {
         "rule_id": "CONNECTIVITY_001",
