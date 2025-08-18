@@ -1,7 +1,7 @@
 # ==============================================================================
 # rules.py - Motor de Reglas para AudiThor-AWS (ACTUALIZADO)
 # ==============================================================================
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # ------------------------------------------------------------------------------
 # 1. Definición de Niveles de Severidad
@@ -44,7 +44,6 @@ def check_iam_access_key_age(audit_data):
             except (ValueError, TypeError):
                 continue
     return failing_resources
-
 
 def check_password_policy_strength(audit_data):
     policy = audit_data.get("iam", {}).get("password_policy", {})
@@ -183,6 +182,41 @@ def check_inspector_platform_eol(audit_data):
             if finding.get("resources"):
                 resource_id = finding["resources"][0].get("id", "ID no encontrado")
                 failing_resources.append(resource_id)
+                
+    return failing_resources
+
+def check_inspector_old_critical_findings(audit_data):
+    """
+    Busca hallazgos de Inspector con severidad Crítica o Alta que tengan una antigüedad mayor a 30 días.
+    """
+    failing_resources = []
+    inspector_findings = audit_data.get("inspector", {}).get("findings", [])
+    
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+
+    for finding in inspector_findings:
+        severity = finding.get("severity")
+        
+        if severity in ["CRITICAL", "HIGH"]:
+            try:
+                first_observed_str = finding.get("firstObservedAt")
+                if first_observed_str:
+                    
+                    # --- LÍNEA CORREGIDA ---
+                    # Usamos strptime con el formato correcto en lugar de fromisoformat
+                    finding_date = datetime.strptime(first_observed_str, "%a, %d %b %Y %H:%M:%S %Z").replace(tzinfo=timezone.utc)
+                    
+                    if finding_date < thirty_days_ago:
+                        title = finding.get("title", "Título no disponible")
+                        resource_id = "Recurso no disponible"
+                        if finding.get("resources"):
+                            resource_id = finding["resources"][0].get("id", "ID no disponible")
+                        
+                        failing_resources.append(f"{title} (Recurso: {resource_id})")
+
+            except (ValueError, TypeError) as e:
+                print(f"[WARN] No se pudo procesar la fecha para un finding de Inspector: {e}")
+                continue
                 
     return failing_resources
 
@@ -492,6 +526,15 @@ RULES_TO_CHECK = [
         "description": "Se han detectado repositorios de ECR en una región donde el escaneo de imágenes de contenedor de Amazon Inspector no está activado. Las imágenes pueden contener vulnerabilidades en sus paquetes de sistema operativo o software, y no analizarlas representa un riesgo de seguridad significativo.",
         "remediation": "Accede a la consola de Amazon Inspector, ve a 'Configuración de la cuenta' -> 'Estado del escaneo' y asegúrate de que 'Escaneo de Amazon ECR' está activado para la región afectada.",
         "check_function": check_inspector_ecr_scanning_disabled
+    },
+    {
+        "rule_id": "INSPECTOR_005",
+        "section": "Vulnerability Management",
+        "name": "Vulnerabilidad crítica o alta sin remediar por más de 30 días",
+        "severity": SEVERITY["HIGH"],
+        "description": "Se han detectado hallazgos de Inspector con severidad 'Crítica' o 'Alta' que no han sido remediados en más de 30 días. Esto representa un riesgo de seguridad significativo y prolongado, indicando una posible brecha en el proceso de gestión de vulnerabilidades y parches.",
+        "remediation": "Prioriza y remedia inmediatamente estos hallazgos antiguos. Revisa los procesos de gestión de parches para asegurar que las vulnerabilidades de alto impacto se solucionan dentro de un plazo aceptable (SLA).",
+        "check_function": check_inspector_old_critical_findings
     },
     {
         "rule_id": "CLOUDTRAIL_001",
