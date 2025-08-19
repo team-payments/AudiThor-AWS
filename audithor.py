@@ -338,7 +338,74 @@ def collect_federation_data(session):
         "identity_center": identity_center_data
     }
 
+def collect_access_analyzer_data(session):
+    """
+    Recopila los hallazgos y un resumen de los analizadores de Access Analyzer 
+    de todas las regiones.
+    """
+    all_regions = get_all_aws_regions(session)
+    findings_results = []
+    analyzers_summary = [] # <-- 1. LISTA NUEVA para el resumen
 
+    for region in all_regions:
+        try:
+            analyzer_client = session.client("accessanalyzer", region_name=region)
+            paginator_analyzers = analyzer_client.get_paginator('list_analyzers')
+            account_analyzer_arn = None
+            
+            for page in paginator_analyzers.paginate():
+                for analyzer in page.get('analyzers', []):
+                    # Añadimos CUALQUIER analizador activo al resumen
+                    if analyzer.get('status') == 'ACTIVE':
+                        analyzers_summary.append({
+                            "Region": region,
+                            "Name": analyzer.get('name'),
+                            "Type": analyzer.get('type'),
+                            "Arn": analyzer.get('arn')
+                        })
+                    
+                    # Pero solo usamos los de acceso externo para buscar hallazgos
+                    if analyzer.get('type') in ['ACCOUNT', 'ORGANIZATION'] and analyzer.get('status') == 'ACTIVE':
+                        account_analyzer_arn = analyzer.get('arn')
+
+            if not account_analyzer_arn:
+                continue
+
+            paginator_findings = analyzer_client.get_paginator('list_findings')
+            for page in paginator_findings.paginate(
+                analyzerArn=account_analyzer_arn,
+                filter={'status': {'eq': ['ACTIVE']}}
+            ):
+                for finding in page.get('findings', []):
+                    principal = finding.get('principal', {})
+                    is_external = (finding.get('isPublic') or 
+                                   'AWS' in principal or 
+                                   'Federated' in principal)
+
+                    if is_external:
+                        principal_display = "Public"
+                        if 'AWS' in principal:
+                            principal_display = principal['AWS']
+                        elif 'Federated' in principal:
+                            principal_display = principal['Federated']
+
+                        findings_results.append({
+                            "Region": region,
+                            "ResourceType": finding.get('resourceType'),
+                            "Resource": finding.get('resource'),
+                            "Principal": principal_display,
+                            "IsPublic": finding.get('isPublic', False),
+                            "Action": ", ".join(finding.get('action', ['N/A'])),
+                            "AnalyzedAt": finding.get('analyzedAt').isoformat()
+                        })
+        except ClientError:
+            continue
+        except Exception:
+            continue
+            
+    findings_results.sort(key=lambda x: (x['Region'], x['ResourceType'], x['Resource']))
+    # --- ▼▼▼ 2. RETURN MODIFICADO ▼▼▼ ---
+    return {"findings": findings_results, "summary": analyzers_summary}
 
 @app.route('/api/run-federation-audit', methods=['POST'])
 def run_federation_audit():
@@ -358,6 +425,23 @@ def run_federation_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de federación: {str(e)}"}), 500
 
+@app.route('/api/run-access-analyzer-audit', methods=['POST'])
+def run_access_analyzer_audit():
+    session, error = get_session(request.get_json())
+    if error: 
+        return jsonify({"error": error}), 401
+    try:
+        analyzer_results = collect_access_analyzer_data(session)
+        sts = session.client("sts")
+        return jsonify({
+            "metadata": {
+                "accountId": sts.get_caller_identity()["Account"],
+                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
+            },
+            "results": analyzer_results
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado al recopilar datos de Access Analyzer: {str(e)}"}), 500
 
 # --- Lógica para Security Hub ---
 
@@ -409,7 +493,6 @@ def check_security_hub_status_in_regions(session, regions):
                     "passedCount": passed_count,
                     "totalControls": total_controls,
                 })
-            # --- FIN DE LA NUEVA LÓGICA AÑADIDA ---
 
         except ClientError:
             # Esto ocurre si SH no está activo, lo cual es normal.

@@ -219,7 +219,7 @@
 
     <script>
         // --- ESTADO GLOBAL ---
-        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null, lastHealthyStatusFindings = [];        
+        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null, lastHealthyStatusFindings = [], accessAnalyzerApiData = null;        
         // --- SELECTORES ---
         let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
 
@@ -266,6 +266,7 @@
                 log('Llamando a las APIs de AWS...', 'info');
                 const apiCalls = {
                     iam: fetch('http://127.0.0.1:5001/api/run-iam-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    accessAnalyzer: fetch('http://127.0.0.1:5001/api/run-access-analyzer-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     securityhub: fetch('http://127.0.0.1:5001/api/run-securityhub-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     exposure: fetch('http://127.0.0.1:5001/api/run-exposure-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     guardduty: fetch('http://127.0.0.1:5001/api/run-guardduty-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
@@ -287,7 +288,7 @@
                 });
                 const resolvedPromises = await Promise.all(promises);
                 const results = Object.fromEntries(resolvedPromises);
-                iamApiData = results.iam; securityHubApiData = results.securityhub; exposureApiData = results.exposure; guarddutyApiData = results.guardduty; wafApiData = results.waf; cloudtrailApiData = results.cloudtrail; cloudwatchApiData = results.cloudwatch; inspectorApiData = results.inspector; acmApiData = results.acm; computeApiData = results.compute; databasesApiData = results.databases; networkPoliciesApiData = results.network_policies; federationApiData = results.federation; configSHStatusApiData = results.config_sh_status; kmsApiData = results.kms; connectivityApiData = results.connectivity;
+                iamApiData = results.iam; accessAnalyzerApiData = results.accessAnalyzer; securityHubApiData = results.securityhub; exposureApiData = results.exposure; guarddutyApiData = results.guardduty; wafApiData = results.waf; cloudtrailApiData = results.cloudtrail; cloudwatchApiData = results.cloudwatch; inspectorApiData = results.inspector; acmApiData = results.acm; computeApiData = results.compute; databasesApiData = results.databases; networkPoliciesApiData = results.network_policies; federationApiData = results.federation; configSHStatusApiData = results.config_sh_status; kmsApiData = results.kms; connectivityApiData = results.connectivity;
                 if (!iamApiData || !networkPoliciesApiData) { throw new Error("Una o más llamadas críticas a la API fallaron. No se puede continuar."); }
                 allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
                 log('Todos los datos han sido recibidos.', 'success');
@@ -352,6 +353,10 @@
             const container = document.getElementById('iam-view');
             if (!container) return;
 
+            // --- INICIO DE LA MODIFICACIÓN ---
+            const accessAnalyzerFindingsCount = accessAnalyzerApiData?.results?.findings?.length || 0;
+            // --- FIN DE LA MODIFICACIÓN ---
+
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div><h2 class="text-2xl font-bold text-[#204071]">Identity & Access</h2><p class="text-sm text-gray-500 scan-info"></p></div>
@@ -363,6 +368,7 @@
                         <a href="#" data-tab="grupos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Groups</a>
                         <a href="#" data-tab="roles-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Roles</a>
                         <a href="#" data-tab="politicas-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Password Policies</a>
+                        <a href="#" data-tab="access-analyzer-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Access Analyzer (${accessAnalyzerFindingsCount})</a>
                         <a href="#" data-tab="detalle-permisos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Permission Details</a>
                         <a href="#" data-tab="critical-perms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Users with Critical Permissions</a>
                         <a href="#" data-tab="federation-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Federation</a>
@@ -375,6 +381,7 @@
                     <div id="grupos-content" class="iam-tab-content hidden">${createIamGruposHtml()}</div>
                     <div id="roles-content" class="iam-tab-content hidden">${createIamRolesHtml()}</div>
                     <div id="politicas-content" class="iam-tab-content hidden">${createIamPoliticasHtml()}</div>
+                    <div id="access-analyzer-content" class="iam-tab-content hidden"></div>
                     <div id="securityhub-content" class="iam-tab-content hidden">${createSecurityHubHtml()}</div>
                     <div id="detalle-permisos-content" class="iam-tab-content hidden">${renderIamDetailsViewHtml()}</div>
                     <div id="critical-perms-content" class="iam-tab-content hidden"></div>
@@ -389,8 +396,102 @@
 
             if (iamApiData) updateIamDashboard();
             if (securityHubApiData) updateSecurityHubDashboard();
+            // --- INICIO DE LA MODIFICACIÓN ---
+            if (accessAnalyzerApiData) {
+                renderAccessAnalyzerContent(); // Llamamos a la función que renderizará el contenido.
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
         };
 
+
+        const renderAccessAnalyzerStatusTable = (summary) => {
+            if (!summary || summary.length === 0) {
+                return '<div class="bg-white p-6 rounded-xl border border-gray-100 mb-6"><p class="text-center text-gray-500">No active Access Analyzers found in any region.</p></div>';
+            }
+
+            let tableHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-6">
+                <h3 class="font-bold text-lg mb-4 text-[#204071]">Enabled Analyzers Summary</h3>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Analyzer Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">`;
+
+            summary.sort((a, b) => a.Region.localeCompare(b.Region)).forEach(analyzer => {
+                tableHtml += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${analyzer.Region}</td>
+                        <td class="px-4 py-4 text-sm text-gray-800 font-mono break-all">${analyzer.Name}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${analyzer.Type}</td>
+                    </tr>`;
+            });
+
+            tableHtml += `</tbody></table></div>`;
+            return tableHtml;
+        };
+
+        const renderAccessAnalyzerContent = () => {
+            const container = document.getElementById('access-analyzer-content');
+            if (!container || !accessAnalyzerApiData) return;
+
+            const { findings, summary } = accessAnalyzerApiData.results;
+
+            // 1. Renderizamos la nueva tabla de resumen arriba del todo
+            let contentHtml = renderAccessAnalyzerStatusTable(summary);
+
+            if (!findings || findings.length === 0) {
+                contentHtml += `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">Good job! No external access findings were found.</p></div>`;
+                container.innerHTML = contentHtml;
+                return;
+            }
+
+            // 2. Construimos la tabla de hallazgos con las mejoras
+            contentHtml += `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                <h3 class="font-bold text-lg mb-4 text-[#204071]">External Access Findings</h3>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/12">Region</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-4/12">Affected Resource</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-4/12">External Principal</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/12">Public</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-2/12">Allowed Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">`;
+
+            findings.forEach(f => {
+                const publicBadge = f.IsPublic 
+                    ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">YES</span>`
+                    : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">No</span>`;
+                
+                const principalDisplay = f.Principal === 'Public' 
+                    ? `<span class="font-bold text-red-600">* (Anyone)</span>` 
+                    : f.Principal;
+
+                // ▼▼▼ CAMBIOS APLICADOS AQUÍ ▼▼▼
+                // - Clase 'text-xs' en todas las celdas (<td>) para reducir la fuente.
+                // - Clases 'break-all' y 'whitespace-normal' para mejorar el ajuste de texto.
+                contentHtml += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-xs text-gray-600">${f.Region}</td>
+                        <td class="px-4 py-4 align-top text-xs text-gray-800 font-mono break-all whitespace-normal">
+                            <span class="font-semibold">${f.ResourceType}</span><br>
+                            ${f.Resource}
+                        </td>
+                        <td class="px-4 py-4 align-top whitespace-normal text-xs text-gray-600 font-mono break-all">${principalDisplay}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-xs">${publicBadge}</td>
+                        <td class="px-4 py-4 align-top whitespace-normal text-xs text-gray-600 break-all">${f.Action}</td>
+                    </tr>`;
+            });
+
+            contentHtml += `</tbody></table></div>`;
+            container.innerHTML = contentHtml;
+        };
 
 
         const createIamResumenHtml = () => `
