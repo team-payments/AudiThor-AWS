@@ -451,6 +451,62 @@ def check_alb_outdated_tls_policy(audit_data):
             
     return failing_resources
 
+def check_rds_instance_unencrypted(audit_data):
+    """
+    Verifica si existen instancias RDS standalone sin el cifrado en reposo habilitado.
+    """
+    failing_resources = []
+    rds_instances = audit_data.get("databases", {}).get("rds_instances", [])
+    for instance in rds_instances:
+        if not instance.get("Encrypted"):
+            failing_resources.append({
+                "resource": instance.get("DBInstanceIdentifier"),
+                "region": instance.get("Region")
+            })
+    return failing_resources
+
+def check_aurora_cluster_unencrypted(audit_data):
+    """
+    Verifica si existen clústeres Aurora sin el cifrado en reposo habilitado.
+    """
+    failing_resources = []
+    aurora_clusters = audit_data.get("databases", {}).get("aurora_clusters", [])
+    for cluster in aurora_clusters:
+        if not cluster.get("Encrypted"):
+            failing_resources.append({
+                "resource": cluster.get("ClusterIdentifier"),
+                "region": cluster.get("Region")
+            })
+    return failing_resources
+
+def check_dynamodb_table_unencrypted(audit_data):
+    """
+    Verifica si existen tablas de DynamoDB sin el cifrado en reposo habilitado.
+    """
+    failing_resources = []
+    dynamodb_tables = audit_data.get("databases", {}).get("dynamodb_tables", [])
+    for table in dynamodb_tables:
+        if not table.get("Encrypted"):
+            failing_resources.append({
+                "resource": table.get("TableName"),
+                "region": table.get("Region")
+            })
+    return failing_resources
+
+def check_docdb_cluster_unencrypted(audit_data):
+    """
+    Verifica si existen clústeres de DocumentDB sin el cifrado en reposo habilitado.
+    """
+    failing_resources = []
+    docdb_clusters = audit_data.get("databases", {}).get("documentdb_clusters", [])
+    for cluster in docdb_clusters:
+        if not cluster.get("Encrypted"):
+            failing_resources.append({
+                "resource": cluster.get("ClusterIdentifier"),
+                "region": cluster.get("Region")
+            })
+    return failing_resources
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -652,6 +708,42 @@ RULES_TO_CHECK = [
         "description": "An RDS database instance has been detected that is configured to be publicly accessible from the Internet. This exposes the database to direct attacks, such as brute-force attempts, SQL injection, or vulnerability exploitation, and significantly increases the risk of a data breach.",
         "remediation": "Navigate to the RDS console, select the affected instance, and click 'Modify'. In the 'Connectivity' section, change the 'Public access' option from 'Yes' to 'No'. Ensure that your resources within the VPC (such as EC2 instances or Lambda functions) have the necessary network connectivity to access the database privately.",
         "check_function": check_rds_publicly_accessible
+    },
+    {
+        "rule_id": "DB_002",
+        "section": "Data Protection",
+        "name": "RDS instance is not encrypted at rest",
+        "severity": SEVERITY["CRITICAL"],
+        "description": "An RDS database instance has been detected that does not have storage encryption enabled. This is a critical security gap, especially for PCI DSS compliance, as it leaves sensitive data unprotected on the underlying storage.",
+        "remediation": "Encryption must be enabled at the time of instance creation. To remediate this, create a snapshot of the unencrypted instance, copy the snapshot while enabling encryption on the copy, and finally, restore the database from the new encrypted snapshot.",
+        "check_function": check_rds_instance_unencrypted
+    },
+    {
+        "rule_id": "DB_003",
+        "section": "Data Protection",
+        "name": "Aurora cluster is not encrypted at rest",
+        "severity": SEVERITY["CRITICAL"],
+        "description": "An Aurora database cluster has been detected that does not have storage encryption enabled. As with RDS, this is a critical risk that exposes data to unauthorized access at the disk level.",
+        "remediation": "Encryption for an Aurora cluster is defined at the time of its creation. To fix this finding, it is necessary to create a new cluster with encryption enabled and migrate the data from the unencrypted cluster.",
+        "check_function": check_aurora_cluster_unencrypted
+    },
+    {
+        "rule_id": "DB_004",
+        "section": "Data Protection",
+        "name": "DynamoDB table is not encrypted with a managed key",
+        "severity": SEVERITY["HIGH"],
+        "description": "A DynamoDB table has been detected that does not use encryption at rest with a customer-managed key (CMK) or an AWS-managed key (KMS). Although DynamoDB encrypts data by default, using KMS keys provides an additional layer of control and auditability.",
+        "remediation": "In the DynamoDB console, select the table, go to the 'Additional settings' tab, and in the 'Encryption at rest' section, change the encryption key to an AWS-managed (KMS) or customer-managed (CMK) key.",
+        "check_function": check_dynamodb_table_unencrypted
+    },
+    {
+        "rule_id": "DB_005",
+        "section": "Data Protection",
+        "name": "DocumentDB cluster is not encrypted at rest",
+        "severity": SEVERITY["CRITICAL"],
+        "description": "A DocumentDB cluster has been detected that does not have storage encryption enabled. This is a critical security risk, as the data on the disk is not protected against unauthorized access.",
+        "remediation": "Encryption for DocumentDB must be enabled during cluster creation and cannot be changed afterward. Remediation involves creating a new cluster with encryption enabled and migrating the data.",
+        "check_function": check_docdb_cluster_unencrypted
     },
     {
         "rule_id": "EXPOSURE_001",

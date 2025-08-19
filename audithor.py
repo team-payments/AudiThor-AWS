@@ -1196,23 +1196,30 @@ def collect_database_data(session):
             rds_client = session.client("rds", region_name=region)
             dynamodb_client = session.client("dynamodb", region_name=region)
             docdb_client = session.client("docdb", region_name=region)
-            
+            # <-- MODIFICACIÓN: Creamos un cliente KMS para esta región
+            kms_client = session.client("kms", region_name=region)
+
+            # <-- MODIFICACIÓN: Obtenemos un mapa de Key ID -> Alias para la región actual
+            alias_map = {}
+            try:
+                paginator = kms_client.get_paginator('list_aliases')
+                for page in paginator.paginate():
+                    for alias in page.get('Aliases', []):
+                        if 'TargetKeyId' in alias:
+                            # Un alias puede apuntar a una clave, guardamos el primero que encontremos
+                            alias_name = alias['AliasName']
+                            if not alias_name.startswith('alias/aws/'): # Excluimos las claves por defecto de AWS
+                                alias_map[alias['TargetKeyId']] = alias_name
+            except ClientError:
+                pass # Ignorar si no hay permisos para KMS o el servicio no está disponible
+
+
             # 1. Clústeres Aurora
             aurora_paginator = rds_client.get_paginator("describe_db_clusters")
             for page in aurora_paginator.paginate():
                 for cluster in page.get("DBClusters", []):
                     if "aurora" in cluster.get("Engine", ""):
-                        db_subnet_group_name = cluster.get("DBSubnetGroup")
-                        vpc_id = None
-                        subnet_ids = []
-                        if db_subnet_group_name:
-                            try:
-                                subnet_group_details = rds_client.describe_db_subnet_groups(DBSubnetGroupName=db_subnet_group_name).get("DBSubnetGroups", [])
-                                if subnet_group_details:
-                                    vpc_id = subnet_group_details[0].get("VpcId")
-                                    subnet_ids = [s.get("SubnetIdentifier") for s in subnet_group_details[0].get("Subnets", [])]
-                            except ClientError:
-                                pass
+                        kms_key_id = cluster.get("KmsKeyId")
                         aurora_clusters.append({
                             "Region": region,
                             "ClusterIdentifier": cluster.get("DBClusterIdentifier"),
@@ -1220,8 +1227,10 @@ def collect_database_data(session):
                             "Status": cluster.get("Status"),
                             "Endpoint": cluster.get("Endpoint", "N/A"),
                             "ARN": cluster.get("DBClusterArn"),
-                            "VpcId": vpc_id,
-                            "SubnetIds": subnet_ids
+                            # <-- MODIFICACIÓN: Añadimos campos de cifrado
+                            "Encrypted": cluster.get("StorageEncrypted", False),
+                            "KmsKeyId": kms_key_id,
+                            "KmsKeyAlias": alias_map.get(kms_key_id.split('/')[-1] if kms_key_id else None, kms_key_id or "N/A")
                         })
             
             # 2. Instancias RDS (que no pertenezcan a un clúster de Aurora)
@@ -1229,9 +1238,7 @@ def collect_database_data(session):
             for page in rds_paginator.paginate():
                 for instance in page.get("DBInstances", []):
                     if not instance.get("DBClusterIdentifier"):
-                        db_subnet_group = instance.get("DBSubnetGroup", {})
-                        vpc_id = db_subnet_group.get("VpcId")
-                        subnet_ids = [s.get("SubnetIdentifier") for s in db_subnet_group.get("Subnets", [])]
+                        kms_key_id = instance.get("KmsKeyId")
                         rds_instances.append({
                             "Region": region,
                             "DBInstanceIdentifier": instance.get("DBInstanceIdentifier"),
@@ -1241,8 +1248,10 @@ def collect_database_data(session):
                             "Endpoint": instance.get("Endpoint", {}).get("Address", "N/A"),
                             "ARN": instance.get("DBInstanceArn"),
                             "PubliclyAccessible": instance.get('PubliclyAccessible', False),
-                            "VpcId": vpc_id,
-                            "SubnetIds": subnet_ids
+                            # <-- MODIFICACIÓN: Añadimos campos de cifrado
+                            "Encrypted": instance.get("StorageEncrypted", False),
+                            "KmsKeyId": kms_key_id,
+                            "KmsKeyAlias": alias_map.get(kms_key_id.split('/')[-1] if kms_key_id else None, kms_key_id or "N/A")
                         })
 
             # 3. Tablas de DynamoDB
@@ -1250,25 +1259,39 @@ def collect_database_data(session):
             for page in dynamo_paginator.paginate():
                 for table_name in page.get("TableNames", []):
                     table_details = dynamodb_client.describe_table(TableName=table_name).get("Table", {})
+                    sse_details = table_details.get("SSEDescription")
+                    kms_key_arn = sse_details.get("KMSMasterKeyArn") if sse_details else None
+                    kms_key_id = kms_key_arn.split('/')[-1] if kms_key_arn else None
+                    
                     dynamodb_tables.append({
                         "Region": region,
                         "TableName": table_name,
                         "Status": table_details.get("TableStatus"),
                         "ItemCount": table_details.get("ItemCount", 0),
                         "SizeBytes": table_details.get("TableSizeBytes", 0),
-                        "ARN": table_details.get("TableArn")
+                        "ARN": table_details.get("TableArn"),
+                        # <-- MODIFICACIÓN: Añadimos campos de cifrado
+                        "Encrypted": bool(sse_details and sse_details.get("Status") == "ENABLED"),
+                        "KmsKeyId": kms_key_id,
+                        "KmsKeyAlias": alias_map.get(kms_key_id, kms_key_arn or "AWS Owned Key") if sse_details else "N/A"
                     })
+
             # 4. Clústeres de DocumentDB
             docdb_paginator = docdb_client.get_paginator("describe_db_clusters")
             for page in docdb_paginator.paginate():
                 for cluster in page.get("DBClusters", []):
+                    kms_key_id = cluster.get("KmsKeyId")
                     documentdb_clusters.append({
                         "Region": region,
                         "ClusterIdentifier": cluster.get("DBClusterIdentifier"),
                         "Engine": cluster.get("Engine"),
                         "Status": cluster.get("Status"),
                         "Endpoint": cluster.get("Endpoint", "N/A"),
-                        "ARN": cluster.get("DBClusterArn")
+                        "ARN": cluster.get("DBClusterArn"),
+                        # <-- MODIFICACIÓN: Añadimos campos de cifrado
+                        "Encrypted": cluster.get("StorageEncrypted", False),
+                        "KmsKeyId": kms_key_id,
+                        "KmsKeyAlias": alias_map.get(kms_key_id.split('/')[-1] if kms_key_id else None, kms_key_id or "N/A")
                     })
 
         except ClientError as e:
@@ -1282,8 +1305,6 @@ def collect_database_data(session):
         "dynamodb_tables": dynamodb_tables,
         "documentdb_clusters": documentdb_clusters
     }
-
-
 
 
 
