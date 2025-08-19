@@ -170,7 +170,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
                         <div><label for="access-key-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Access Key ID</label><input type="text" id="access-key-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="AKIA..."></div>
                         <div><label for="secret-key-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Secret Access Key</label><input type="password" id="secret-key-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="••••••••••••••••"></div>
-                        <div><label for="session-token-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Session Token (Optional)</label><input type="password" id="session-token-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Token de sesión si es necesario"></div>
+                        <div><label for="session-token-input" class="block text-sm font-medium text-[#204071] mb-1">AWS Session Token (Optional)</label><input type="password" id="session-token-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Session token (if necessary)"></div>
                         <div class="flex items-center"><div class="flex items-center space-x-2"><button id="run-analysis-button" class="w-full bg-[#eb3496] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"><span id="button-text">Scan Account</span><div id="loading-spinner" class="spinner hidden"></div></button><button id="import-results-button" title="Importar resultados desde JSON" class="w-auto bg-gray-600 text-white p-2.5 rounded-lg hover:bg-gray-700 transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload w-5 h-5" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/></svg></button><input type="file" id="json-file-input" class="hidden" accept="application/json"><button id="export-results-button" title="Exportar resultados a JSON" class="w-auto bg-[#204071] text-white p-2.5 rounded-lg hover:bg-[#1a335a] transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download w-5 h-5" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg></button></div></div>
                     </div>
                     <div id="error-message" class="text-red-600 text-sm mt-2 font-medium hidden"></div>
@@ -815,10 +815,10 @@
             }
             
             const formattedJson = JSON.stringify(detailsToShow, null, 2);
-            log(`Mostrando detalles para ${type}: ${name}`, 'success');
+            log(`Showing details for ${type}: ${name}`, 'success');
 
             resultsContainer.innerHTML = `
-                <h3 class="text-xl font-bold text-[#204071] mb-4">Detalles para ${type}: ${name}</h3>
+                <h3 class="text-xl font-bold text-[#204071] mb-4">Showing details for ${type}: ${name}</h3>
                 <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${formattedJson}</pre>
             `;
         };
@@ -1218,9 +1218,9 @@
             } else { statusEl.innerHTML = `<span class="px-2.5 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800">NO</span>`; }
         };
 
-        const createWafSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Findings de Seguridad Activos (WAF)</h3><div id="sh-waf-findings-container" class="overflow-x-auto"></div></div>`;
-        const renderWafAclsTable = (acls) => { if (!acls || acls.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron Web ACLs en la cuenta.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ámbito</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recursos Protegidos</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; acls.sort((a,b) => a.Name.localeCompare(b.Name)).forEach(acl => { let resourcesHtml = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">No hay recursos asociados</span>'; if (acl.AssociatedResourceArns && acl.AssociatedResourceArns.length > 0) { resourcesHtml = `<div class="flex flex-col space-y-1">` + acl.AssociatedResourceArns.map(arn => `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 font-mono">${arn}</span>`).join('') + `</div>`; } table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${acl.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Scope}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Region}</td><td class="px-4 py-4 align-top text-sm">${resourcesHtml}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
-        const renderWafIpSetsTable = (ipSets) => { if (!ipSets || ipSets.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron IP Sets en la cuenta.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ámbito</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Versión IP</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nº Direcciones</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; ipSets.sort((a,b) => a.Name.localeCompare(b.Name)).forEach(ipSet => { table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${ipSet.Name}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.Scope}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.Region}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.IPAddressVersion}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.AddressCount}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
+        const createWafSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Active Security Findings (WAF)</h3><div id="sh-waf-findings-container" class="overflow-x-auto"></div></div>`;
+        const renderWafAclsTable = (acls) => { if (!acls || acls.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Web ACLs were found in the account.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Protected Resources</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; acls.sort((a,b) => a.Name.localeCompare(b.Name)).forEach(acl => { let resourcesHtml = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">No hay recursos asociados</span>'; if (acl.AssociatedResourceArns && acl.AssociatedResourceArns.length > 0) { resourcesHtml = `<div class="flex flex-col space-y-1">` + acl.AssociatedResourceArns.map(arn => `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 font-mono">${arn}</span>`).join('') + `</div>`; } table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${acl.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Scope}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Region}</td><td class="px-4 py-4 align-top text-sm">${resourcesHtml}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
+        const renderWafIpSetsTable = (ipSets) => { if (!ipSets || ipSets.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No IP Sets were found in the account.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Versión IP</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nº Direcciones</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; ipSets.sort((a,b) => a.Name.localeCompare(b.Name)).forEach(ipSet => { table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${ipSet.Name}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.Scope}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.Region}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.IPAddressVersion}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.AddressCount}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
 
         // --- SECCIÓN DE CLOUDTRAIL ---
         
@@ -1533,7 +1533,7 @@
 
             // Si la fila se acaba de mostrar y no tiene contenido, lo rellenamos
             if (!isHidden && detailsRow.querySelector('pre').textContent === '') {
-                log(`Mostrando detalles para la alarma índice ${index}`, 'info');
+                log(`Showing details for the alarm index ${index}`, 'info');
                 // Busca los datos completos de la alarma en el objeto global
                 const alarmData = cloudwatchApiData.results.alarms[index];
                 // Formatea el JSON para que se vea bien
@@ -2150,7 +2150,7 @@
                     <div class="flex items-center space-x-2">
                         <label for="ec2-region-filter" class="text-sm font-medium text-gray-700">Region:</label>
                         <select id="ec2-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
-                            <option value="all" ${selectedRegion === 'all' ? 'selected' : ''}>Todas las Regiones</option>
+                            <option value="all" ${selectedRegion === 'all' ? 'selected' : ''}>All Regions</option>
                             ${regionOptions}
                         </select>
                     </div>
@@ -2301,7 +2301,7 @@
                                     <div class="flex items-center gap-2">
                                         <label for="vpc-diagram-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                                         <select id="vpc-diagram-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
-                                            <option value="all">Todas las Regiones</option>
+                                            <option value="all">All Regions</option>
                                             ${regionOptionsHtml}
                                         </select>
                                     </div>
@@ -2464,7 +2464,7 @@
                 <div class="mb-4 flex items-center gap-2">
                     <label for="vpc-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                     <select id="vpc-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
-                        <option value="all">Todas las Regiones</option>
+                        <option value="all">All Regions</option>
                         ${regionOptions}
                     </select>
                 </div>`;
@@ -2503,7 +2503,7 @@
                 <div class="mb-4 flex items-center gap-2">
                     <label for="acl-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                     <select id="acl-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
-                        <option value="all">Todas las Regiones</option>
+                        <option value="all">All Regions</option>
                         ${regionOptions}
                     </select>
                 </div>`;
@@ -2542,7 +2542,7 @@
                 <div class="mb-4 flex items-center gap-2">
                     <label for="sg-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                     <select id="sg-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
-                        <option value="all">Todas las Regiones</option>
+                        <option value="all">All Regions</option>
                         ${regionOptions}
                     </select>
                 </div>`;
@@ -3802,7 +3802,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     <div class="mb-4">
                         <label for="gemini-region-filter" class="block text-sm font-medium text-gray-700 mb-1">Filtrar Hallazgos por Región (Opcional)</label>
                         <select id="gemini-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
-                            <option value="all">Todas las Regiones</option>
+                            <option value="all">All Regions</option>
                             </select>
                     </div>
 
@@ -4558,8 +4558,8 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             if (!filterSelect || !geminiFilterSelect || !allAvailableRegions) return;
 
             // Limpiamos opciones anteriores
-            filterSelect.innerHTML = '<option value="all">Todas las Regiones</option>';
-            geminiFilterSelect.innerHTML = '<option value="all">Todas las Regiones</option>';
+            filterSelect.innerHTML = '<option value="all">All Regions</option>';
+            geminiFilterSelect.innerHTML = '<option value="all">All Regions</option>';
 
             allAvailableRegions.sort().forEach(region => {
                 const option = document.createElement('option');
