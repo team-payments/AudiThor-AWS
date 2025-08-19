@@ -342,7 +342,7 @@
         
         
         const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><h3 class="mt-2 text-lg font-medium text-[#204071]">Welcome to AudiThor</h3><p class="mt-1 text-sm text-gray-500">Enter your credentials and click "Scan Account"</p></div>`;
-        const createStatusBadge = (statusText) => { if (!statusText) { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>`; } const lowerStatus = statusText.toLowerCase(); if (lowerStatus === 'habilitado' || lowerStatus === 'enabled' || lowerStatus === 'running' || lowerStatus === 'active') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${statusText}</span>`; } if (lowerStatus === 'deshabilitado' || lowerStatus === 'suspendido' || lowerStatus.includes('error') || lowerStatus === 'not_available' || lowerStatus === 'stopped' || lowerStatus === 'terminated' || lowerStatus === 'shutting-down' || lowerStatus === 'failed') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${statusText}</span>`; } if (lowerStatus === 'pending' || lowerStatus === 'enabling' || lowerStatus === 'stopping') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${statusText}</span>`; } return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${statusText}</span>`; };
+        const createStatusBadge = (statusText) => { if (!statusText) { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>`; } const lowerStatus = statusText.toLowerCase(); if (lowerStatus === 'Enabled' || lowerStatus === 'enabled' || lowerStatus === 'running' || lowerStatus === 'active') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${statusText}</span>`; } if (lowerStatus === 'Disabled' || lowerStatus === 'suspendido' || lowerStatus.includes('error') || lowerStatus === 'not_available' || lowerStatus === 'stopped' || lowerStatus === 'terminated' || lowerStatus === 'shutting-down' || lowerStatus === 'failed') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${statusText}</span>`; } if (lowerStatus === 'pending' || lowerStatus === 'enabling' || lowerStatus === 'stopping') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${statusText}</span>`; } return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${statusText}</span>`; };
         const createAlarmStateBadge = (state) => { if (state === 'ALARM') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${state}</span>`; if (state === 'OK') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${state}</span>`; return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${state}</span>`; };
 
         
@@ -403,9 +403,9 @@
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Password Policies</p></div><div class="flex justify-between items-end pt-4"><p id="iam-password-compliance" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-green-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 text-green-600" viewBox="0 0 16 16"><path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z"/><path d="M7 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 1 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0M7 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 0 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0"/></svg></div></div></div>
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">IAM Findings (Crit/High)</p></div><div class="flex justify-between items-end pt-4"><p id="iam-critical-findings" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-orange-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 text-orange-600" viewBox="0 0 16 16"> <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></div></div></div>
             </div>`;
-        const createIamUsuariosHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"> <h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Users List</h3> <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contraseña</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último Uso Contraseña</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MFA</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grupos</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Políticas Adjuntas</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Políticas Inline</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Access Keys</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles (Tag)</th></tr></thead><tbody id="users-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div> </div>`;
-        const createIamGruposHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Groups List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Creación</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Políticas Adjuntas</th></tr></thead><tbody id="groups-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
-        const createIamRolesHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Roles List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Creación</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Políticas Adjuntas</th></tr></thead><tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
+        const createIamUsuariosHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"> <h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Users List</h3> <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Use of Password</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MFA</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groups</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inline Policies</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Access Keys</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles (Tag)</th></tr></thead><tbody id="users-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div> </div>`;
+        const createIamGruposHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Groups List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="groups-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
+        const createIamRolesHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Roles List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
         const createIamPoliticasHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Account password policy</h3><div id="password-policy-container"></div></div>`;   
         const createSecurityHubHtml = () => `
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -581,9 +581,9 @@
                                             <div class="overflow-x-auto">
                                             <table class="min-w-full divide-y divide-gray-200">
                                                 <thead class="bg-gray-50"><tr>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grupo</th>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Conjunto de Permisos (Rol)</th>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID de Cuenta AWS</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Permission Set (Role)</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">AWS Account ID</th>
                                                 </tr></thead>
                                                 <tbody class="bg-white divide-y divide-gray-200">`;
                     assignments.forEach(a => {
@@ -595,7 +595,7 @@
                     });
                     identityCenterHtml += `</tbody></table></div>`;
                 } else {
-                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center está activado, pero no se encontraron asignaciones de permisos a grupos.</p>`;
+                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center is enabled, but no group permission assignments were found.</p>`;
                 }
             } else {
                 // Mensaje si no se encuentra Identity Center o hay un error
@@ -715,7 +715,7 @@
 
         const renderGroupsTable = (groups) => { const tableBody = document.getElementById('groups-table-body'); tableBody.innerHTML = ''; if (!groups || groups.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No se encontraron grupos.</td></tr>`; return; } groups.forEach(group => { const vipBadge = group.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = group.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#204071] flex items-center">${vipBadge}${group.GroupName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(group.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
         const renderRolesTable = (roles) => { const tableBody = document.getElementById('roles-table-body'); tableBody.innerHTML = ''; if (!roles || roles.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No se encontraron roles.</td></tr>`; return; } roles.forEach(role => { const vipBadge = role.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = role.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 text-sm font-medium text-[#204071] break-words flex items-center">${vipBadge}${role.RoleName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(role.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
-        const renderPasswordPolicy = (policy) => { const container = document.getElementById('password-policy-container'); container.innerHTML = ''; if (policy.Error) { container.innerHTML = `<p class="text-red-600 font-medium">No hay política de contraseñas configurada en esta cuenta.</p>`; return; } const checks = [ { desc: "Longitud mínima >= 12", ok: (policy.MinimumPasswordLength || 0) >= 12, val: policy.MinimumPasswordLength }, { desc: "Requiere mayúsculas", ok: policy.RequireUppercaseCharacters, val: policy.RequireUppercaseCharacters }, { desc: "Requiere minúsculas", ok: policy.RequireLowercaseCharacters, val: policy.RequireLowercaseCharacters }, { desc: "Requiere números", ok: policy.RequireNumbers, val: policy.RequireNumbers }, { desc: "Requiere símbolos", ok: policy.RequireSymbols, val: policy.RequireSymbols }, { desc: "Caducidad <= 90 días", ok: policy.MaxPasswordAge && policy.MaxPasswordAge <= 90, val: policy.MaxPasswordAge }, { desc: "Reutilización >= 4 contraseñas", ok: (policy.PasswordReusePrevention || 0) >= 4, val: policy.PasswordReusePrevention }, { desc: "Expiración forzada tras fallo", ok: policy.HardExpiry, val: policy.HardExpiry }, ]; let checksHtml = `<h4 class="font-semibold text-md mb-2">Chequeos de Cumplimiento</h4><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 mb-6"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chequeo</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Configurado</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">`; checks.forEach(({ desc, ok, val }) => { const statusIcon = ok ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">OK</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">KO</span>'; checksHtml += `<tr><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${desc}</td><td class="px-4 py-2 whitespace-nowrap text-sm">${statusIcon}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${val === undefined ? 'No definido' : val}</td></tr>`; }); checksHtml += `</tbody></table></div>`; const rawJsonHtml = `<h4 class="font-semibold text-md mb-2 mt-6">Respuesta Raw de la API</h4><pre class="bg-[#204071] text-white p-4 rounded-lg text-sm overflow-x-auto"><code>${JSON.stringify(policy, null, 2)}</code></pre>`; container.innerHTML = checksHtml + rawJsonHtml; };
+        const renderPasswordPolicy = (policy) => { const container = document.getElementById('password-policy-container'); container.innerHTML = ''; if (policy.Error) { container.innerHTML = `<p class="text-red-600 font-medium">No hay política de contraseñas configurada en esta cuenta.</p>`; return; } const checks = [ { desc: "Longitud mínima >= 12", ok: (policy.MinimumPasswordLength || 0) >= 12, val: policy.MinimumPasswordLength }, { desc: "Requiere mayúsculas", ok: policy.RequireUppercaseCharacters, val: policy.RequireUppercaseCharacters }, { desc: "Requiere minúsculas", ok: policy.RequireLowercaseCharacters, val: policy.RequireLowercaseCharacters }, { desc: "Requiere números", ok: policy.RequireNumbers, val: policy.RequireNumbers }, { desc: "Requiere símbolos", ok: policy.RequireSymbols, val: policy.RequireSymbols }, { desc: "Caducidad <= 90 días", ok: policy.MaxPasswordAge && policy.MaxPasswordAge <= 90, val: policy.MaxPasswordAge }, { desc: "Reutilización >= 4 contraseñas", ok: (policy.PasswordReusePrevention || 0) >= 4, val: policy.PasswordReusePrevention }, { desc: "Expiración forzada tras fallo", ok: policy.HardExpiry, val: policy.HardExpiry }, ]; let checksHtml = `<h4 class="font-semibold text-md mb-2">Compliance Checks</h4><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 mb-6"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configured Value</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">`; checks.forEach(({ desc, ok, val }) => { const statusIcon = ok ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">OK</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">KO</span>'; checksHtml += `<tr><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${desc}</td><td class="px-4 py-2 whitespace-nowrap text-sm">${statusIcon}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${val === undefined ? 'No definido' : val}</td></tr>`; }); checksHtml += `</tbody></table></div>`; const rawJsonHtml = `<h4 class="font-semibold text-md mb-2 mt-6">Respuesta Raw de la API</h4><pre class="bg-[#204071] text-white p-4 rounded-lg text-sm overflow-x-auto"><code>${JSON.stringify(policy, null, 2)}</code></pre>`; container.innerHTML = checksHtml + rawJsonHtml; };
         const renderIamDetailsViewHtml = () => {
             return `
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -1257,8 +1257,8 @@
             </div>`;
         const updateCloudtrailSummaryCards = (trails, events) => { const activeTrails = trails.filter(t => t.IsLogging).length; const inactiveTrails = trails.length - activeTrails; document.getElementById('ct-total-trails').textContent = trails.length; document.getElementById('ct-active-trails').textContent = activeTrails; document.getElementById('ct-inactive-trails').textContent = inactiveTrails; document.getElementById('ct-total-events').textContent = events.length; };
         const createCloudtrailSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Findings de Seguridad Activos (CloudTrail)</h3><div id="sh-cloudtrail-findings-container" class="overflow-x-auto"></div></div>`;
-        const renderCloudtrailTrailsView = (trails) => { if (!trails || trails.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron trails de CloudTrail en la cuenta.</p></div>'; let summaryTable = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Resumen de Trails</h3><div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-8"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Home Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multi-Región</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logging Status</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; trails.forEach(t => { const loggingStatus = t.IsLogging ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Detenido</span>`; summaryTable += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${t.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.HomeRegion}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.IsMultiRegionTrail ? 'YES' : 'NO'}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${loggingStatus}</td></tr>`; }); summaryTable += '</tbody></table></div>'; let detailsHtml = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Detalles de Configuración por Trail</h3><div class="space-y-6">'; trails.forEach(t => { const validationBadge = t.LogFileValidationEnabled ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Habilitada</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Deshabilitada</span>`; const kmsBadge = t.KmsKeyId ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">NO</span>`; detailsHtml += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-3 pb-2 border-b">${t.Name}</h4><ul class="space-y-2 text-sm"><li class="flex justify-between"><span class="font-medium text-gray-600">Validación de Integridad:</span><span>${validationBadge}</span></li><li class="flex justify-between"><span class="font-medium text-gray-600">Cifrado con KMS:</span><span>${kmsBadge}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">Bucket S3:</span><span class="font-mono text-gray-800">${t.S3BucketName || '-'}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">CloudWatch Log Group:</span><span class="font-mono text-xs text-gray-800">${t.CloudWatchLogsLogGroupArn ? t.CloudWatchLogsLogGroupArn.split(':log-group:')[1] : '-'}</span></li></ul></div>`; }); detailsHtml += '</div>'; return summaryTable + detailsHtml; };
-        const renderCloudtrailEventsTable = (events) => { if (!events || events.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron eventos de interés en los últimos 7 días.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Origen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; events.forEach(e => { const eventDate = new Date(e.EventTime).toLocaleString(); table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${eventDate}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${e.EventName}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.Username}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.EventRegion}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600 font-mono">${e.SourceIPAddress}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
+        const renderCloudtrailTrailsView = (trails) => { if (!trails || trails.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron trails de CloudTrail en la cuenta.</p></div>'; let summaryTable = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Resumen de Trails</h3><div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-8"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Home Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multi-Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logging Status</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; trails.forEach(t => { const loggingStatus = t.IsLogging ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Detenido</span>`; summaryTable += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${t.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.HomeRegion}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.IsMultiRegionTrail ? 'YES' : 'NO'}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${loggingStatus}</td></tr>`; }); summaryTable += '</tbody></table></div>'; let detailsHtml = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Detalles de Configuración por Trail</h3><div class="space-y-6">'; trails.forEach(t => { const validationBadge = t.LogFileValidationEnabled ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Habilitada</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Deshabilitada</span>`; const kmsBadge = t.KmsKeyId ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">NO</span>`; detailsHtml += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-3 pb-2 border-b">${t.Name}</h4><ul class="space-y-2 text-sm"><li class="flex justify-between"><span class="font-medium text-gray-600">Validación de Integridad:</span><span>${validationBadge}</span></li><li class="flex justify-between"><span class="font-medium text-gray-600">Cifrado con KMS:</span><span>${kmsBadge}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">Bucket S3:</span><span class="font-mono text-gray-800">${t.S3BucketName || '-'}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">CloudWatch Log Group:</span><span class="font-mono text-xs text-gray-800">${t.CloudWatchLogsLogGroupArn ? t.CloudWatchLogsLogGroupArn.split(':log-group:')[1] : '-'}</span></li></ul></div>`; }); detailsHtml += '</div>'; return summaryTable + detailsHtml; };
+        const renderCloudtrailEventsTable = (events) => { if (!events || events.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron eventos de interés en los últimos 7 días.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Origen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; events.forEach(e => { const eventDate = new Date(e.EventTime).toLocaleString(); table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${eventDate}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${e.EventName}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.Username}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.EventRegion}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600 font-mono">${e.SourceIPAddress}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
 
         const renderCloudtrailLookUpView = (allRegions) => {
             const regionOptions = allRegions.map(r => `<option value="${r}">${r}</option>`).join('');
@@ -1294,7 +1294,7 @@
                          <div>
                             <label for="ct-lookup-region" class="block text-sm font-medium text-gray-700 mb-1">Region</label>
                             <select id="ct-lookup-region" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
-                                <option value="">Selecciona una región</option>
+                                <option value="">Select a region</option>
                                 ${regionOptions}
                             </select>
                         </div>
@@ -1448,12 +1448,12 @@
             try {
                 const formattedJson = JSON.stringify(JSON.parse(eventData.CloudTrailEvent), null, 2);
                 detailContainer.innerHTML = `
-                    <h3 class="text-xl font-bold text-[#204071] mb-4">Detalle del Evento: ${eventId}</h3>
+                    <h3 class="text-xl font-bold text-[#204071] mb-4">Event Detail: ${eventId}</h3>
                     <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${formattedJson}</pre>
                 `;
             } catch (e) {
                 log('Error al parsear el JSON del evento.', 'error');
-                detailContainer.innerHTML = `<p class="text-red-500">No se pudo mostrar el detalle del evento.</p>`;
+                detailContainer.innerHTML = `<p class="text-red-500">The event details could not be displayed.</p>`;
             }
         };
 
@@ -1462,18 +1462,18 @@
             const container = document.getElementById('cloudwatch-view'); if (!cloudwatchApiData || !securityHubApiData) return;
             const { alarms, topics } = cloudwatchApiData.results; const cloudwatchFindings = securityHubApiData.results.findings.cloudwatchFindings;
             container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">Cloudwatch & SNS</h2><p class="text-sm text-gray-500">${cloudwatchApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudwatch-tabs"><a href="#" data-tab="cw-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="cw-alarms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Alarms (${alarms.length})</a><a href="#" data-tab="cw-topics-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Topics SNS (${topics.length})</a><a href="#" data-tab="cw-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudwatchFindings.length})</a></nav></div><div id="cloudwatch-tab-content-container"><div id="cw-summary-content" class="cloudwatch-tab-content">${createCloudwatchSummaryCardsHtml()}</div><div id="cw-alarms-content" class="cloudwatch-tab-content hidden">${renderCloudwatchAlarmsTable(alarms)}</div><div id="cw-topics-content" class="cloudwatch-tab-content hidden">${renderCloudwatchTopicsTable(topics)}</div><div id="cw-sh-content" class="cloudwatch-tab-content hidden">${createCloudwatchSecurityHubHtml()}</div></div>`;
-            updateCloudwatchSummaryCards(alarms, topics, cloudwatchFindings); renderSecurityHubFindings(cloudwatchFindings, 'sh-cloudwatch-findings-container', 'No se encontraron findings de Security Hub para CloudWatch.');
+            updateCloudwatchSummaryCards(alarms, topics, cloudwatchFindings); renderSecurityHubFindings(cloudwatchFindings, 'sh-cloudwatch-findings-container', 'No CloudWatch alarms were found.');
             const tabsNav = container.querySelector('#cloudwatch-tabs'); if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.cloudwatch-tab-content'));
         };
         const createCloudwatchSummaryCardsHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-5 mb-8">
-                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Total Alarmas</p></div><div class="flex justify-between items-end pt-4"><p id="cw-total-alarms" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-blue-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-blue-600" viewBox="0 0 16 16"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2M8 1.918l-.797.161A4 4 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4 4 0 0 0-3.203-3.92zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5 5 0 0 1 13 6c0 .88.32 4.2 1.22 6"/></svg></div></div></div>
-                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Alarmas en estado 'ALARM'</p></div><div class="flex justify-between items-end pt-4"><p id="cw-state-alarms" class="text-3xl font-bold text-red-600">--</p><div class="bg-red-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-red-600" viewBox="0 0 16 16"><path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/><path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg></div></div></div>
-                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Topics SNS con Email</p></div><div class="flex justify-between items-end pt-4"><p id="cw-total-topics" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-blue-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-blue-600" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/></svg></div></div></div>
-                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Hallazgos (Crit/High)</p></div><div class="flex justify-between items-end pt-4"><p id="cw-critical-findings" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-orange-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-orange-600" viewBox="0 0 16 16"> <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></div></div></div>
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Total Alarms</p></div><div class="flex justify-between items-end pt-4"><p id="cw-total-alarms" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-blue-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-blue-600" viewBox="0 0 16 16"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2M8 1.918l-.797.161A4 4 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4 4 0 0 0-3.203-3.92zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5 5 0 0 1 13 6c0 .88.32 4.2 1.22 6"/></svg></div></div></div>
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Alarms in 'ALARM' status</p></div><div class="flex justify-between items-end pt-4"><p id="cw-state-alarms" class="text-3xl font-bold text-red-600">--</p><div class="bg-red-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-red-600" viewBox="0 0 16 16"><path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/><path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg></div></div></div>
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Topics SNS with Email</p></div><div class="flex justify-between items-end pt-4"><p id="cw-total-topics" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-blue-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-blue-600" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/></svg></div></div></div>
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Findings (Crit/High)</p></div><div class="flex justify-between items-end pt-4"><p id="cw-critical-findings" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-orange-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-orange-600" viewBox="0 0 16 16"> <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></div></div></div>
             </div>`;
         const updateCloudwatchSummaryCards = (alarms, topics, findings) => { document.getElementById('cw-total-alarms').textContent = alarms.length; document.getElementById('cw-state-alarms').textContent = alarms.filter(a => a.StateValue === 'ALARM').length; document.getElementById('cw-total-topics').textContent = topics.length; const criticalHighFindings = findings.filter(f => f.Severity?.Label === 'CRITICAL' || f.Severity?.Label === 'HIGH').length; document.getElementById('cw-critical-findings').textContent = criticalHighFindings; };
-        const createCloudwatchSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Findings de Seguridad Activos (CloudWatch)</h3><div id="sh-cloudwatch-findings-container" class="overflow-x-auto"></div></div>`;
+        const createCloudwatchSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Active Security Findings (CloudWatch)</h3><div id="sh-cloudwatch-findings-container" class="overflow-x-auto"></div></div>`;
         
         const renderCloudwatchAlarmsTable = (alarms) => {
             if (!alarms || alarms.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron alarmas de CloudWatch.</p></div>';
@@ -1482,12 +1482,12 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre Alarma</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Métrica</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Condición</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones SNS</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alarm name</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metrics</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Condition</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SNS Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">`;
@@ -1543,7 +1543,7 @@
             }
         };
         
-        const renderCloudwatchTopicsTable = (topics) => { if (!topics || topics.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron topics de SNS con suscripciones de email.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic ARN</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Emails Suscritos</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; topics.sort((a, b) => a.Region.localeCompare(b.Region) || a.TopicArn.localeCompare(b.TopicArn)).forEach(topic => { const emails = topic.Subscriptions.map(s => s.Endpoint).join(', '); table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${topic.Region}</td><td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${topic.TopicArn}</td><td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${emails}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
+        const renderCloudwatchTopicsTable = (topics) => { if (!topics || topics.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron topics de SNS con suscripciones de email.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic ARN</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subscribed Emails</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; topics.sort((a, b) => a.Region.localeCompare(b.Region) || a.TopicArn.localeCompare(b.TopicArn)).forEach(topic => { const emails = topic.Subscriptions.map(s => s.Endpoint).join(', '); table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${topic.Region}</td><td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${topic.TopicArn}</td><td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${emails}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
 
         // --- SECCIÓN DE INSPECTOR ---
         const buildInspectorView = () => {
@@ -1962,12 +1962,12 @@
             };
 
             let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dominio Principal</th>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Emitido por</th>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Emisión</th>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Expiración</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Main Domain</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issued by</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue Date</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expiration Date</th>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SANs</th>' +
                             '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             
@@ -2148,7 +2148,7 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <label for="ec2-region-filter" class="text-sm font-medium text-gray-700">Región:</label>
+                        <label for="ec2-region-filter" class="text-sm font-medium text-gray-700">Region:</label>
                         <select id="ec2-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
                             <option value="all" ${selectedRegion === 'all' ? 'selected' : ''}>Todas las Regiones</option>
                             ${regionOptions}
@@ -2161,12 +2161,12 @@
             }
 
             let tableContent = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID Instancia</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Pública</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sistema Operativo</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Regipn</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instance ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public IP</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operating System</th>' +
                         '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">ARN</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
@@ -2299,7 +2299,7 @@
                                 <h3 class="text-xl font-bold text-[#204071]">Diagrama de Red</h3>
                                 <div class="flex items-center gap-x-6 gap-y-2 flex-wrap">
                                     <div class="flex items-center gap-2">
-                                        <label for="vpc-diagram-region-filter" class="text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                                        <label for="vpc-diagram-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                                         <select id="vpc-diagram-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
                                             <option value="all">Todas las Regiones</option>
                                             ${regionOptionsHtml}
@@ -2462,7 +2462,7 @@
 
             const filterControl = `
                 <div class="mb-4 flex items-center gap-2">
-                    <label for="vpc-region-filter" class="text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                    <label for="vpc-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                     <select id="vpc-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
                         <option value="all">Todas las Regiones</option>
                         ${regionOptions}
@@ -2474,10 +2474,10 @@
             }
             
             let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CIDR Block</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Por Defecto</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">By Default</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             vpcs.sort((a,b) => a.Region.localeCompare(b.Region)).forEach(v => {
@@ -2501,7 +2501,7 @@
 
             const filterControl = `
                 <div class="mb-4 flex items-center gap-2">
-                    <label for="acl-region-filter" class="text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                    <label for="acl-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                     <select id="acl-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
                         <option value="all">Todas las Regiones</option>
                         ${regionOptions}
@@ -2513,10 +2513,10 @@
             }
             
             let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ACL ID</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Por Defecto</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">By Default</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             acls.sort((a,b) => a.Region.localeCompare(b.Region)).forEach(a => {
@@ -2540,7 +2540,7 @@
             
             const filterControl = `
                 <div class="mb-4 flex items-center gap-2">
-                    <label for="sg-region-filter" class="text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                    <label for="sg-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
                     <select id="sg-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
                         <option value="all">Todas las Regiones</option>
                         ${regionOptions}
@@ -2552,10 +2552,10 @@
             }
             
             let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group ID</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group Name</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             sgs.sort((a,b) => a.Region.localeCompare(b.Region)).forEach(sg => {
@@ -2664,17 +2664,17 @@
             
             return `
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-lg mb-4 text-[#204071]">Obtener Detalles de Recurso de Red</h3>
-                    <p class="text-sm text-gray-600 mb-4">Introduce el ID de un Security Group (ej: sg-xxxx) o una Network ACL (ej: acl-xxxx) y selecciona su región para ver sus reglas.</p>
+                    <h3 class="font-bold text-lg mb-4 text-[#204071]">Get Network Resource Details</h3>
+                    <p class="text-sm text-gray-600 mb-4">Enter the ID of a Security Group (e.g., sg-xxxx) or a Network ACL (e.g., acl-xxxx) and select its region to view its rules.</p>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 items-end">
                         <div class="lg:col-span-2">
                             <label for="np-resource-id" class="block text-sm font-medium text-gray-700 mb-1">Resource ID (SG o ACL)</label>
                             <input type="text" id="np-resource-id" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="sg-12345678 o acl-12345678">
                         </div>
                         <div>
-                            <label for="np-resource-region" class="block text-sm font-medium text-gray-700 mb-1">Región del Recurso</label>
+                            <label for="np-resource-region" class="block text-sm font-medium text-gray-700 mb-1">Resource Region</label>
                             <select id="np-resource-region" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
-                                <option value="">Selecciona una región</option>
+                                <option value="">Select a Region</option>
                                 ${regionOptions}
                             </select>
                         </div>
@@ -2689,15 +2689,15 @@
         };
 
         const runNetworkDetailAnalysis = async () => {
-            log('Iniciando análisis de detalle de red...', 'info');
+            log('Starting detailed network analysis…', 'info');
             const resourceId = document.getElementById('np-resource-id').value.trim();
             const region = document.getElementById('np-resource-region').value;
             const resultsContainer = document.getElementById('np-detail-results-container');
             resultsContainer.innerHTML = '';
 
             if (!resourceId || !region) {
-                log('ID de recurso y región son requeridos.', 'error');
-                resultsContainer.innerHTML = '<p class="text-red-600 font-medium">Error: Por favor, introduce un ID y selecciona una región.</p>';
+                log('Resource ID and region are required.', 'error');
+                resultsContainer.innerHTML = '<p class="text-red-600 font-medium">Error: Please enter an ID and select a region.</p>';
                 return;
             }
 
@@ -2707,7 +2707,7 @@
             
             runBtn.disabled = true;
             spinner.classList.remove('hidden');
-            btnText.textContent = 'Analizando...';
+            btnText.textContent = 'Analyzing...';
 
             const payload = {
                 access_key: accessKeyInput.value.trim(),
@@ -2727,19 +2727,19 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Error desconocido del servidor.');
+                    throw new Error(data.error || 'Unknown server error.');
                 }
 
-                log('Análisis de detalle completado.', 'success');
+                log('Detailed analysis completed.', 'success');
                 renderNetworkDetailResult(data.results.details_table);
 
             } catch(e) {
-                log(`Error en análisis de detalle: ${e.message}`, 'error');
+                log(`Error during the detailed analysis: ${e.message}`, 'error');
                 resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
             } finally {
                 runBtn.disabled = false;
                 spinner.classList.add('hidden');
-                btnText.textContent = 'Analizar';
+                btnText.textContent = 'Analyze';
             }
         };
 
@@ -2750,7 +2750,7 @@
                 return;
             }
             container.innerHTML = `
-                <h3 class="text-xl font-bold text-[#204071] mb-4">Resultado del Análisis</h3>
+                <h3 class="text-xl font-bold text-[#204071] mb-4">Analysis Results</h3>
                 <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${tableString}</pre>
             `;
         };
@@ -2767,7 +2767,7 @@
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
-                        <h2 class="text-2xl font-bold text-[#204071]">Conectividad de Red</h2>
+                        <h2 class="text-2xl font-bold text-[#204071]">Network Connectivity</h2>
                         <p class="text-sm text-gray-500">${connectivityApiData.metadata.executionDate}</p>
                     </div>
                 </header>
@@ -2794,10 +2794,10 @@
         const renderPeeringTable = (connections) => {
             if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron conexiones de VPC Peering activas.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID Conexión</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC Solicitante (Requester)</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC Aceptante (Accepter)</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Connection ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Requester VPC</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Accepter VPC</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             connections.forEach(c => {
                 const requesterInfo = `${c.RequesterVpc.VpcId} (${c.RequesterVpc.OwnerId})`;
@@ -2816,10 +2816,10 @@
         const renderTgwAttachmentsTable = (attachments) => {
             if (!attachments || attachments.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron adjuntos de VPC a Transit Gateways.</p></div>';
              let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transit Gateway ID</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC Adjunta</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID del Adjunto</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attached VPC</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Atacched ID</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             attachments.forEach(a => {
                 table += `<tr class="hover:bg-gray-50">
@@ -2836,10 +2836,10 @@
         const renderVpnConnectionsTable = (connections) => {
             if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron conexiones VPN activas.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPN Connection ID</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Gateway ID</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Asociado a TGW</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Asociated TGW</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             connections.forEach(c => {
                 table += `<tr class="hover:bg-gray-50">
@@ -2878,7 +2878,7 @@
 
         const buildConfigSHView = () => {
             const container = document.getElementById('config-sh-view');
-            const executionDate = (configSHApiData || configSHStatusApiData)?.metadata?.executionDate || 'Análisis no ejecutado.';
+            const executionDate = (configSHApiData || configSHStatusApiData)?.metadata?.executionDate || 'Analysis not executed.';
 
             // Si tenemos los datos del análisis profundo, mostramos todo
             if (configSHApiData) {
@@ -2925,8 +2925,8 @@
                     </header>
                     <div class="border-b border-gray-200 mb-6">
                          <nav class="-mb-px flex flex-wrap space-x-6" id="config-sh-tabs">
-                            <a href="#" data-tab="config-sh-status-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Estado de Servicios</a>
-                            <a href="#" data-tab="config-sh-deep-scan-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Análisis Profundo</a>
+                            <a href="#" data-tab="config-sh-status-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Service Status</a>
+                            <a href="#" data-tab="config-sh-deep-scan-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Deep Analysis</a>
                         </nav>
                     </div>
                     <div id="config-sh-initial-view">
@@ -2935,9 +2935,9 @@
                         </div>
                         <div id="config-sh-deep-scan-content" class="config-sh-tab-content hidden">
                             <div class="bg-white mt-6 p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-                                <p class="text-gray-600 mb-4">Ejecuta el análisis profundo para ver todos los hallazgos de Security Hub y el estado de cumplimiento detallado. Este proceso puede tardar varios minutos.</p>
+                                <p class="text-gray-600 mb-4">Run the deep analysis to view all Security Hub findings and detailed compliance status. This process may take several minutes.</p>
                                 <button id="run-deep-scan-btn" class="bg-[#eb3496] text-white px-5 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition flex items-center justify-center space-x-2 mx-auto">
-                                    <span id="deep-scan-btn-text">Ejecutar Análisis Profundo</span>
+                                    <span id="deep-scan-btn-text">Run the deep analysis</span>
                                     <div id="deep-scan-spinner" class="spinner hidden"></div>
                                 </button>
                             </div>
@@ -2954,10 +2954,10 @@
                     <header class="flex justify-between items-center mb-6">
                         <div>
                             <h2 class="text-2xl font-bold text-[#204071]">Config & Security Hub Status</h2>
-                            <p class="text-sm text-gray-500">Introduce credenciales para ver el estado.</p>
+                            <p class="text-sm text-gray-500">Enter credentials to view the status.</p>
                         </div>
                     </header>
-                    <p class="text-center text-gray-500 py-8">Los resultados aparecerán aquí después del análisis.</p>
+                    <p class="text-center text-gray-500 py-8">The results will appear here after the analysis.</p>
                 `;
             }
         };
@@ -2969,8 +2969,8 @@
             
             runBtn.disabled = true;
             spinner.classList.remove('hidden');
-            btnText.textContent = 'Analizando... (puede tardar varios minutos)';
-            log('Iniciando análisis profundo de Config & Security Hub...', 'info');
+            btnText.textContent = 'Analyzing… (this may take several minutes)';
+            log('Starting deep analysis of Config & Security Hub…', 'info');
 
             const payload = {
                 access_key: accessKeyInput.value.trim(),
@@ -2988,10 +2988,10 @@
                 configSHApiData = await response.json(); // Guardamos en la variable global
                 
                 if (!response.ok) {
-                    throw new Error(configSHApiData.error || 'Error desconocido del servidor.');
+                    throw new Error(configSHApiData.error || 'Unknown server error.');
                 }
                 
-                log('Análisis profundo de Config & Security Hub completado.', 'success');
+                log('Deep analysis of Config & Security Hub completed.', 'success');
                 buildConfigSHView();
 
                 // --- LÍNEA AÑADIDA ---
@@ -2999,7 +2999,7 @@
                 runAndDisplayHealthyStatus();
 
             } catch (e) {
-                log(`Error en el análisis profundo: ${e.message}`, 'error');
+                log(`Error in deep analysis: ${e.message}`, 'error');
                 const initialContainer = document.getElementById('config-sh-initial-view');
                 if(initialContainer) {
                     initialContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
@@ -3007,7 +3007,7 @@
                  // Reactivamos el botón en caso de error
                 runBtn.disabled = false;
                 spinner.classList.add('hidden');
-                btnText.textContent = 'Ejecutar Análisis Profundo';
+                btnText.textContent = 'Run Deep Analysis';
             }
         };
 
@@ -3090,7 +3090,7 @@
             }
             
             let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AWS Config</th>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AWS Security Hub</th>' +
                             '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Security Hub Standards</th>' +
@@ -3130,6 +3130,7 @@
             tableHtml += '</tbody></table></div>';
             return tableHtml;
         };
+
         const renderComplianceStatus = (complianceSummary, allFindings) => {
             const container = document.getElementById('config-sh-compliance-content');
             if (!container) return;
@@ -3152,8 +3153,7 @@
                 const passedCount = standard.passedCount || 0;
                 const failedCount = standard.failedCount || 0;
                 const warningCount = standard.warningCount || 0;
-                const otherCount = (standard.otherCount || 0) + (standard.notAvailableCount || 0);
-
+                
                 // --- INICIO DE LA MODIFICACIÓN ---
                 // Se ha añadido un ID único al contenedor de detalles y a cada fila de estado.
                 // Cada fila ahora tiene un evento onclick que llama a la nueva función showComplianceDetails.
@@ -3193,27 +3193,7 @@
             const detailContainer = document.getElementById(containerId);
             const clickedRow = document.getElementById(rowId);
 
-            // --- INICIO DEL CÓDIGO DE DEPURACIÓN ---
-            console.clear(); // Limpiamos la consola para ver mejor los resultados
-            console.log("--- INICIANDO DEPURACIÓN DE DETALLES DE CUMPLIMIENTO ---");
-
-            // 1. Mostramos los datos con los que se llama a la función
-            console.log("Valores recibidos al hacer clic:");
-            console.log(`   -> standardArn: '${standardArn}'`);
-            console.log(`   -> status: '${status}'`);
-
-            // 2. Mostramos un ejemplo de los datos contra los que vamos a comparar
-            if (configSHApiData && configSHApiData.results.findings.length > 0) {
-                console.log("\nEjemplo de un finding de la lista completa (para comparar formato):");
-                const sampleFinding = configSHApiData.results.findings[0];
-                console.log(`   -> ARN del finding: '${sampleFinding.ProductFields?.StandardsArn}'`);
-                console.log(`   -> Status del finding: '${sampleFinding.Compliance?.Status}'`);
-            } else {
-                console.log("\n¡AVISO! La lista global de findings está vacía.");
-            }
-            // --- FIN DEL CÓDIGO DE DEPURACIÓN ---
-
-
+            // Si se hace clic en la misma fila que ya está abierta, se cierra
             if (!detailContainer.classList.contains('hidden') && clickedRow.classList.contains('bg-blue-50')) {
                 detailContainer.classList.add('hidden');
                 clickedRow.classList.remove('bg-blue-50', 'font-semibold');
@@ -3221,29 +3201,28 @@
                 return;
             }
 
+            // Quita el resaltado de cualquier otra fila en el mismo grupo
             clickedRow.parentElement.querySelectorAll('[id^="row-"]').forEach(row => {
                 row.classList.remove('bg-blue-50', 'font-semibold');
             });
             
+            // Resalta la fila seleccionada
             clickedRow.classList.add('bg-blue-50', 'font-semibold');
 
+            // Función para normalizar el ARN del estándar y asegurar que coincida
             const getStandardIdentifier = (arn) => arn ? (arn.split('/standard/')[1] || arn) : null;
             const targetIdentifier = getStandardIdentifier(standardArn);
 
+            // Filtra todos los findings para encontrar los que coincidan con el estándar y el estado
             const relevantFindings = configSHApiData.results.findings.filter(f => {
                 const findingIdentifier = getStandardIdentifier(f.ProductFields?.StandardsArn);
                 return findingIdentifier === targetIdentifier && f.Compliance?.Status === status;
             });
             
-            // --- INICIO DEL CÓDIGO DE DEPURACIÓN ---
-            // 3. Mostramos el resultado del filtro
-            console.log(`\nResultado: Se encontraron ${relevantFindings.length} findings que coinciden.`);
-            console.log("--- FIN DE LA DEPURACIÓN ---");
-            // --- FIN DEL CÓDIGO DE DEPURACIÓN ---
-
             let detailsHtml = '<ul class="space-y-3 text-sm">';
             if (relevantFindings.length > 0) {
-                relevantFindings.forEach(f => {
+                // Ordenamos por título para una vista consistente
+                relevantFindings.sort((a, b) => a.Title.localeCompare(b.Title)).forEach(f => {
                     detailsHtml += `
                         <li class="p-3 bg-gray-50 rounded-md border border-gray-200">
                             <p class="font-bold text-gray-800">${f.Title}</p>
@@ -3253,14 +3232,13 @@
                     `;
                 });
             } else {
-                detailsHtml += `<li class="text-gray-500">No se encontraron controles detallados para este estado.</li>`;
+                detailsHtml += `<li class="text-gray-500">No detailed controls were found for this status..</li>`;
             }
             detailsHtml += '</ul>';
 
             detailContainer.innerHTML = detailsHtml;
-            detailContainer.classList.remove('hidden');
+            detailContainer.classList.remove('hidden'); // Muestra el contenedor
         };
-
 
         const createUnifiedBarChart = (complianceData) => {
             const ctx = document.getElementById('unifiedComplianceChart');
@@ -3348,7 +3326,7 @@
         };
 
         const getStandardNameFromArn = (arn) => {
-            if (!arn || !arn.includes('/standard/')) return 'Estándar Desconocido';
+            if (!arn || !arn.includes('/standard/')) return 'Unknown Standard';
             // Transforma "aws-foundational-security-best-practices/v/1.0.0" a "Aws Foundational Security Best Practices v1.0.0"
             const namePart = arn.split('/standard/')[1];
             return namePart.replace(/\/v\//, ' v').split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -3497,31 +3475,31 @@
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Playground</h2>
-                        <p class="text-sm text-gray-500">Herramientas interactivas de análisis.</p>
+                        <p class="text-sm text-gray-500">Interactive Analysis Tools.</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex flex-wrap space-x-6" id="playground-tabs">
-                        <a href="#" data-tab="pg-tracer-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">¿Nos vemos?</a>
+                        <a href="#" data-tab="pg-tracer-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Traceroute</a>
                         <a href="#" data-tab="pg-sslscan-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">SSL Scan</a>
                     </nav>
                 </div>
                 <div id="pg-tracer-content" class="playground-tab-content">
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 class="font-bold text-lg mb-4 text-[#204071]">Analizador de Conectividad entre recursos</h3>
+                        <h3 class="font-bold text-lg mb-4 text-[#204071]">Connectivity Analyzer between Resources</h3>
                         <p class="text-sm text-gray-600 mb-4">Enter the ARNs of the source and destination instances (you can copy them from the Compute -> EC2 section) to verify whether a network route is allowed between them..</p>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label for="pg-source-arn" class="block text-sm font-medium text-gray-700 mb-1">ARN de Origen</label>
+                                <label for="pg-source-arn" class="block text-sm font-medium text-gray-700 mb-1">Source ARN</label>
                                 <input type="text" id="pg-source-arn" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="arn:aws:ec2:region:account:instance/i-...">
                             </div>
                             <div>
-                                <label for="pg-target-arn" class="block text-sm font-medium text-gray-700 mb-1">ARN de Destino</label>
+                                <label for="pg-target-arn" class="block text-sm font-medium text-gray-700 mb-1">Destination ARN</label>
                                 <input type="text" id="pg-target-arn" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="arn:aws:ec2:region:account:instance/i-...">
                             </div>
                         </div>
                         <button id="pg-run-analysis-btn" class="bg-[#204071] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition flex items-center justify-center space-x-2">
-                            <span id="pg-button-text">Analizar Ruta</span>
+                            <span id="pg-button-text">Analyze Rute</span>
                             <div id="pg-loading-spinner" class="spinner hidden"></div>
                         </button>
                     </div>
@@ -3529,14 +3507,14 @@
                 </div>
                 <div id="pg-sslscan-content" class="playground-tab-content hidden">
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 class="font-bold text-lg mb-4 text-[#204071]">Escáner de Configuración SSL/TLS</h3>
-                        <p class="text-sm text-gray-600 mb-4">Introduce uno o más dominios/IPs separados por coma para analizar su configuración.</p>
+                        <h3 class="font-bold text-lg mb-4 text-[#204071]">SSL/TLS Configuration Scanner</h3>
+                        <p class="text-sm text-gray-600 mb-4">Enter one or more domains/IPs separated by commas to analyze their configuration.</p>
                         <div>
-                            <label for="pg-sslscan-target" class="block text-sm font-medium text-gray-700 mb-1">Dominio(s) o IP(s)</label>
+                            <label for="pg-sslscan-target" class="block text-sm font-medium text-gray-700 mb-1">Domain(s) or IP(s)</label>
                             <input type="text" id="pg-sslscan-target" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="ej: google.com, github.com, 1.1.1.1">
                         </div>
                         <button id="pg-run-sslscan-btn" class="bg-[#204071] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition flex items-center justify-center space-x-2 mt-4">
-                            <span id="pg-sslscan-btn-text">Escanear SSL/TLS</span>
+                            <span id="pg-sslscan-btn-text">Scan SSL/TLS</span>
                             <div id="pg-sslscan-spinner" class="spinner hidden"></div>
                         </button>
                     </div>
@@ -3569,7 +3547,7 @@
 
             if (!sourceArn || !targetArn) {
                 log('ARN de origen y destino son requeridos.', 'error');
-                resultsContainer.innerHTML = '<p class="text-red-600 font-medium">Error: Por favor, introduce ambos ARNs.</p>';
+                resultsContainer.innerHTML = '<p class="text-red-600 font-medium">Error: Please enter both ARNs.</p>';
                 return;
             }
 
@@ -3747,7 +3725,7 @@
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Healthy Status</h2>
-                        <p class="text-sm text-gray-500">Resumen de hallazgos y generación de informes.</p>
+                        <p class="text-sm text-gray-500">Summary of Findings and Report Generation.</p>
                     </div>
                 </header>
                 
@@ -3761,13 +3739,13 @@
                 <div id="healthy-status-tab-content-container">
                     <div id="hs-findings-content" class="healthy-status-tab-content">
                         <div class="mb-4">
-                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filtrar por Región:</label>
+                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filter by Region:</label>
                             <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md"></select>
                         </div>
                         <div id="healthy-status-container">
                             <div class="text-center py-16 bg-white rounded-lg">
-                                <h3 class="mt-2 text-lg font-medium text-[#204071]">Esperando análisis</h3>
-                                <p class="mt-1 text-sm text-gray-500">Los hallazgos de estado aparecerán aquí después de analizar una cuenta.</p>
+                                <h3 class="mt-2 text-lg font-medium text-[#204071]">Waiting for analysis</h3>
+                                <p class="mt-1 text-sm text-gray-500">Status findings will appear here after analyzing an account.</p>
                             </div>
                         </div>
                     </div>
@@ -4033,7 +4011,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                             '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             
             keys.sort((a,b) => a.Region.localeCompare(b.Region) || a.Aliases.localeCompare(b.Aliases)).forEach(k => {
-                const rotationBadge = k.RotationEnabled === 'Activated' ? createStatusBadge('Enabled') : (k.RotationEnabled === 'Disabled' ? createStatusBadge('Deshabilitado') : k.RotationEnabled);
+                const rotationBadge = k.RotationEnabled === 'Activated' ? createStatusBadge('Enabled') : (k.RotationEnabled === 'Disabled' ? createStatusBadge('Disabled') : k.RotationEnabled);
                 
                 tableHtml += `
                     <tr class="hover:bg-gray-50">
@@ -4063,7 +4041,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 
 
         // --- RENDERIZADO GENÉRICO DE SECURITY HUB ---
-        const renderSecurityHubFindings = (findings, containerId, emptyMessage) => { const container = document.getElementById(containerId); if (!container) return; if (!findings || findings.length === 0) { container.innerHTML = `<p class="text-center text-gray-500 py-4">${emptyMessage}</p>`; return; } const severityClasses = { 'CRITICAL': 'bg-red-600 text-white', 'HIGH': 'bg-orange-500 text-white', 'MEDIUM': 'bg-yellow-400 text-black', 'LOW': 'bg-blue-500 text-white', 'INFORMATIONAL': 'bg-gray-400 text-white' }; let tableHtml = '<table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Severity</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Región</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Resource Type</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; findings.forEach(f => { const severity = f.Severity?.Label || 'N/A'; const severityClass = severityClasses[severity] || 'bg-gray-200 text-gray-800'; const region = f.Region || 'N/A'; const title = f.Title || 'Sin título'; const resourceType = f.Resources?.[0]?.Type || 'N/A'; tableHtml += `<tr class="hover:bg-gray-50"><td class="px-4 py-2 whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityClass}">${severity}</span></td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${region}</td><td class="px-4 py-2 text-sm text-gray-800 break-words">${title}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${resourceType}</td></tr>`; }); tableHtml += '</tbody></table>'; container.innerHTML = tableHtml; };
+        const renderSecurityHubFindings = (findings, containerId, emptyMessage) => { const container = document.getElementById(containerId); if (!container) return; if (!findings || findings.length === 0) { container.innerHTML = `<p class="text-center text-gray-500 py-4">${emptyMessage}</p>`; return; } const severityClasses = { 'CRITICAL': 'bg-red-600 text-white', 'HIGH': 'bg-orange-500 text-white', 'MEDIUM': 'bg-yellow-400 text-black', 'LOW': 'bg-blue-500 text-white', 'INFORMATIONAL': 'bg-gray-400 text-white' }; let tableHtml = '<table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Severity</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Resource Type</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; findings.forEach(f => { const severity = f.Severity?.Label || 'N/A'; const severityClass = severityClasses[severity] || 'bg-gray-200 text-gray-800'; const region = f.Region || 'N/A'; const title = f.Title || 'Sin título'; const resourceType = f.Resources?.[0]?.Type || 'N/A'; tableHtml += `<tr class="hover:bg-gray-50"><td class="px-4 py-2 whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityClass}">${severity}</span></td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${region}</td><td class="px-4 py-2 text-sm text-gray-800 break-words">${title}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${resourceType}</td></tr>`; }); tableHtml += '</tbody></table>'; container.innerHTML = tableHtml; };
     
      // --- SECCIÓN DE DATABASES ---
 
@@ -4180,12 +4158,12 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             if (!instances || instances.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron instancias RDS standalone.</p></div>';
             
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Región</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Identificador</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Clase</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Motor</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acceso Público</th>' + // <-- NUEVA CABECERA
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Access</th>' + 
                         '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">ARN</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             
