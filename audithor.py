@@ -13,11 +13,20 @@ import ipaddress
 import socket
 import re
 
-# --- CONF. APLICACIÓN FLASK ---
+
+
+# ==============================================================================
+# CONF. APLICACIÓN FLASK
+# ==============================================================================
+
 app = Flask(__name__)
 CORS(app)
 
-# --- LÓGICA COMÚN ---
+
+# ==============================================================================
+# LÓGICA COMÚN
+# ==============================================================================
+
 def get_session(data):
     try:
         access_key = data.get('access_key')
@@ -41,7 +50,11 @@ def get_all_aws_regions(session):
     return [region['RegionName'] for region in ec2.describe_regions()['Regions']]
 
 
-# --- LÓGICA IAM ---
+
+# ==============================================================================
+# LÓGICA IAM
+# ==============================================================================
+
 def collect_iam_data(session):
     client = session.client("iam")
     result_users, password_policy, result_roles, result_groups = [], {}, [], []
@@ -262,8 +275,6 @@ def check_critical_permissions(session, users):
 
     return users
 
-# --- Sirviendo el Frontend ---
-
 def collect_federation_data(session):
     """
     Recopila información sobre la configuración de federación en la cuenta.
@@ -380,43 +391,11 @@ def collect_access_analyzer_data(session):
     # --- ▼▼▼ 2. RETURN MODIFICADO ▼▼▼ ---
     return {"findings": findings_results, "summary": analyzers_summary}
 
-@app.route('/api/run-federation-audit', methods=['POST'])
-def run_federation_audit():
-    session, error = get_session(request.get_json())
-    if error: 
-        return jsonify({"error": error}), 401
-    try:
-        federation_results = collect_federation_data(session)
-        sts = session.client("sts")
-        return jsonify({
-            "metadata": {
-                "accountId": sts.get_caller_identity()["Account"],
-                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
-            },
-            "results": federation_results
-        })
-    except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de federación: {str(e)}"}), 500
 
-@app.route('/api/run-access-analyzer-audit', methods=['POST'])
-def run_access_analyzer_audit():
-    session, error = get_session(request.get_json())
-    if error: 
-        return jsonify({"error": error}), 401
-    try:
-        analyzer_results = collect_access_analyzer_data(session)
-        sts = session.client("sts")
-        return jsonify({
-            "metadata": {
-                "accountId": sts.get_caller_identity()["Account"],
-                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
-            },
-            "results": analyzer_results
-        })
-    except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Access Analyzer: {str(e)}"}), 500
 
-# --- Lógica para Security Hub ---
+# ==============================================================================
+# LÓGICA SECURITYHUB
+# ==============================================================================
 
 def check_security_hub_status_in_regions(session, regions):
     """
@@ -514,10 +493,6 @@ def get_and_filter_security_hub_findings(session, region_statuses):
     
     return { "iamFindings": iam_findings, "exposureFindings": exposure_findings, "wafFindings": waf_findings, "cloudtrailFindings": cloudtrail_findings, "cloudwatchFindings": cloudwatch_findings, "inspectorFindings": inspector_findings }
 
-
-
-
-
 def calculate_compliance_from_findings(all_findings):
     """
     Calcula el estado de cumplimiento de cada estándar basándose en una lista de findings.
@@ -567,7 +542,11 @@ def calculate_compliance_from_findings(all_findings):
     return summary_list
 
 
-# --- Lógica para Internet Exposure ---
+
+# ==============================================================================
+# LÓGICA INTERNET EXPOSURE
+# ==============================================================================
+
 EXPOSURE_SERVICES = { "S3 Public Buckets": "s3", "EC2 Public Instances": "ec2", "Security Groups Open": "ec2", "ALB/NLB Public": "elbv2", "Lambda URLs": "lambda", "API Gateway Public": "apigateway", "Assumable Roles": "iam", }
 EXPOSURE_GLOBAL_SERVICES = {"S3 Public Buckets", "Assumable Roles"}
 def is_bucket_public(s3, bucket):
@@ -581,11 +560,13 @@ def is_bucket_public(s3, bucket):
         if policy_status.get("PolicyStatus", {}).get("IsPublic"): return True
     except ClientError: pass
     return False
+
 def lambda_has_url(client, fn_name):
     try:
         configs = client.list_function_url_configs(FunctionName=fn_name).get("FunctionUrlConfigs", [])
         return any(c.get("AuthType") == "NONE" for c in configs)
     except ClientError: return False
+
 def role_is_assumable_by_anyone(role):
     try:
         pol = role.get("AssumeRolePolicyDocument", {})
@@ -732,7 +713,9 @@ def collect_exposure_data(session):
     }
 
 
-# --- Lógica para GuardDuty ---
+# ==============================================================================
+# LÓGICA GUARDDUTY
+# ==============================================================================
 
 def collect_guardduty_data(session):
     all_regions = get_all_aws_regions(session)
@@ -759,7 +742,6 @@ def collect_guardduty_data(session):
                 "Status": "Habilitado" if detector_details.get("Status") == "ENABLED" else "Suspendido",
                 "S3 Logs": features.get("S3_DATA_EVENTS", "N/A"),
                 "Kubernetes Logs": features.get("KUBERNETES_AUDIT_LOGS", "N/A"),
-                # --- MODIFICADO: Se crean dos claves distintas y claras ---
                 "EC2 Malware Protection": features.get("MALWARE_PROTECTION", "N/A"),
                 "EKS Malware Protection": features.get("EKS_RUNTIME_MONITORING", "N/A"),
             })
@@ -805,7 +787,13 @@ def collect_guardduty_data(session):
     
     return {"status": status_by_region, "findings": processed_findings}
 
-# --- Lógica para WAF ---
+
+
+
+# ==============================================================================
+# LÓGICA WAF
+# ==============================================================================
+
 def parse_resource_arn(arn):
     try:
         parts = arn.split(':')
@@ -818,7 +806,6 @@ def parse_resource_arn(arn):
             if len(api_parts) > 2: return f"{api_parts[1]}/{api_parts[2]}"
         return resource_part.split('/')[-1]
     except Exception: return arn
-
 
 def collect_waf_data(session):
     all_acls, all_ip_sets = [], []
@@ -857,7 +844,12 @@ def collect_waf_data(session):
     return {"acls": all_acls, "ip_sets": all_ip_sets}
 
 
-# --- Lógica para KMS (NUEVA SECCIÓN) ---
+
+
+# ==============================================================================
+# LÓGICA KMS
+# ==============================================================================
+
 def collect_kms_data(session):
     """
     Busca claves de KMS en todas las regiones y recopila información relevante.
@@ -923,7 +915,10 @@ def collect_kms_data(session):
 
 
 
-# --- Lógica para CloudTrail ---
+# ==============================================================================
+# LÓGICA CLOUDTRAIL
+# ==============================================================================
+
 def collect_cloudtrail_data(session):
     regions = get_all_aws_regions(session)
     result_trails, result_events, processed_trail_arns = [], [], set()
@@ -989,8 +984,13 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
 
     found_events.sort(key=lambda x: x['EventTime'], reverse=True)
     return {"events": found_events}
-    
-# --- Lógica para CloudWatch ---
+
+
+
+# ==============================================================================
+# LÓGICA CLOUDWATCH
+# ==============================================================================
+
 def collect_cloudwatch_data(session):
     all_regions = get_all_aws_regions(session)
     result_alarms, result_topics = [], []
@@ -1023,7 +1023,10 @@ def collect_cloudwatch_data(session):
             if "endpoint" in str(e) or "OptInRequired" in str(e) or "Location" in str(e): continue
     return {"alarms": result_alarms, "topics": result_topics}
 
-# --- Lógica para Inspector ---
+
+# ==============================================================================
+# LÓGICA INSPECTOR
+# ==============================================================================
 
 def collect_inspector_status(session):
     """
@@ -1123,37 +1126,11 @@ def collect_inspector_findings(session):
     return {"findings": result_findings}
 
 
-# ... (Aquí irían las otras funciones de recolección de datos como ACM, Compute, etc.)
+# ==============================================================================
+# ENDPOINTS API
+# ==============================================================================
 
-# --- Endpoints de la API ---
 
-# ... (Aquí irían los otros endpoints como IAM, SecurityHub, etc.)
-
-@app.route('/api/run-inspector-audit', methods=['POST'])
-def run_inspector_audit():
-    session, error = get_session(request.get_json())
-    if error: return jsonify({"error": error}), 401
-    try:
-        # Ahora solo llama a la función rápida de estado
-        inspector_status = collect_inspector_status(session)
-        sts = session.client("sts")
-        # Devuelve el estado y una lista de findings vacía por defecto
-        inspector_status["findings"] = []
-        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": inspector_status })
-    except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar el estado de Inspector: {str(e)}"}), 500
-
-@app.route('/api/run-inspector-findings-audit', methods=['POST'])
-def run_inspector_findings_audit():
-    session, error = get_session(request.get_json())
-    if error: return jsonify({"error": error}), 401
-    try:
-        # Este endpoint llama a la función lenta de búsqueda de findings
-        inspector_findings = collect_inspector_findings(session)
-        sts = session.client("sts")
-        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": inspector_findings })
-    except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar los findings de Inspector: {str(e)}"}), 500
 
 
 
@@ -2245,7 +2222,6 @@ def collect_config_sh_data(session):
     }
 
 
-
 # ==============================================================================
 # ENDPOINTS API
 # ==============================================================================
@@ -2699,11 +2675,73 @@ def run_executive_summary():
 
     return jsonify(executive_summary_findings)
 
+@app.route('/api/run-federation-audit', methods=['POST'])
+def run_federation_audit():
+    session, error = get_session(request.get_json())
+    if error: 
+        return jsonify({"error": error}), 401
+    try:
+        federation_results = collect_federation_data(session)
+        sts = session.client("sts")
+        return jsonify({
+            "metadata": {
+                "accountId": sts.get_caller_identity()["Account"],
+                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
+            },
+            "results": federation_results
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado al recopilar datos de federación: {str(e)}"}), 500
+
+@app.route('/api/run-access-analyzer-audit', methods=['POST'])
+def run_access_analyzer_audit():
+    session, error = get_session(request.get_json())
+    if error: 
+        return jsonify({"error": error}), 401
+    try:
+        analyzer_results = collect_access_analyzer_data(session)
+        sts = session.client("sts")
+        return jsonify({
+            "metadata": {
+                "accountId": sts.get_caller_identity()["Account"],
+                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
+            },
+            "results": analyzer_results
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado al recopilar datos de Access Analyzer: {str(e)}"}), 500
+
+@app.route('/api/run-inspector-audit', methods=['POST'])
+def run_inspector_audit():
+    session, error = get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    try:
+        # Ahora solo llama a la función rápida de estado
+        inspector_status = collect_inspector_status(session)
+        sts = session.client("sts")
+        # Devuelve el estado y una lista de findings vacía por defecto
+        inspector_status["findings"] = []
+        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": inspector_status })
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado al recopilar el estado de Inspector: {str(e)}"}), 500
+
+@app.route('/api/run-inspector-findings-audit', methods=['POST'])
+def run_inspector_findings_audit():
+    session, error = get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    try:
+        # Este endpoint llama a la función lenta de búsqueda de findings
+        inspector_findings = collect_inspector_findings(session)
+        sts = session.client("sts")
+        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": inspector_findings })
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado al recopilar los findings de Inspector: {str(e)}"}), 500
+
+
 
 # ==============================================================================
 # EJECUCIÓN SERVIDOR
 # ==============================================================================
-
 
 if __name__ == '__main__':
     # Define el puerto y la URL para que sea fácil de cambiar
