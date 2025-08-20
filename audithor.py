@@ -263,30 +263,6 @@ def check_critical_permissions(session, users):
     return users
 
 # --- Sirviendo el Frontend ---
-@app.route('/dashboard.html')
-def serve_dashboard():
-    # Esta función sirve el fichero dashboard.html que debe estar
-    # en el mismo directorio que tu backend.py
-    return send_from_directory('.', 'dashboard.html')
-
-
-@app.route('/api/run-iam-audit', methods=['POST'])
-def run_iam_audit():
-    session, error = get_session(request.get_json());
-    if error: return jsonify({"error": error}), 401
-    try:
-        iam_results = collect_iam_data(session)
-        
-        # --- LÍNEA MODIFICADA ---
-        # Ahora llamamos a la nueva función que comprueba todas las categorías
-        iam_results["users"] = check_critical_permissions(session, iam_results["users"])
-        # --- FIN DE LA MODIFICACIÓN ---
-
-        sts = session.client("sts")
-        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": iam_results })
-    except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de IAM: {str(e)}"}), 500
-
 
 def collect_federation_data(session):
     """
@@ -2268,10 +2244,34 @@ def collect_config_sh_data(session):
         "compliance_summary": final_summary
     }
 
-# --- FIN: NUEVA LÓGICA PARA AWS CONFIG & SECURITY HUB ---
 
 
-# --- Endpoints de la API ---
+# ==============================================================================
+# ENDPOINTS API
+# ==============================================================================
+
+@app.route('/dashboard.html')
+def serve_dashboard():
+    # Esta función sirve el fichero dashboard.html que debe estar
+    # en el mismo directorio que tu backend.py
+    return send_from_directory('.', 'dashboard.html')
+
+@app.route('/api/run-iam-audit', methods=['POST'])
+def run_iam_audit():
+    session, error = get_session(request.get_json());
+    if error: return jsonify({"error": error}), 401
+    try:
+        iam_results = collect_iam_data(session)
+        
+        # --- LÍNEA MODIFICADA ---
+        # Ahora llamamos a la nueva función que comprueba todas las categorías
+        iam_results["users"] = check_critical_permissions(session, iam_results["users"])
+        # --- FIN DE LA MODIFICACIÓN ---
+
+        sts = session.client("sts")
+        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": iam_results })
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado al recopilar datos de IAM: {str(e)}"}), 500
 
 @app.route('/api/run-securityhub-audit', methods=['POST'])
 def run_securityhub_audit():
@@ -2410,7 +2410,6 @@ def run_compute_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de Compute: {str(e)}"}), 500
 
-
 @app.route('/api/run-databases-audit', methods=['POST'])
 def run_databases_audit():
     session, error = get_session(request.get_json())
@@ -2429,7 +2428,6 @@ def run_databases_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de Databases: {str(e)}"}), 500
 
-
 @app.route('/api/run-network-policies-audit', methods=['POST'])
 def run_network_policies_audit():
     session, error = get_session(request.get_json())
@@ -2447,7 +2445,6 @@ def run_network_policies_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de Network Policies: {str(e)}"}), 500
         
-
 @app.route('/api/run-config-sh-audit', methods=['POST'])
 def run_config_sh_audit():
     session, error = get_session(request.get_json())
@@ -2475,10 +2472,8 @@ def run_config_sh_status_audit():
         # Llamamos a una función que solo obtiene el estado, es mucho más rápida
         regions = get_all_aws_regions(session)
         
-        # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
         # Ahora desempaquetamos la tupla, ignorando el segundo valor (el mapa) que no necesitamos aquí.
         service_status, _ = sh_check_regional_services(session, regions)
-        # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
         
         sts = session.client("sts")
         return jsonify({
@@ -2492,8 +2487,6 @@ def run_config_sh_status_audit():
         })
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar el estado de Config & SH: {str(e)}"}), 500
-
-
 
 @app.route('/api/run-network-detail-audit', methods=['POST'])
 def run_network_detail_audit():
@@ -2531,7 +2524,6 @@ def run_network_detail_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado: {str(e)}"}), 500
 
-
 @app.route('/api/run-connectivity-audit', methods=['POST'])
 def run_connectivity_audit():
     session, error = get_session(request.get_json())
@@ -2549,7 +2541,6 @@ def run_connectivity_audit():
         })
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de conectividad: {str(e)}"}), 500
-
 
 @app.route('/api/run-playground-audit', methods=['POST'])
 def run_playground_audit():
@@ -2655,10 +2646,6 @@ def run_sslscan():
 
     return jsonify({"results": results})
 
-# ==============================================================================
-# ENDPOINT PARA EL EXECUTIVE SUMMARY
-# ==============================================================================
-
 @app.route('/run_executive_summary', methods=['POST'])
 def run_executive_summary():
     """
@@ -2713,7 +2700,11 @@ def run_executive_summary():
     return jsonify(executive_summary_findings)
 
 
-# --- Ejecución del servidor ---
+# ==============================================================================
+# EJECUCIÓN SERVIDOR
+# ==============================================================================
+
+
 if __name__ == '__main__':
     # Define el puerto y la URL para que sea fácil de cambiar
     port = 5001
