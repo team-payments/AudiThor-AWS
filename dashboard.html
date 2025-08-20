@@ -296,9 +296,9 @@
                 const resolvedPromises = await Promise.all(promises);
                 const results = Object.fromEntries(resolvedPromises);
                 iamApiData = results.iam; accessAnalyzerApiData = results.accessAnalyzer; securityHubApiData = results.securityhub; exposureApiData = results.exposure; guarddutyApiData = results.guardduty; wafApiData = results.waf; cloudtrailApiData = results.cloudtrail; cloudwatchApiData = results.cloudwatch; inspectorApiData = results.inspector; acmApiData = results.acm; computeApiData = results.compute; databasesApiData = results.databases; networkPoliciesApiData = results.network_policies; federationApiData = results.federation; configSHStatusApiData = results.config_sh_status; kmsApiData = results.kms; connectivityApiData = results.connectivity;
-                if (!iamApiData || !networkPoliciesApiData) { throw new Error("Una o más llamadas críticas a la API fallaron. No se puede continuar."); }
+                if (!iamApiData || !networkPoliciesApiData) { throw new Error("One or more critical API calls failed. Cannot continue."); }
                 allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
-                log('Todos los datos han sido recibidos.', 'success');
+                log('All data has been received.', 'success');
                 buildAndRenderAllViews();
 
                 // --- ▼▼▼ CAMBIO IMPORTANTE AQUÍ ▼▼▼ ---
@@ -307,7 +307,7 @@
                 // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
 
             } catch (error) {
-                const errorMsg = `Error: ${error.message || 'Ocurrió un error desconocido.'}`;
+                const errorMsg = `Error: ${error.message || 'An unknown error occurred.'}`;
                 console.error('Error detallado:', error);
                 errorMessageDiv.textContent = errorMsg;
                 errorMessageDiv.classList.remove('hidden');
@@ -324,7 +324,7 @@
         // --- LÓGICA DE RENDERIZADO ---
         const buildAndRenderAllViews = () => {
             try {
-                log('Renderizando todas las vistas...', 'info');
+                log('Rendering all views…', 'info');
                 buildHealthyStatusView();
                 buildGeminiReportView();
                 buildIamView();
@@ -343,8 +343,8 @@
                 renderFederationView();
                 buildKmsView();
                 buildConnectivityView();
-                log('Vistas renderizadas.', 'success');
-            } catch (e) { log(`Error al renderizar: ${e.message}`, 'error'); console.error(e); }
+                log('Views rendered.', 'success');
+            } catch (e) { log(`Error rendering: ${e.message}`, 'error'); console.error(e); }
         };
           
         const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><h3 class="mt-2 text-lg font-medium text-[#204071]">Welcome to AudiThor</h3><p class="mt-1 text-sm text-gray-500">Enter your credentials and click "Scan Account"</p></div>`;
@@ -630,7 +630,7 @@
             const hasAnyPrivilegedUser = Object.values(permissionsByCategory).some(userList => userList.length > 0);
 
             if (!hasAnyPrivilegedUser) {
-                container.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-center text-gray-500">¡Buen trabajo! No se encontraron usuarios con permisos críticos en las categorías analizadas.</p></div>`;
+                container.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-center text-gray-500">Good job! No users with critical permissions were found in the analyzed categories.</p></div>`;
                 return;
             }
 
@@ -825,7 +825,7 @@
                 if (severity !== 'ALL') {
                     filteredFindings = allIamFindings.filter(f => f.Severity?.Label === severity);
                 }
-                renderSecurityHubFindings(filteredFindings, 'sh-iam-findings-container', `No se encontraron findings de IAM con severidad '${severity}'.`);
+                renderSecurityHubFindings(filteredFindings, 'sh-iam-findings-container', `No IAM findings with severity were found. '${severity}'.`);
             };
 
             // Añadir el listener a los botones
@@ -856,7 +856,7 @@
             const tableBody = document.getElementById('users-table-body');
             tableBody.innerHTML = '';
             if (!users || users.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-4">No se encontraron usuarios.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-4">No users were found.</td></tr>`;
                 return;
             }
             users.forEach(user => {
@@ -918,11 +918,11 @@
             });
         };
 
-        const renderGroupsTable = (groups) => { const tableBody = document.getElementById('groups-table-body'); tableBody.innerHTML = ''; if (!groups || groups.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No se encontraron grupos.</td></tr>`; return; } groups.forEach(group => { const vipBadge = group.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = group.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#204071] flex items-center">${vipBadge}${group.GroupName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(group.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
+        const renderGroupsTable = (groups) => { const tableBody = document.getElementById('groups-table-body'); tableBody.innerHTML = ''; if (!groups || groups.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No groups were found.</td></tr>`; return; } groups.forEach(group => { const vipBadge = group.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = group.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#204071] flex items-center">${vipBadge}${group.GroupName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(group.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
         
-        const renderRolesTable = (roles) => { const tableBody = document.getElementById('roles-table-body'); tableBody.innerHTML = ''; if (!roles || roles.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No se encontraron roles.</td></tr>`; return; } roles.forEach(role => { const vipBadge = role.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = role.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 text-sm font-medium text-[#204071] break-words flex items-center">${vipBadge}${role.RoleName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(role.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
+        const renderRolesTable = (roles) => { const tableBody = document.getElementById('roles-table-body'); tableBody.innerHTML = ''; if (!roles || roles.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No roles were found.</td></tr>`; return; } roles.forEach(role => { const vipBadge = role.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = role.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 text-sm font-medium text-[#204071] break-words flex items-center">${vipBadge}${role.RoleName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(role.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
         
-        const renderPasswordPolicy = (policy) => { const container = document.getElementById('password-policy-container'); container.innerHTML = ''; if (policy.Error) { container.innerHTML = `<p class="text-red-600 font-medium">No hay política de contraseñas configurada en esta cuenta.</p>`; return; } const checks = [ { desc: "Longitud mínima >= 12", ok: (policy.MinimumPasswordLength || 0) >= 12, val: policy.MinimumPasswordLength }, { desc: "Requiere mayúsculas", ok: policy.RequireUppercaseCharacters, val: policy.RequireUppercaseCharacters }, { desc: "Requiere minúsculas", ok: policy.RequireLowercaseCharacters, val: policy.RequireLowercaseCharacters }, { desc: "Requiere números", ok: policy.RequireNumbers, val: policy.RequireNumbers }, { desc: "Requiere símbolos", ok: policy.RequireSymbols, val: policy.RequireSymbols }, { desc: "Caducidad <= 90 días", ok: policy.MaxPasswordAge && policy.MaxPasswordAge <= 90, val: policy.MaxPasswordAge }, { desc: "Reutilización >= 4 contraseñas", ok: (policy.PasswordReusePrevention || 0) >= 4, val: policy.PasswordReusePrevention }, { desc: "Expiración forzada tras fallo", ok: policy.HardExpiry, val: policy.HardExpiry }, ]; let checksHtml = `<h4 class="font-semibold text-md mb-2">Compliance Checks</h4><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 mb-6"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configured Value</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">`; checks.forEach(({ desc, ok, val }) => { const statusIcon = ok ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">OK</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">KO</span>'; checksHtml += `<tr><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${desc}</td><td class="px-4 py-2 whitespace-nowrap text-sm">${statusIcon}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${val === undefined ? 'No definido' : val}</td></tr>`; }); checksHtml += `</tbody></table></div>`; const rawJsonHtml = `<h4 class="font-semibold text-md mb-2 mt-6">Respuesta Raw de la API</h4><pre class="bg-[#204071] text-white p-4 rounded-lg text-sm overflow-x-auto"><code>${JSON.stringify(policy, null, 2)}</code></pre>`; container.innerHTML = checksHtml + rawJsonHtml; };
+        const renderPasswordPolicy = (policy) => { const container = document.getElementById('password-policy-container'); container.innerHTML = ''; if (policy.Error) { container.innerHTML = `<p class="text-red-600 font-medium">There is no password policy configured for this account.</p>`; return; } const checks = [ { desc: "Longitud mínima >= 12", ok: (policy.MinimumPasswordLength || 0) >= 12, val: policy.MinimumPasswordLength }, { desc: "Requiere mayúsculas", ok: policy.RequireUppercaseCharacters, val: policy.RequireUppercaseCharacters }, { desc: "Requiere minúsculas", ok: policy.RequireLowercaseCharacters, val: policy.RequireLowercaseCharacters }, { desc: "Requiere números", ok: policy.RequireNumbers, val: policy.RequireNumbers }, { desc: "Requiere símbolos", ok: policy.RequireSymbols, val: policy.RequireSymbols }, { desc: "Caducidad <= 90 días", ok: policy.MaxPasswordAge && policy.MaxPasswordAge <= 90, val: policy.MaxPasswordAge }, { desc: "Reutilización >= 4 contraseñas", ok: (policy.PasswordReusePrevention || 0) >= 4, val: policy.PasswordReusePrevention }, { desc: "Expiración forzada tras fallo", ok: policy.HardExpiry, val: policy.HardExpiry }, ]; let checksHtml = `<h4 class="font-semibold text-md mb-2">Compliance Checks</h4><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 mb-6"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configured Value</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">`; checks.forEach(({ desc, ok, val }) => { const statusIcon = ok ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">OK</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">KO</span>'; checksHtml += `<tr><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${desc}</td><td class="px-4 py-2 whitespace-nowrap text-sm">${statusIcon}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${val === undefined ? 'No definido' : val}</td></tr>`; }); checksHtml += `</tbody></table></div>`; const rawJsonHtml = `<h4 class="font-semibold text-md mb-2 mt-6">Respuesta Raw de la API</h4><pre class="bg-[#204071] text-white p-4 rounded-lg text-sm overflow-x-auto"><code>${JSON.stringify(policy, null, 2)}</code></pre>`; container.innerHTML = checksHtml + rawJsonHtml; };
         
         const renderIamDetailsViewHtml = () => {
             return `
@@ -1132,7 +1132,7 @@
             if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.exposure-tab-content'));
             
             if (securityHubApiData) {
-                renderSecurityHubFindings(securityHubFindings, 'sh-exposure-findings-container', 'No se encontraron findings de Security Hub relacionados con exposición a internet.');
+                renderSecurityHubFindings(securityHubFindings, 'sh-exposure-findings-container', 'No Security Hub findings related to internet exposure were found.');
             }
         };
         
@@ -1162,7 +1162,7 @@
         
         const renderExposureDetails = (service, regions) => {
             if (Object.keys(regions).length === 0) {
-                return `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron recursos de tipo "${service}" expuestos.</p></div>`;
+                return `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No exposed resources of type "${service}" were found.</p></div>`;
             }
 
             let html = '<div class="space-y-6">';
@@ -1233,7 +1233,7 @@
 
         const renderNetworkPortsTable = (ports) => {
             if (!ports || ports.length === 0) {
-                return `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">¡Excelente! No se encontraron puertos de red públicamente expuestos.</p></div>`;
+                return `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">Excellent! No publicly exposed network ports were found.</p></div>`;
             }
 
             let tableHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
@@ -1343,7 +1343,7 @@
             return table;
         };
 
-        const renderGuarddutyFindingsTable = (findings) => { if (!findings || findings.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron findings de GuardDuty activos.</p></div>'; const severityClasses = { 'CRITICAL': 'bg-red-600 text-white', 'HIGH': 'bg-orange-500 text-white', 'MEDIUM': 'bg-yellow-400 text-black', 'LOW': 'bg-blue-500 text-white', 'INFORMATIONAL': 'bg-gray-400 text-white' }; let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; findings.forEach(f => { const severity = f.SeverityLabel || 'N/A'; const severityClass = severityClasses[severity] || 'bg-gray-200 text-gray-800'; tableHtml += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityClass}">${severity} (${f.SeverityScore})</span></td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td> <td class="px-4 py-4 text-sm text-gray-800 break-words">${f.Title}</td> <td class="px-4 py-4 text-sm text-gray-600 break-words">${f.Resource}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.LastSeen}</td> </tr>`; }); tableHtml += '</tbody></table></div>'; return tableHtml; };
+        const renderGuarddutyFindingsTable = (findings) => { if (!findings || findings.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No active GuardDuty findings were found.</p></div>'; const severityClasses = { 'CRITICAL': 'bg-red-600 text-white', 'HIGH': 'bg-orange-500 text-white', 'MEDIUM': 'bg-yellow-400 text-black', 'LOW': 'bg-blue-500 text-white', 'INFORMATIONAL': 'bg-gray-400 text-white' }; let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; findings.forEach(f => { const severity = f.SeverityLabel || 'N/A'; const severityClass = severityClasses[severity] || 'bg-gray-200 text-gray-800'; tableHtml += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityClass}">${severity} (${f.SeverityScore})</span></td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td> <td class="px-4 py-4 text-sm text-gray-800 break-words">${f.Title}</td> <td class="px-4 py-4 text-sm text-gray-600 break-words">${f.Resource}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.LastSeen}</td> </tr>`; }); tableHtml += '</tbody></table></div>'; return tableHtml; };
 
         const setupGuarddutyFindingsFilter = () => {
             const allFindings = guarddutyApiData.results.findings;
@@ -1419,7 +1419,7 @@
             `;
             
             updateWafSummaryCards(acls, ip_sets, wafFindings);
-            renderSecurityHubFindings(wafFindings, 'sh-waf-findings-container', 'No se encontraron findings de Security Hub relacionados com WAF.');
+            renderSecurityHubFindings(wafFindings, 'sh-waf-findings-container', 'No Security Hub findings related to WAF were found.');
             
             const tabsNav = container.querySelector('#waf-tabs');
             if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.waf-tab-content'));
@@ -1471,7 +1471,7 @@
             container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">CloudTrail Analysis</h2><p class="text-sm text-gray-500">${cloudtrailApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudtrail-tabs"><a href="#" data-tab="ct-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="ct-trails-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Trails (${trails.length})</a><a href="#" data-tab="ct-events-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Events (${events.length})</a><a href="#" data-tab="ct-lookup-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Log Finder</a><a href="#" data-tab="ct-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudtrailFindings.length})</a></nav></div><div id="cloudtrail-tab-content-container"><div id="ct-summary-content" class="cloudtrail-tab-content">${createCloudtrailSummaryCardsHtml()}</div><div id="ct-trails-content" class="cloudtrail-tab-content hidden">${renderCloudtrailTrailsView(trails)}</div><div id="ct-events-content" class="cloudtrail-tab-content hidden">${renderCloudtrailEventsTable(events)}</div><div id="ct-lookup-content" class="cloudtrail-tab-content hidden"></div><div id="ct-sh-content" class="cloudtrail-tab-content hidden">${createCloudtrailSecurityHubHtml()}</div></div>`;
             
             updateCloudtrailSummaryCards(trails, events); 
-            renderSecurityHubFindings(cloudtrailFindings, 'sh-cloudtrail-findings-container', 'No se encontraron findings de Security Hub para CloudTrail.');
+            renderSecurityHubFindings(cloudtrailFindings, 'sh-cloudtrail-findings-container', 'No Security Hub findings for CloudTrail were found.');
             
             // Renderizamos la vista del nuevo buscador
             const lookupContainer = document.getElementById('ct-lookup-content');
@@ -1494,8 +1494,8 @@
             </div>`;
         const updateCloudtrailSummaryCards = (trails, events) => { const activeTrails = trails.filter(t => t.IsLogging).length; const inactiveTrails = trails.length - activeTrails; document.getElementById('ct-total-trails').textContent = trails.length; document.getElementById('ct-active-trails').textContent = activeTrails; document.getElementById('ct-inactive-trails').textContent = inactiveTrails; document.getElementById('ct-total-events').textContent = events.length; };
         const createCloudtrailSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Findings de Seguridad Activos (CloudTrail)</h3><div id="sh-cloudtrail-findings-container" class="overflow-x-auto"></div></div>`;
-        const renderCloudtrailTrailsView = (trails) => { if (!trails || trails.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron trails de CloudTrail en la cuenta.</p></div>'; let summaryTable = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Resumen de Trails</h3><div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-8"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Home Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multi-Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logging Status</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; trails.forEach(t => { const loggingStatus = t.IsLogging ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Detenido</span>`; summaryTable += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${t.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.HomeRegion}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.IsMultiRegionTrail ? 'YES' : 'NO'}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${loggingStatus}</td></tr>`; }); summaryTable += '</tbody></table></div>'; let detailsHtml = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Detalles de Configuración por Trail</h3><div class="space-y-6">'; trails.forEach(t => { const validationBadge = t.LogFileValidationEnabled ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Habilitada</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Deshabilitada</span>`; const kmsBadge = t.KmsKeyId ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">NO</span>`; detailsHtml += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-3 pb-2 border-b">${t.Name}</h4><ul class="space-y-2 text-sm"><li class="flex justify-between"><span class="font-medium text-gray-600">Validación de Integridad:</span><span>${validationBadge}</span></li><li class="flex justify-between"><span class="font-medium text-gray-600">Cifrado con KMS:</span><span>${kmsBadge}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">Bucket S3:</span><span class="font-mono text-gray-800">${t.S3BucketName || '-'}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">CloudWatch Log Group:</span><span class="font-mono text-xs text-gray-800">${t.CloudWatchLogsLogGroupArn ? t.CloudWatchLogsLogGroupArn.split(':log-group:')[1] : '-'}</span></li></ul></div>`; }); detailsHtml += '</div>'; return summaryTable + detailsHtml; };
-        const renderCloudtrailEventsTable = (events) => { if (!events || events.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron eventos de interés en los últimos 7 días.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Origen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; events.forEach(e => { const eventDate = new Date(e.EventTime).toLocaleString(); table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${eventDate}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${e.EventName}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.Username}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.EventRegion}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600 font-mono">${e.SourceIPAddress}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
+        const renderCloudtrailTrailsView = (trails) => { if (!trails || trails.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No CloudTrail trails were found in the account.</p></div>'; let summaryTable = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Resumen de Trails</h3><div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-8"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Home Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multi-Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logging Status</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; trails.forEach(t => { const loggingStatus = t.IsLogging ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Detenido</span>`; summaryTable += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${t.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.HomeRegion}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.IsMultiRegionTrail ? 'YES' : 'NO'}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${loggingStatus}</td></tr>`; }); summaryTable += '</tbody></table></div>'; let detailsHtml = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Detalles de Configuración por Trail</h3><div class="space-y-6">'; trails.forEach(t => { const validationBadge = t.LogFileValidationEnabled ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Habilitada</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Deshabilitada</span>`; const kmsBadge = t.KmsKeyId ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">NO</span>`; detailsHtml += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-3 pb-2 border-b">${t.Name}</h4><ul class="space-y-2 text-sm"><li class="flex justify-between"><span class="font-medium text-gray-600">Validación de Integridad:</span><span>${validationBadge}</span></li><li class="flex justify-between"><span class="font-medium text-gray-600">Cifrado con KMS:</span><span>${kmsBadge}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">Bucket S3:</span><span class="font-mono text-gray-800">${t.S3BucketName || '-'}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">CloudWatch Log Group:</span><span class="font-mono text-xs text-gray-800">${t.CloudWatchLogsLogGroupArn ? t.CloudWatchLogsLogGroupArn.split(':log-group:')[1] : '-'}</span></li></ul></div>`; }); detailsHtml += '</div>'; return summaryTable + detailsHtml; };
+        const renderCloudtrailEventsTable = (events) => { if (!events || events.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No events of interest were found in the last 7 days.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Origen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; events.forEach(e => { const eventDate = new Date(e.EventTime).toLocaleString(); table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${eventDate}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${e.EventName}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.Username}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.EventRegion}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600 font-mono">${e.SourceIPAddress}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
 
         const renderCloudtrailLookUpView = (allRegions) => {
             const regionOptions = allRegions.map(r => `<option value="${r}">${r}</option>`).join('');
@@ -1616,7 +1616,7 @@
         const renderCloudtrailLookupResult = (events) => {
             if (!events) return '';
             if (events.length === 0) {
-                return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron eventos que coincidan con los criterios de búsqueda.</p></div>';
+                return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No events matching the search criteria were found.</p></div>';
             }
             
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table id="cloudtrail-lookup-table" class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
@@ -1660,7 +1660,7 @@
             // Encontrar el evento completo usando el eventId
             const eventData = lastCloudtrailLookupResults.find(e => e.EventId === eventId);
             if (!eventData) {
-                log(`No se encontró el detalle para el evento ${eventId}`, 'error');
+                log(`No details were found for event ${eventId}`, 'error');
                 return;
             }
 
@@ -1717,7 +1717,7 @@
         const createCloudwatchSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Active Security Findings (CloudWatch)</h3><div id="sh-cloudwatch-findings-container" class="overflow-x-auto"></div></div>`;
         
         const renderCloudwatchAlarmsTable = (alarms) => {
-            if (!alarms || alarms.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron alarmas de CloudWatch.</p></div>';
+            if (!alarms || alarms.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No CloudWatch alarms were found.</p></div>';
             
             let table = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -1784,7 +1784,7 @@
             }
         };
         
-        const renderCloudwatchTopicsTable = (topics) => { if (!topics || topics.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron topics de SNS con suscripciones de email.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic ARN</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subscribed Emails</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; topics.sort((a, b) => a.Region.localeCompare(b.Region) || a.TopicArn.localeCompare(b.TopicArn)).forEach(topic => { const emails = topic.Subscriptions.map(s => s.Endpoint).join(', '); table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${topic.Region}</td><td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${topic.TopicArn}</td><td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${emails}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
+        const renderCloudwatchTopicsTable = (topics) => { if (!topics || topics.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No SNS topics with email subscriptions were found.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic ARN</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subscribed Emails</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; topics.sort((a, b) => a.Region.localeCompare(b.Region) || a.TopicArn.localeCompare(b.TopicArn)).forEach(topic => { const emails = topic.Subscriptions.map(s => s.Endpoint).join(', '); table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${topic.Region}</td><td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${topic.TopicArn}</td><td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${emails}</td></tr>`; }); table += '</tbody></table></div>'; return table; };
 
 
         // --- SECCIÓN DE INSPECTOR ---
@@ -2156,7 +2156,7 @@
             `;
             
             updateAcmSummaryCards(certificates, acmSecurityHubFindings);
-            renderSecurityHubFindings(acmSecurityHubFindings, 'sh-acm-findings-container', 'No se encontraron findings de Security Hub relacionados con ACM.');
+            renderSecurityHubFindings(acmSecurityHubFindings, 'sh-acm-findings-container', 'No Security Hub findings related to ACM were found.');
 
             const tabsNav = container.querySelector('#acm-tabs');
             if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.acm-tab-content'));
@@ -2183,7 +2183,7 @@
 
         const renderAcmCertificatesTable = (certificates) => {
             if (!certificates || certificates.length === 0) {
-                return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron certificados ACM.</p></div>';
+                return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No ACM certificates were found.</p></div>';
             }
 
             const statusColors = {
@@ -2395,7 +2395,7 @@
                 </div>`;
             
             if (!instances || instances.length === 0) {
-                return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}<p class="text-center text-gray-500 py-4">No se encontraron instancias EC2 con los filtros seleccionados.</p></div>`;
+                return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}<p class="text-center text-gray-500 py-4">No EC2 instances matching the selected filters were found.</p></div>`;
             }
 
             let tableContent = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
@@ -2438,7 +2438,7 @@
         };
 
         const renderLambdaFunctionsTable = (functions) => {
-            if (!functions || functions.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron funciones Lambda.</p></div>';
+            if (!functions || functions.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Lambda functions were found.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Function Name</th>' +
@@ -2458,7 +2458,7 @@
         };
 
         const renderEksClustersTable = (clusters) => {
-            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron clusters EKS.</p></div>';
+            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No EKS clusters were found.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cluster name</th>' +
@@ -2476,7 +2476,7 @@
         };
 
         const renderEcsClustersTable = (clusters) => {
-            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron clusters ECS.</p></div>';
+            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No ECS clusters were found.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cluster name</th>' +
@@ -2708,7 +2708,7 @@
                 </div>`;
 
             if (!vpcs || vpcs.length === 0) {
-                return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No se encontraron VPCs con los filtros seleccionados.</p></div>`;
+                return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No VPCs matching the selected filters were found.</p></div>`;
             }
             
             let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
@@ -2747,7 +2747,7 @@
                 </div>`;
 
             if (!acls || acls.length === 0) {
-                return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No se encontraron Network ACLs con los filtros seleccionados.</p></div>`;
+                return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No Network ACLs matching the selected filters were found.</p></div>`;
             }
             
             let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
@@ -2786,7 +2786,7 @@
                 </div>`;
 
             if (!sgs || sgs.length === 0) {
-                return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No se encontraron Security Groups con los filtros seleccionados.</p></div>`;
+                return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No Security Groups matching the selected filters were found.</p></div>`;
             }
             
             let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
@@ -2813,7 +2813,7 @@
 
         const renderVpcDiagram = (vpcs, subnets, instances, lambdas, rdsInstances, auroraClusters) => {
             if (!vpcs || vpcs.length === 0) {
-                return '<p class="text-center text-gray-500">No se encontraron VPCs para mostrar en el diagrama.</p>';
+                return '<p class="text-center text-gray-500">No VPCs were found to display in the diagram.</p>';
             }
 
             let diagramHtml = '<div class="space-y-8">'; // Contenedor principal para todas las VPCs
@@ -2984,7 +2984,7 @@
         const renderNetworkDetailResult = (tableString) => {
             const container = document.getElementById('np-detail-results-container');
             if (!tableString) {
-                container.innerHTML = '<p class="text-gray-500">No se encontraron resultados.</p>';
+                container.innerHTML = '<p class="text-gray-500">No results were found.</p>';
                 return;
             }
             container.innerHTML = `
@@ -3031,7 +3031,7 @@
         };
 
         const renderPeeringTable = (connections) => {
-            if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron conexiones de VPC Peering activas.</p></div>';
+            if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No active VPC Peering connections were found.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Connection ID</th>' +
@@ -3053,7 +3053,7 @@
         };
 
         const renderTgwAttachmentsTable = (attachments) => {
-            if (!attachments || attachments.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron adjuntos de VPC a Transit Gateways.</p></div>';
+            if (!attachments || attachments.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No VPC attachments to Transit Gateways were found.</p></div>';
              let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transit Gateway ID</th>' +
@@ -3073,7 +3073,7 @@
         };
 
         const renderVpnConnectionsTable = (connections) => {
-            if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron conexiones VPN activas.</p></div>';
+            if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No active VPN connections were found.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPN Connection ID</th>' +
@@ -3093,7 +3093,7 @@
         };
 
         const renderVpcEndpointsTable = (endpoints) => {
-            if (!endpoints || endpoints.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron VPC Endpoints.</p></div>';
+            if (!endpoints || endpoints.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No VPC Endpoints were found.</p></div>';
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
@@ -3373,7 +3373,7 @@
             if (!container) return;
 
             if (!complianceSummary || complianceSummary.length === 0) {
-                container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron datos de cumplimiento para mostrar.</p></div>`;
+                container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No compliance data was found to display.</p></div>`;
                 return;
             }
 
@@ -3593,7 +3593,7 @@
             });
 
             if (Object.keys(failedControls).length === 0) {
-                container.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><div class="flex items-center justify-center text-green-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/></svg><p class="text-center font-semibold text-lg">¡Felicidades! No se encontraron controles de seguridad fallidos.</p></div></div>`;
+                container.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><div class="flex items-center justify-center text-green-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/></svg><p class="text-center font-semibold text-lg">Congratulations! No failed security controls were found.</p></div></div>`;
                 return;
             }
 
@@ -4028,33 +4028,33 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             container.innerHTML = `
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <h3 class="font-bold text-lg mb-1 text-[#204071]">Generar Informe con IA (Gemini)</h3>
-                    <p class="text-sm text-gray-500 mb-4">Esta herramienta utilizará los hallazgos encontrados para generar un borrador de informe ejecutivo.</p>
+                    <p class="text-sm text-gray-500 mb-4">This tool will use the findings to generate a draft executive report.</p>
                     
                     <div class="mb-4">
                         <label for="gemini-api-key" class="block text-sm font-medium text-gray-700 mb-1">Tu API Key de Google AI Studio (Gemini)</label>
                         <input type="password" id="gemini-api-key" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Pega aquí tu clave de API">
-                        <p class="text-xs text-gray-500 mt-1">Tu clave se usa directamente desde tu navegador para llamar a la API de Google y no se almacena en ningún sitio.</p>
+                        <p class="text-xs text-gray-500 mt-1">Your key is used directly from your browser to call the Google API and is not stored anywhere.</p>
                     </div>
 
                     <div class="mb-4">
-                        <label for="gemini-region-filter" class="block text-sm font-medium text-gray-700 mb-1">Filtrar Hallazgos por Región (Opcional)</label>
+                        <label for="gemini-region-filter" class="block text-sm font-medium text-gray-700 mb-1">Filter Findings by Region (Optional)</label>
                         <select id="gemini-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
                             <option value="all">All Regions</option>
                             </select>
                     </div>
 
                     <div class="mb-4">
-                        <label for="gemini-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt para Gemini (Editable)</label>
+                        <label for="gemini-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt for Gemini (Editable)</label>
                         <textarea id="gemini-prompt" rows="10" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono">${defaultPrompt}</textarea>
                     </div>
 
                     <button id="generate-gemini-report-btn" class="bg-[#eb3496] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition flex items-center justify-center space-x-2">
-                        <span id="gemini-btn-text">Generar Borrador de Correo</span>
+                        <span id="gemini-btn-text">Generate Draft Email</span>
                         <div id="gemini-spinner" class="spinner hidden"></div>
                     </button>
 
                     <div id="gemini-report-output" class="mt-6 hidden">
-                         <h4 class="font-bold text-lg mb-2 text-[#204071]">Borrador del Correo:</h4>
+                         <h4 class="font-bold text-lg mb-2 text-[#204071]">Email Draft:</h4>
                          <div id="gemini-report-content" class="bg-slate-50 p-4 rounded-lg border text-sm whitespace-pre-wrap"></div>
                     </div>
                 </div>
@@ -4237,7 +4237,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 
         const renderKmsKeysTable = (keys) => {
             if (!keys || keys.length === 0) {
-                return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron claves KMS.</p></div>';
+                return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No KMS keys were found.</p></div>';
             }
 
             let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
@@ -4398,7 +4398,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         }
          
         const renderRdsTable = (instances) => {
-            if (!instances || instances.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron instancias RDS standalone.</p></div>';
+            if (!instances || instances.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No standalone RDS instances were found.</p></div>';
             
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
@@ -4434,7 +4434,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         };
 
         const renderAuroraTable = (clusters) => {
-            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron clústeres Aurora.</p></div>';
+            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Aurora clusters were found.</p></div>';
             
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
@@ -4464,7 +4464,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         };
 
         const renderDynamoDbTable = (tables) => {
-            if (!tables || tables.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron tablas DynamoDB.</p></div>';
+            if (!tables || tables.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No DynamoDB tables were found.</p></div>';
             
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
@@ -4492,7 +4492,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         };
 
         const renderDocumentDbTable = (clusters) => {
-            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No se encontraron clústeres DocumentDB.</p></div>';
+            if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No DocumentDB clusters were found.</p></div>';
             
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
@@ -4594,7 +4594,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         const handleJsonImport = (event) => {
             const file = event.target.files[0];
             if (!file) {
-                log('No se seleccionó ningún fichero.', 'info');
+                log('No file was selected.', 'info');
                 return;
             }
 
@@ -4606,10 +4606,10 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     const importedData = JSON.parse(e.target.result);
 
                     if (!importedData.metadata || !importedData.results) {
-                        throw new Error("El fichero JSON no tiene la estructura esperada (metadata/results).");
+                        throw new Error("The JSON file does not have the expected structure. (metadata/results).");
                     }
 
-                    log(`Fichero JSON parseado correctamente. Cuenta: ${importedData.metadata.accountId}`, 'info');
+                    log(`JSON file parsed successfully. Account: ${importedData.metadata.accountId}`, 'info');
 
                     const results = importedData.results;
                     
@@ -4637,22 +4637,22 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     
                     allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
 
-                    log('Datos importados en el estado de la aplicación.', 'success');
+                    log('Data imported into the application state.', 'success');
                     
                     buildAndRenderAllViews();
                     runAndDisplayHealthyStatus();
 
                 } catch (error) {
-                    log(`Error al importar el fichero JSON: ${error.message}`, 'error');
+                    log(`Error importing the JSON file: ${error.message}`, 'error');
                     console.error(error);
-                    errorMessageDiv.textContent = 'Error: El fichero seleccionado no es un JSON válido o tiene un formato incorrecto.';
+                    errorMessageDiv.textContent = 'Error: The selected file is not a valid JSON or has an incorrect format.';
                     errorMessageDiv.classList.remove('hidden');
                 }
             };
 
             reader.onerror = () => {
-                log('Error al leer el fichero.', 'error');
-                errorMessageDiv.textContent = 'Error: No se pudo leer el fichero seleccionado.';
+                log('Error reading the file.', 'error');
+                errorMessageDiv.textContent = 'Error: The selected file could not be read.';
                 errorMessageDiv.classList.remove('hidden');
             };
 
@@ -4681,7 +4681,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                         <div class="flex items-center justify-center text-green-600">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/></svg>
-                            <p class="text-center font-semibold text-lg">¡Felicidades! No se encontraron hallazgos para la región seleccionada.</p>
+                            <p class="text-center font-semibold text-lg">¡Felicidades! No findings were found for the selected region.</p>
                         </div>
                     </div>`;
                 return;
@@ -4699,7 +4699,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 
                 const affectedResourcesHtml = Array.isArray(finding.affected_resources) 
                     ? finding.affected_resources.map(res => `<li>${res.display}</li>`).join('')
-                    : '<li>Error al procesar los recursos afectados.</li>';
+                    : '<li>Error processing the affected resources.</li>';
                 
                 const resourcesCount = Array.isArray(finding.affected_resources) ? finding.affected_resources.length : 0;
 

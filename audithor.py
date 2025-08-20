@@ -164,10 +164,10 @@ def collect_identity_center_data(session):
 
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-             return {"status": "Error", "message": "Acceso denegado. Se necesitan permisos para 'sso-admin' y 'identitystore'."}
-        return {"status": "Error", "message": f"Error inesperado al consultar Identity Center: {str(e)}"}
+             return {"status": "Error", "message": "Access denied. Permissions are required for 'sso-admin' y 'identitystore'."}
+        return {"status": "Error", "message": f"Unexpected error while querying Identity Center.: {str(e)}"}
     except Exception as e:
-        return {"status": "Error General", "message": f"Ocurrió un error inesperado en la función: {str(e)}"}
+        return {"status": "Error General", "message": f"An unexpected error occurred in the function: {str(e)}"}
 
 def detectar_privilegios(users, roles, groups, session):
     client = session.client("iam")
@@ -262,7 +262,7 @@ def check_critical_permissions(session, users):
                             break
                             
         except ClientError as e:
-            print(f"No se pudo simular la política para {user['UserName']}: {e}")
+            print(f"Could not simulate the policy for {user['UserName']}: {e}")
             continue
 
     return users
@@ -404,7 +404,7 @@ def get_sso_group_members(session, group_id):
             continue
     
     if not identity_store_id:
-        raise Exception("No se pudo encontrar una instancia de AWS Identity Center activa.")
+        raise Exception("Could not find an active AWS Identity Center instance.")
 
     # Ahora usamos el IdentityStoreId para buscar los miembros
     identity_client = session.client("identitystore", region_name=found_region)
@@ -919,11 +919,11 @@ def collect_kms_data(session):
                     if desc.get('KeyManager') == 'CUSTOMER' and desc.get('KeySpec') == 'SYMMETRIC_DEFAULT':
                         try:
                             status = kms_client.get_key_rotation_status(KeyId=key_id)
-                            rotation_enabled = "Activada" if status.get('KeyRotationEnabled') else "Desactivada"
+                            rotation_enabled = "Activada" if status.get('KeyRotationEnabled') else "Disabled"
                         except ClientError:
-                            rotation_enabled = "No Soportada"
+                            rotation_enabled = "Not Supported"
                     
-                    policy_doc = "No se pudo obtener"
+                    policy_doc = "Could not retrieve"
                     try:
                         policy_str = kms_client.get_key_policy(KeyId=key_id, PolicyName='default')['Policy']
                         policy_doc = json.loads(policy_str)
@@ -1733,7 +1733,7 @@ def pg_get_ec2_details(ec2_client, instance_id):
         response = ec2_client.describe_instances(InstanceIds=[instance_id])
         instance = response['Reservations'][0]['Instances'][0]
         if not instance.get('PrivateIpAddress'):
-            raise ValueError(f"La instancia EC2 '{instance_id}' no tiene una IP privada asignada (podría estar detenida).")
+            raise ValueError(f"The EC2 instance '{instance_id}' does not have a private IP assigned (it may be stopped).")
         return {
             "id": instance['InstanceId'], "service": "EC2",
             "private_ip": instance.get('PrivateIpAddress'),
@@ -1742,7 +1742,7 @@ def pg_get_ec2_details(ec2_client, instance_id):
         }
     except ClientError as e:
         if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
-            raise ValueError(f"No se encontró la instancia EC2 con ID '{instance_id}'.")
+            raise ValueError(f"EC2 instance with ID not found '{instance_id}'.")
         raise
 
 def pg_get_rds_details(session, region, db_identifier, ec2_client):
@@ -1795,7 +1795,7 @@ def pg_get_rds_details(session, region, db_identifier, ec2_client):
         }
     except ClientError as e:
         if e.response['Error']['Code'] == 'DBInstanceNotFound':
-            raise ValueError(f"No se encontró la instancia RDS con identificador '{db_identifier}'.")
+            raise ValueError(f"RDS instance with identifier not found '{db_identifier}'.")
         raise
 
 def pg_get_lambda_details(session, region, function_name, ec2_client):
@@ -1815,7 +1815,7 @@ def pg_get_lambda_details(session, region, function_name, ec2_client):
         eni = next((eni for page in pages for eni in page['NetworkInterfaces']), None)
 
         if not (eni and eni.get('PrivateIpAddress')):
-            raise ValueError(f"No se pudo encontrar una interfaz de red (ENI) con una IP privada para la función Lambda '{function_name}'. Puede que se esté desplegando.")
+            raise ValueError(f"Could not find a network interface (ENI) with a private IP for the Lambda function '{function_name}'. It may be deploying.")
 
         return {
             "id": config['FunctionName'], "service": "Lambda",
@@ -1825,7 +1825,7 @@ def pg_get_lambda_details(session, region, function_name, ec2_client):
         }
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            raise ValueError(f"No se encontró la función Lambda con el nombre '{function_name}'.")
+            raise ValueError(f"Lambda function with the name not found '{function_name}'.")
         raise
 
 def pg_get_resource_network_details(session, arn):
@@ -1955,17 +1955,17 @@ def analyze_network_path_data(session, source_arn, target_arn):
     target = pg_get_resource_network_details(session, target_arn)
 
     if source['vpc_id'] != target['vpc_id']:
-        return {'status': 'UNREACHABLE', 'reason': f"Los recursos están en VPCs diferentes ({source['vpc_id']} y {target['vpc_id']}) y este análisis no cubre Peering/Transit Gateway.", 'tables': [], 'detail_tables': {}}
+        return {'status': 'UNREACHABLE', 'reason': f"The resources are in different VPCs ({source['vpc_id']} y {target['vpc_id']}) and this analysis does not cover Peering/Transit Gateway.", 'tables': [], 'detail_tables': {}}
     
     region = source_arn.split(':')[3]
     ec2 = session.client('ec2', region_name=region)
     
     route_ok, route_rule = pg_check_route_table(ec2, source['subnet_id'], target['private_ip'])
     if not route_ok:
-        return {'status': 'UNREACHABLE', 'reason': f"No se encontró una ruta en la tabla '{route_rule.get('RouteTableId')}' desde la subred de origen hacia la IP de destino '{target['private_ip']}'.", 'tables': [], 'detail_tables': {}}
+        return {'status': 'UNREACHABLE', 'reason': f"No route was found in the table '{route_rule.get('RouteTableId')}' from the source subnet to the destination IP '{target['private_ip']}'.", 'tables': [], 'detail_tables': {}}
 
     result = {
-        'status': 'UNREACHABLE', 'reason': 'No hay reglas en el SG de origen/destino que permitan la conexión.',
+        'status': 'UNREACHABLE', 'reason': 'There are no rules in the source/destination SG that allow the connection.',
         'perms': [], 'tables': [], 'detail_tables': {}
     }
     
@@ -2160,7 +2160,7 @@ def get_compliance_for_region(securityhub_client):
                 "totalControls": total_controls,
             })
     except Exception as e:
-        print(f"    [!] No se pudo obtener el resumen de cumplimiento: {e}")
+        print(f"    [!] Could not retrieve the compliance summary: {e}")
 
     return compliance_summary
 
@@ -2531,17 +2531,17 @@ def run_network_detail_audit():
             nacl_details = ec2_client.describe_network_acls(NetworkAclIds=[resource_id])
             details_table = format_nacl_details_table(nacl_details)
         else:
-            return jsonify({"error": "ID de recurso no válido. Debe empezar con 'sg-' o 'acl-'."}), 400
+            return jsonify({"error": "Invalid resource ID. It must start with sg- or acl-,"}), 400
         
         return jsonify({"results": {"details_table": details_table}})
 
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if 'NotFound' in error_code:
-            return jsonify({"error": f"No se encontró el recurso con ID '{resource_id}' en la región '{region}'."}), 404
-        return jsonify({"error": f"Error de AWS: {str(e)}"}), 500
+            return jsonify({"error": f"Resource with ID not found '{resource_id}' in the region '{region}'."}), 404
+        return jsonify({"error": f"AWS Error: {str(e)}"}), 500
     except Exception as e:
-        return jsonify({"error": f"Error inesperado: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected Error: {str(e)}"}), 500
 
 @app.route('/api/run-connectivity-audit', methods=['POST'])
 def run_connectivity_audit():
@@ -2607,7 +2607,7 @@ def run_sslscan():
     targets_str = data.get('target')
 
     if not targets_str:
-        return jsonify({"error": "No se ha proporcionado ningún objetivo (target)."}), 400
+        return jsonify({"error": "No target has been provided."}), 400
 
     targets = [t.strip() for t in targets_str.split(',')]
     results = []
@@ -2619,7 +2619,7 @@ def run_sslscan():
     # Comprobamos si 'sslscan' está disponible en el PATH del sistema
     if not shutil.which("sslscan"):
         # Si no se encuentra, devolvemos un error claro y terminamos
-        error_msg = "El comando 'sslscan' no se encuentra en el PATH de tu sistema. Asegúrate de que está instalado y accesible."
+        error_msg = "The sslscan command was not found in your system PATH. Make sure it is installed and accessible."
         return jsonify({"results": [{"target": ", ".join(targets), "error": error_msg}]})
     # --- FIN DE LA MODIFICACIÓN ---
 
@@ -2628,7 +2628,7 @@ def run_sslscan():
     def scan_target(target):
         safe_characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-"
         if not all(char in safe_characters for char in target) or not target:
-            results.append({"target": target, "error": "El objetivo contiene caracteres no válidos o está vacío."})
+            results.append({"target": target, "error": "The target contains invalid characters or is empty."})
             return
         
         try:
