@@ -391,7 +391,48 @@ def collect_access_analyzer_data(session):
     # --- ▼▼▼ 2. RETURN MODIFICADO ▼▼▼ ---
     return {"findings": findings_results, "summary": analyzers_summary}
 
+def get_sso_group_members(session, group_id):
+    """
+    Obtiene los usernames de los miembros de un grupo específico de Identity Center.
+    """
+    all_regions = get_all_aws_regions(session)
+    identity_store_id = None
+    found_region = None
 
+    # Primero, necesitamos encontrar la instancia de SSO para obtener el IdentityStoreId
+    for region in all_regions:
+        try:
+            regional_sso_client = session.client("sso-admin", region_name=region)
+            instances = regional_sso_client.list_instances().get("Instances", [])
+            if instances:
+                identity_store_id = instances[0]['IdentityStoreId']
+                found_region = region
+                break
+        except ClientError:
+            continue
+    
+    if not identity_store_id:
+        raise Exception("No se pudo encontrar una instancia de AWS Identity Center activa.")
+
+    # Ahora usamos el IdentityStoreId para buscar los miembros
+    identity_client = session.client("identitystore", region_name=found_region)
+    user_members = []
+    
+    paginator = identity_client.get_paginator('list_group_memberships')
+    for page in paginator.paginate(IdentityStoreId=identity_store_id, GroupId=group_id):
+        for member in page.get('Memberships', []):
+            user_id = member.get('MemberId', {}).get('UserId')
+            if user_id:
+                try:
+                    user_details = identity_client.describe_user(
+                        IdentityStoreId=identity_store_id,
+                        UserId=user_id
+                    )
+                    user_members.append(user_details.get('UserName', 'Usuario no encontrado'))
+                except ClientError:
+                    user_members.append(f"Usuario (ID: {user_id}) - Acceso Denegado a Detalles")
+
+    return sorted(user_members)
 
 # ==============================================================================
 # LÓGICA SECURITYHUB
@@ -2342,15 +2383,27 @@ def run_cloudwatch_audit():
         return jsonify({"error": f"Error inesperado al recopilar datos de CloudWatch/SNS: {str(e)}"}), 500
 
 @app.route('/api/run-inspector-audit', methods=['POST'])
-def run_inspector_audita():
+def run_inspector_audit():
     session, error = get_session(request.get_json())
     if error: return jsonify({"error": error}), 401
     try:
-        inspector_results = collect_inspector_data(session)
+        # --- LÍNEA CORREGIDA ---
+        # Ahora llama a la función correcta para el escaneo rápido de estado.
+        inspector_status = collect_inspector_status(session)
         sts = session.client("sts")
-        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": inspector_results })
+        
+        # Añadimos una lista de findings vacía por defecto para mantener la estructura de datos
+        inspector_status["findings"] = []
+        
+        return jsonify({ 
+            "metadata": {
+                "accountId": sts.get_caller_identity()["Account"], 
+                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
+            }, 
+            "results": inspector_status 
+        })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Inspector: {str(e)}"}), 500
+        return jsonify({"error": f"Error inesperado al recopilar el estado de Inspector: {str(e)}"}), 500
 
 @app.route('/api/run-acm-audit', methods=['POST'])
 def run_acm_audit():
@@ -2705,20 +2758,6 @@ def run_access_analyzer_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar datos de Access Analyzer: {str(e)}"}), 500
 
-@app.route('/api/run-inspector-audit', methods=['POST'])
-def run_inspector_audit():
-    session, error = get_session(request.get_json())
-    if error: return jsonify({"error": error}), 401
-    try:
-        # Ahora solo llama a la función rápida de estado
-        inspector_status = collect_inspector_status(session)
-        sts = session.client("sts")
-        # Devuelve el estado y una lista de findings vacía por defecto
-        inspector_status["findings"] = []
-        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": inspector_status })
-    except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar el estado de Inspector: {str(e)}"}), 500
-
 @app.route('/api/run-inspector-findings-audit', methods=['POST'])
 def run_inspector_findings_audit():
     session, error = get_session(request.get_json())
@@ -2731,7 +2770,22 @@ def run_inspector_findings_audit():
     except Exception as e:
         return jsonify({"error": f"Error inesperado al recopilar los findings de Inspector: {str(e)}"}), 500
 
+@app.route('/api/get-sso-group-members', methods=['POST'])
+def get_sso_group_members_endpoint():
+    session, error = get_session(request.get_json())
+    if error:
+        return jsonify({"error": error}), 401
+    
+    data = request.get_json()
+    group_id = data.get('group_id')
+    if not group_id:
+        return jsonify({"error": "Se requiere el group_id."}), 400
 
+    try:
+        members = get_sso_group_members(session, group_id)
+        return jsonify({"members": members})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ==============================================================================
 # EJECUCIÓN SERVIDOR

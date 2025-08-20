@@ -680,10 +680,8 @@
             const container = document.getElementById('federation-content');
             if (!container || !federationApiData) return;
 
-            // Extraemos las dos secciones de datos
             const { iam_federation, identity_center } = federationApiData.results;
 
-            // --- HTML para la Federación IAM Tradicional (como antes) ---
             let aliasHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
                                 <h3 class="font-bold text-lg mb-2 text-[#204071]">Alias de la Cuenta</h3>`;
             if (iam_federation.account_alias) {
@@ -695,10 +693,7 @@
                 aliasHtml += `<p class="text-sm text-gray-600">Esta cuenta no tiene un alias personalizado configurado.</p>`;
             }
             aliasHtml += `</div>`;
-
-            // ... (El código para las tablas SAML y OIDC puede seguir aquí si quieres mantenerlo) ...
-
-            // --- HTML para AWS Identity Center (NUEVO) ---
+            
             let identityCenterHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
                                         <h3 class="font-bold text-lg mb-4 text-[#204071]">AWS Identity Center (SSO)</h3>`;
 
@@ -712,7 +707,7 @@
                 if (assignments.length > 0) {
                     identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Asignaciones de Permisos</h4>
                                             <div class="overflow-x-auto">
-                                            <table class="min-w-full divide-y divide-gray-200">
+                                            <table id="sso-assignments-table" class="min-w-full divide-y divide-gray-200">
                                                 <thead class="bg-gray-50"><tr>
                                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
                                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Permission Set (Role)</th>
@@ -720,7 +715,8 @@
                                                 </tr></thead>
                                                 <tbody class="bg-white divide-y divide-gray-200">`;
                     assignments.forEach(a => {
-                        identityCenterHtml += `<tr class="hover:bg-gray-50">
+                        // --- LÍNEA MODIFICADA: Añadimos el onclick ---
+                        identityCenterHtml += `<tr class="hover:bg-gray-50 cursor-pointer" onclick="showSsoGroupMembers(this, '${a.GroupId}', '${a.GroupName}')">
                                                 <td class="px-4 py-3 text-sm font-medium text-gray-800">${a.GroupName}</td>
                                                 <td class="px-4 py-3 text-sm text-gray-600">${a.PermissionSetName}</td>
                                                 <td class="px-4 py-3 text-sm text-gray-600 font-mono">${a.AccountId}</td>
@@ -728,17 +724,70 @@
                     });
                     identityCenterHtml += `</tbody></table></div>`;
                 } else {
-                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center is enabled, but no group permission assignments were found.</p>`;
+                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center está habilitado, pero no se encontraron asignaciones de permisos a grupos.</p>`;
                 }
             } else {
-                // Mensaje si no se encuentra Identity Center o hay un error
                 identityCenterHtml += `<p class="text-center text-gray-500 py-4">${identity_center.message}</p>`;
             }
-
-            identityCenterHtml += `</div>`;
-
-            // Unimos todas las secciones de HTML
+            // --- NUEVO DIV para los resultados ---
+            identityCenterHtml += `<div id="sso-group-members-container" class="mt-6"></div></div>`;
+            
             container.innerHTML = aliasHtml + identityCenterHtml;
+        };
+
+        const showSsoGroupMembers = async (rowElement, groupId, groupName) => {
+            const resultsContainer = document.getElementById('sso-group-members-container');
+            if (!resultsContainer) return;
+
+            // Resaltar la fila seleccionada y quitar el resaltado de las demás
+            const allRows = document.querySelectorAll('#sso-assignments-table tbody tr');
+            allRows.forEach(row => row.classList.remove('bg-blue-100', 'font-semibold'));
+            rowElement.classList.add('bg-blue-100', 'font-semibold');
+
+            resultsContainer.innerHTML = `
+                <h4 class="font-bold text-lg mb-2 text-[#204071]">Members of group: <span class="font-mono">${groupName}</span></h4>
+                <div class="flex items-center space-x-2 text-gray-500">
+                    <div class="spinner-small" style="border-left-color: #204071; width: 16px; height: 16px; border-width: 2px;"></div>
+                    <span>Loading...</span>
+                </div>`;
+            log(`Fetching members for SSO Group ID: ${groupId}`, 'info');
+
+            const payload = {
+                access_key: accessKeyInput.value.trim(),
+                secret_key: secretKeyInput.value.trim(),
+                session_token: sessionTokenInput.value.trim() || null,
+                group_id: groupId
+            };
+
+            try {
+                const response = await fetch('http://127.0.0.1:5001/api/get-sso-group-members', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error);
+
+                let membersHtml = '';
+                if (data.members && data.members.length > 0) {
+                    membersHtml = '<ul class="list-disc list-inside text-sm text-gray-700 bg-gray-50 p-3 rounded-md font-mono">';
+                    data.members.forEach(member => {
+                        membersHtml += `<li>${member}</li>`;
+                    });
+                    membersHtml += '</ul>';
+                } else {
+                    membersHtml = '<p class="text-sm text-gray-500">This group has no members.</p>';
+                }
+                resultsContainer.innerHTML = `
+                    <h4 class="font-bold text-lg mb-2 text-[#204071]">Members of group: <span class="font-mono">${groupName}</span></h4>
+                    ${membersHtml}`;
+                log(`Successfully fetched ${data.members.length} members for group ${groupName}.`, 'success');
+
+            } catch (e) {
+                resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-3 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+                log(`Error fetching group members: ${e.message}`, 'error');
+            }
         };
 
         const updateSecurityHubDashboard = () => {
