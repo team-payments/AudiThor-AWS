@@ -77,7 +77,7 @@ def collect_iam_data(session):
     try:
         password_policy = client.get_account_password_policy()["PasswordPolicy"]
     except client.exceptions.NoSuchEntityException:
-        password_policy = {"Error": "No password policy configurada"}
+        password_policy = {"Error": "No password policy configured"}
     for role in client.list_roles()["Roles"]:
         result_roles.append({ "RoleName": role["RoleName"], "CreateDate": str(role["CreateDate"]), "AttachedPolicies": [p["PolicyName"] for p in client.list_attached_role_policies(RoleName=role["RoleName"])["AttachedPolicies"]], "InlinePolicies": client.list_role_policies(RoleName=role["RoleName"])["PolicyNames"], "IsPrivileged": False, "PrivilegeReasons": [] })
     for group in client.list_groups()["Groups"]:
@@ -109,7 +109,7 @@ def collect_identity_center_data(session):
                 continue
         
         if not instance_arn:
-            return {"status": "No Encontrado", "message": "No se encontraron instancias de AWS Identity Center activas en ninguna región."}
+            return {"status": "Not found", "message": "No active AWS Identity Center instances were found in any region."}
 
         sso_admin_client = session.client("sso-admin", region_name=found_region)
         identity_client = session.client("identitystore", region_name=found_region)
@@ -125,7 +125,7 @@ def collect_identity_center_data(session):
         for page in paginator_ps.paginate(InstanceArn=instance_arn):
             for ps_arn in page.get("PermissionSets", []):
                 details = sso_admin_client.describe_permission_set(InstanceArn=instance_arn, PermissionSetArn=ps_arn)
-                ps_map[ps_arn] = details.get("PermissionSet", {}).get("Name", "Desconocido")
+                ps_map[ps_arn] = details.get("PermissionSet", {}).get("Name", "Unknown")
         
         # --- ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼ ---
         # Lista de nombres de Permission Sets considerados de alto privilegio
@@ -148,7 +148,7 @@ def collect_identity_center_data(session):
                                     "PermissionSetArn": ps_arn,
                                     "PermissionSetName": ps_name,
                                     "GroupId": group_id,
-                                    "GroupName": group_map.get(group_id, "Grupo Desconocido"),
+                                    "GroupName": group_map.get(group_id, "Unknown Group"),
                                     # --- ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼ ---
                                     # Añadimos el nuevo campo booleano
                                     "IsPrivileged": ps_name in privileged_ps_names
@@ -164,10 +164,10 @@ def collect_identity_center_data(session):
 
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-             return {"status": "Error", "message": "Acceso denegado. Se necesitan permisos para 'sso-admin' y 'identitystore'."}
-        return {"status": "Error", "message": f"Error inesperado al consultar Identity Center: {str(e)}"}
+             return {"status": "Error", "message": "Access denied. Permissions are required for 'sso-admin' y 'identitystore'."}
+        return {"status": "Error", "message": f"Unexpected error while querying Identity Center: {str(e)}"}
     except Exception as e:
-        return {"status": "Error General", "message": f"Ocurrió un error inesperado en la función: {str(e)}"}
+        return {"status": "General Error", "message": f"An unexpected error occurred in the function: {str(e)}"}
 
 
 def detectar_privilegios(users, roles, groups, session):
@@ -425,9 +425,9 @@ def get_sso_group_members(session, group_id):
                         IdentityStoreId=identity_store_id,
                         UserId=user_id
                     )
-                    user_members.append(user_details.get('UserName', 'Usuario no encontrado'))
+                    user_members.append(user_details.get('UserName', 'User not found'))
                 except ClientError:
-                    user_members.append(f"Usuario (ID: {user_id}) - Acceso Denegado a Detalles")
+                    user_members.append(f"User (ID: {user_id}) - Access Denied to Details")
 
     return sorted(user_members)
 
@@ -920,7 +920,7 @@ def collect_kms_data(session):
                     if desc.get('KeyManager') == 'CUSTOMER' and desc.get('KeySpec') == 'SYMMETRIC_DEFAULT':
                         try:
                             status = kms_client.get_key_rotation_status(KeyId=key_id)
-                            rotation_enabled = "Activada" if status.get('KeyRotationEnabled') else "Disabled"
+                            rotation_enabled = "Enabled" if status.get('KeyRotationEnabled') else "Disabled"
                         except ClientError:
                             rotation_enabled = "Not Supported"
                     
@@ -935,7 +935,7 @@ def collect_kms_data(session):
                         "Region": region,
                         "KeyId": key_id,
                         "ARN": desc.get('Arn'),
-                        "Aliases": ", ".join(alias_map.get(key_id, ["Sin Alias"])),
+                        "Aliases": ", ".join(alias_map.get(key_id, ["Without Alias"])),
                         "Status": desc.get('KeyState'),
                         "Origin": desc.get('Origin'),
                         "KeyManager": desc.get('KeyManager'),
@@ -1018,7 +1018,7 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
                 })
     except ClientError as e:
         # Lanza una excepción para que el endpoint la capture y devuelva un error claro.
-        raise Exception(f"Error al buscar eventos en CloudTrail en la región {region}: {str(e)}")
+        raise Exception(f"Error searching for CloudTrail events in the region {region}: {str(e)}")
 
     found_events.sort(key=lambda x: x['EventTime'], reverse=True)
     return {"events": found_events}
@@ -1400,7 +1400,7 @@ def collect_compute_data(session):
                                 if ami_details.get("Images"):
                                     os_info = ami_details["Images"][0].get("Name", "N/A")
                             except ClientError:
-                                os_info = "Información no disponible"
+                                os_info = "Information not available"
 
                         result_ec2_instances.append({
                             "Region": region, "InstanceId": instance_id,
@@ -1806,7 +1806,7 @@ def pg_get_lambda_details(session, region, function_name, ec2_client):
         config = lambda_client.get_function_configuration(FunctionName=function_name)
         vpc_config = config.get('VpcConfig')
         if not (vpc_config and vpc_config.get('VpcId')):
-            raise ValueError(f"La función Lambda '{function_name}' no está conectada a una VPC. El análisis solo es posible para Lambdas en una VPC.")
+            raise ValueError(f"The Lambda function '{function_name}' is not connected to a VPC. Analysis is only possible for Lambdas within a VPC.")
 
         paginator = ec2_client.get_paginator('describe_network_interfaces')
         pages = paginator.paginate(Filters=[
@@ -1849,9 +1849,9 @@ def pg_get_resource_network_details(session, arn):
             function_name = resource_full[9:]
             return pg_get_lambda_details(session, region, function_name, ec2_client)
         else:
-            raise ValueError(f"Tipo de ARN no soportado: '{arn}'. Solo se soportan instancias EC2, RDS y funciones Lambda (en VPC).")
+            raise ValueError(f"Unsupported ARN type: '{arn}'. Only EC2 instances, RDS instances, and Lambda functions (in VPC) are supported.")
     except (IndexError, AttributeError):
-        raise ValueError(f"El formato del ARN '{arn}' es inválido.")
+        raise ValueError(f"The ARN format '{arn}' is invalid.")
 
 def pg_check_nacl_fully(ec2_client, subnet_id, direction, remote_ip, protocol, port):
     try:
@@ -1931,7 +1931,7 @@ def pg_build_decision_table(path_info, consolidated_ports):
     sg_in = path_info['target_sg_rule']
     rows_data.append(["SG Destino", path_info['target_sg_id'], "Ingress", "N/A", "allow", str(sg_in.get('IpProtocol','-1')), consolidated_ports, get_sg_source_dest(sg_in)])
     
-    title = f"Ruta de Decisión para {consolidated_ports}:"
+    title = f"Decision Path for {consolidated_ports}:"
     headers = ["Capa", "ID Recurso", "Dirección", "Destino/Regla", "Acción", "Protocolo", "Puerto(s)", "Origen/Target"]
     return _format_to_table(headers, rows_data, title)
 
@@ -1945,9 +1945,9 @@ def pg_consolidate_ports(port_tuples):
     
     output_parts = []
     for proto, ports in sorted(ports_by_proto.items()):
-        if "All" in ports: output_parts.append(f"Todos los puertos {proto}"); continue
+        if "All" in ports: output_parts.append(f"All ports {proto}"); continue
         sorted_ports = sorted(list(ports), key=lambda x: tuple(map(int, x.split('-'))) if '-' in x else (int(x),))
-        output_parts.append(f"Puerto(s) {', '.join(sorted_ports)} ({proto})")
+        output_parts.append(f"Port(s) {', '.join(sorted_ports)} ({proto})")
     return " | ".join(output_parts)
 
 def analyze_network_path_data(session, source_arn, target_arn):
@@ -2753,7 +2753,7 @@ def run_access_analyzer_audit():
             "results": analyzer_results
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Access Analyzer: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Access Analyzer data: {str(e)}"}), 500
 
 @app.route('/api/run-inspector-findings-audit', methods=['POST'])
 def run_inspector_findings_audit():
@@ -2765,7 +2765,7 @@ def run_inspector_findings_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": inspector_findings })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar los findings de Inspector: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Inspector findings: {str(e)}"}), 500
 
 @app.route('/api/get-sso-group-members', methods=['POST'])
 def get_sso_group_members_endpoint():
@@ -2776,7 +2776,7 @@ def get_sso_group_members_endpoint():
     data = request.get_json()
     group_id = data.get('group_id')
     if not group_id:
-        return jsonify({"error": "Se requiere el group_id."}), 400
+        return jsonify({"error": "Group_id is required."}), 400
 
     try:
         members = get_sso_group_members(session, group_id)
