@@ -2,12 +2,11 @@
 
 **A security auditing tool for AWS, with a focus on PCI DSS compliance.**
 
+<img width="1839" height="396" alt="image" src="https://github.com/user-attachments/assets/d890814c-e0a9-4fbe-8f95-8a5455dce423" />
+
 AudiThor is a local web application that provides a unified dashboard for conducting read-only security audits in AWS environments. It allows auditors, administrators, and security teams to get a quick and comprehensive overview of an account's security posture, identify potential risks, and verify policy compliance, especially those related to the PCI DSS standard.
 
 The majority of this project was developed with the assistance of an AI language model (Google's Gemini), which helped accelerate the implementation of various checks and the creation of the dashboard.
-
-<img width="1848" height="625" alt="image" src="https://github.com/user-attachments/assets/b3b9e1ff-85e6-4871-be53-e9ecaaf313a8" />
-
 
 ## 🚀 Key Features
 
@@ -15,9 +14,6 @@ AudiThor offers a wide range of auditing modules in a single place:
 
 * **🩺 Healthy Status & AI Reporting:** A centralized rules engine that analyzes the collected data and presents clear, actionable findings.
     * **AI Report Generation (Gemini):** Uses Google's AI to automatically generate a draft of an executive email summarizing critical findings, ideal for communicating with stakeholders.
- 
-<img width="1832" height="619" alt="image" src="https://github.com/user-attachments/assets/1884b3a0-90b2-4a16-821b-bdc56c01af2c" />
-
 * **👤 Identity & Access (IAM):** Detailed analysis of users, groups, roles, password policies, privileged users, traditional federation (SAML/OIDC), and **AWS Identity Center (SSO)** configuration.
 * **🌐 Internet Exposure:** Detection of internet-exposed resources, such as public S3 buckets, EC2 instances, load balancers, open Security Groups, and more.
 * **🔗 Network Connectivity:** Inventory and analysis of network connectivity components, including **VPC Peering**, **Transit Gateway** attachments, **VPN** connections, and **VPC Endpoints**.
