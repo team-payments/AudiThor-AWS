@@ -6,6 +6,9 @@ AudiThor is a local web application that provides a unified dashboard for conduc
 
 The majority of this project was developed with the assistance of an AI language model (Google's Gemini), which helped accelerate the implementation of various checks and the creation of the dashboard.
 
+<img width="1848" height="625" alt="image" src="https://github.com/user-attachments/assets/b3b9e1ff-85e6-4871-be53-e9ecaaf313a8" />
+
+
 ## 🚀 Key Features
 
 AudiThor offers a wide range of auditing modules in a single place:
