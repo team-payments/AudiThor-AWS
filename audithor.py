@@ -419,8 +419,12 @@ def get_sso_group_members(session, group_id):
     user_members = []
     
     paginator = identity_client.get_paginator('list_group_memberships')
+
+    # --- ▼▼▼ LÍNEA CORREGIDA ▼▼▼ ---
+    # Usamos la clave correcta 'GroupMemberships' que devuelve la API.
     for page in paginator.paginate(IdentityStoreId=identity_store_id, GroupId=group_id):
-        for member in page.get('Memberships', []):
+        for member in page.get('GroupMemberships', []):
+    # --- ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲ ---
             user_id = member.get('MemberId', {}).get('UserId')
             if user_id:
                 try:
