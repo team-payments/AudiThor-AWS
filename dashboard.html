@@ -683,14 +683,14 @@
             const { iam_federation, identity_center } = federationApiData.results;
 
             let aliasHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-                                <h3 class="font-bold text-lg mb-2 text-[#204071]">Alias de la Cuenta</h3>`;
+                                <h3 class="font-bold text-lg mb-2 text-[#204071]">Account Alias</h3>`;
             if (iam_federation.account_alias) {
                 const signInUrl = `https://${iam_federation.account_alias}.signin.aws.amazon.com/console`;
                 aliasHtml += `<p class="text-sm text-gray-600">Alias: <strong class="font-mono bg-gray-100 p-1 rounded">${iam_federation.account_alias}</strong></p>
-                            <p class="text-sm text-gray-600 mt-2">URL de inicio de sesión:</p>
+                            <p class="text-sm text-gray-600 mt-2">Sign-in URL:</p>
                             <a href="${signInUrl}" target="_blank" class="text-blue-600 hover:underline font-mono text-sm break-all">${signInUrl}</a>`;
             } else {
-                aliasHtml += `<p class="text-sm text-gray-600">Esta cuenta no tiene un alias personalizado configurado.</p>`;
+                aliasHtml += `<p class="text-sm text-gray-600">This account does not have a custom alias configured.</p>`;
             }
             aliasHtml += `</div>`;
             
@@ -701,11 +701,11 @@
                 const { instance_arn, assignments } = identity_center;
 
                 identityCenterHtml += `<div class="mb-6 space-y-2 text-sm">
-                                            <p><strong class="text-gray-600">ARN de la Instancia:</strong> <span class="font-mono bg-gray-100 p-1 rounded">${instance_arn}</span></p>
+                                            <p><strong class="text-gray-600">Instance ARN:</strong> <span class="font-mono bg-gray-100 p-1 rounded">${instance_arn}</span></p>
                                         </div>`;
 
                 if (assignments.length > 0) {
-                    identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Asignaciones de Permisos</h4>
+                    identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Permission Assignments</h4>
                                             <div class="overflow-x-auto">
                                             <table id="sso-assignments-table" class="min-w-full divide-y divide-gray-200">
                                                 <thead class="bg-gray-50"><tr>
@@ -715,7 +715,6 @@
                                                 </tr></thead>
                                                 <tbody class="bg-white divide-y divide-gray-200">`;
                     assignments.forEach(a => {
-                        // --- LÍNEA MODIFICADA: Añadimos el onclick ---
                         identityCenterHtml += `<tr class="hover:bg-gray-50 cursor-pointer" onclick="showSsoGroupMembers(this, '${a.GroupId}', '${a.GroupName}')">
                                                 <td class="px-4 py-3 text-sm font-medium text-gray-800">${a.GroupName}</td>
                                                 <td class="px-4 py-3 text-sm text-gray-600">${a.PermissionSetName}</td>
@@ -724,16 +723,18 @@
                     });
                     identityCenterHtml += `</tbody></table></div>`;
                 } else {
-                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center está habilitado, pero no se encontraron asignaciones de permisos a grupos.</p>`;
+                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center is enabled, but no group permission assignments were found.</p>`;
                 }
             } else {
                 identityCenterHtml += `<p class="text-center text-gray-500 py-4">${identity_center.message}</p>`;
             }
-            // --- NUEVO DIV para los resultados ---
+
             identityCenterHtml += `<div id="sso-group-members-container" class="mt-6"></div></div>`;
             
             container.innerHTML = aliasHtml + identityCenterHtml;
         };
+
+
 
         const showSsoGroupMembers = async (rowElement, groupId, groupName) => {
             const resultsContainer = document.getElementById('sso-group-members-container');
