@@ -715,11 +715,15 @@
                                                 </tr></thead>
                                                 <tbody class="bg-white divide-y divide-gray-200">`;
                     assignments.forEach(a => {
+                        // --- ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼ ---
+                        const vipBadge = a.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : '';
+                        
                         identityCenterHtml += `<tr class="hover:bg-gray-50 cursor-pointer" onclick="showSsoGroupMembers(this, '${a.GroupId}', '${a.GroupName}')">
                                                 <td class="px-4 py-3 text-sm font-medium text-gray-800">${a.GroupName}</td>
-                                                <td class="px-4 py-3 text-sm text-gray-600">${a.PermissionSetName}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-600">${vipBadge}${a.PermissionSetName}</td>
                                                 <td class="px-4 py-3 text-sm text-gray-600 font-mono">${a.AccountId}</td>
                                             </tr>`;
+                        // --- ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲ ---
                     });
                     identityCenterHtml += `</tbody></table></div>`;
                 } else {
@@ -733,6 +737,7 @@
             
             container.innerHTML = aliasHtml + identityCenterHtml;
         };
+
 
         const showSsoGroupMembers = async (rowElement, groupId, groupName) => {
             const resultsContainer = document.getElementById('sso-group-members-container');

@@ -87,63 +87,51 @@ def collect_iam_data(session):
 
 def collect_identity_center_data(session):
     """
-    Recopila datos de AWS Identity Center, buscando primero la instancia en todas las regiones.
+    Recopila datos de AWS Identity Center, buscando primero la instancia en todas las regiones
+    y marcando los Permission Sets privilegiados.
     """
     try:
-
-        # Reutilizamos la función que ya tienes para obtener la lista de regiones.
         all_regions = get_all_aws_regions(session)
-        
         instance_arn = None
         identity_store_id = None
         found_region = None
 
-        # BUSCAMOS LA INSTANCIA DE IDENTITY CENTER EN TODAS LAS REGIONES
-        # Iteramos por cada región hasta encontrarla.
         for region in all_regions:
             try:
-                # Creamos un cliente específico para esta región en el bucle
                 regional_sso_client = session.client("sso-admin", region_name=region)
                 instances = regional_sso_client.list_instances().get("Instances", [])
                 if instances:
-                    # ¡La encontramos! Guardamos los datos y la región, y salimos del bucle.
                     instance_arn = instances[0]['InstanceArn']
                     identity_store_id = instances[0]['IdentityStoreId']
                     found_region = region
                     break 
             except ClientError:
-                # Ignoramos regiones donde no tengamos permisos o el servicio no esté disponible.
                 continue
         
-        # SI NO SE ENCONTRÓ NINGUNA INSTANCIA...
-        # Si el bucle termina y no hemos encontrado nada, devolvemos un mensaje claro.
         if not instance_arn:
             return {"status": "No Encontrado", "message": "No se encontraron instancias de AWS Identity Center activas en ninguna región."}
 
-        # SI LA ENCONTRAMOS, CONTINUAMOS...
-        # Ahora creamos los clientes finales apuntando a la REGIÓN CORRECTA.
         sso_admin_client = session.client("sso-admin", region_name=found_region)
         identity_client = session.client("identitystore", region_name=found_region)
         
-        # --- FIN DE LA MODIFICACIÓN ---
-        # El resto de la lógica es la misma que ya tenías.
-
-        # 2. Obtener todos los grupos y crear un mapa para búsqueda rápida
         group_map = {}
         paginator_groups = identity_client.get_paginator('list_groups')
         for page in paginator_groups.paginate(IdentityStoreId=identity_store_id):
             for group in page.get("Groups", []):
                 group_map[group['GroupId']] = group['DisplayName']
 
-        # 3. Obtener todos los Permission Sets
         ps_map = {}
         paginator_ps = sso_admin_client.get_paginator('list_permission_sets')
         for page in paginator_ps.paginate(InstanceArn=instance_arn):
             for ps_arn in page.get("PermissionSets", []):
                 details = sso_admin_client.describe_permission_set(InstanceArn=instance_arn, PermissionSetArn=ps_arn)
                 ps_map[ps_arn] = details.get("PermissionSet", {}).get("Name", "Desconocido")
+        
+        # --- ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼ ---
+        # Lista de nombres de Permission Sets considerados de alto privilegio
+        privileged_ps_names = ["AWSAdministratorAccess", "AdministratorAccess", "AWSPowerUserAccess", "PowerUserAccess"]
+        # --- ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲ ---
 
-        # 4. Correlacionar todo
         assignments = []
         paginator_accounts = sso_admin_client.get_paginator('list_accounts_for_provisioned_permission_set')
 
@@ -160,7 +148,11 @@ def collect_identity_center_data(session):
                                     "PermissionSetArn": ps_arn,
                                     "PermissionSetName": ps_name,
                                     "GroupId": group_id,
-                                    "GroupName": group_map.get(group_id, "Grupo Desconocido")
+                                    "GroupName": group_map.get(group_id, "Grupo Desconocido"),
+                                    # --- ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼ ---
+                                    # Añadimos el nuevo campo booleano
+                                    "IsPrivileged": ps_name in privileged_ps_names
+                                    # --- ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲ ---
                                 })
 
         return {
