@@ -734,8 +734,6 @@
             container.innerHTML = aliasHtml + identityCenterHtml;
         };
 
-
-
         const showSsoGroupMembers = async (rowElement, groupId, groupName) => {
             const resultsContainer = document.getElementById('sso-group-members-container');
             if (!resultsContainer) return;
@@ -745,13 +743,19 @@
             allRows.forEach(row => row.classList.remove('bg-blue-100', 'font-semibold'));
             rowElement.classList.add('bg-blue-100', 'font-semibold');
 
+            // --- INICIO: UI DE CARGA MEJORADA ---
             resultsContainer.innerHTML = `
-                <h4 class="font-bold text-lg mb-2 text-[#204071]">Members of group: <span class="font-mono">${groupName}</span></h4>
-                <div class="flex items-center space-x-2 text-gray-500">
-                    <div class="spinner-small" style="border-left-color: #204071; width: 16px; height: 16px; border-width: 2px;"></div>
-                    <span>Loading...</span>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <h4 class="font-bold text-lg mb-3 text-[#204071]">
+                        Members of Group: <span class="font-mono">${groupName}</span>
+                    </h4>
+                    <div class="flex items-center space-x-2 text-gray-500 p-4 justify-center">
+                        <div class="spinner-small" style="border-left-color: #204071; width: 16px; height: 16px; border-width: 2px;"></div>
+                        <span>Loading members...</span>
+                    </div>
                 </div>`;
             log(`Fetching members for SSO Group ID: ${groupId}`, 'info');
+            // --- FIN: UI DE CARGA MEJORADA ---
 
             const payload = {
                 access_key: accessKeyInput.value.trim(),
@@ -770,26 +774,40 @@
 
                 if (!response.ok) throw new Error(data.error);
 
-                let membersHtml = '';
-                if (data.members && data.members.length > 0) {
-                    membersHtml = '<ul class="list-disc list-inside text-sm text-gray-700 bg-gray-50 p-3 rounded-md font-mono">';
+                // --- INICIO: LÓGICA DE RENDERIZADO MEJORADA ---
+                const memberCount = data.members ? data.members.length : 0;
+                let membersListHtml = '';
+
+                if (memberCount > 0) {
+                    membersListHtml = '<div class="space-y-2">';
                     data.members.forEach(member => {
-                        membersHtml += `<li>${member}</li>`;
+                        // Cada miembro se muestra en una "píldora" con estilo
+                        membersListHtml += `<div class="bg-slate-100 text-slate-800 text-sm font-mono p-2 rounded-md">${member}</div>`;
                     });
-                    membersHtml += '</ul>';
+                    membersListHtml += '</div>';
                 } else {
-                    membersHtml = '<p class="text-sm text-gray-500">This group has no members.</p>';
+                    membersListHtml = '<p class="text-sm text-gray-500 text-center py-4">This group has no members.</p>';
                 }
+
                 resultsContainer.innerHTML = `
-                    <h4 class="font-bold text-lg mb-2 text-[#204071]">Members of group: <span class="font-mono">${groupName}</span></h4>
-                    ${membersHtml}`;
-                log(`Successfully fetched ${data.members.length} members for group ${groupName}.`, 'success');
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="font-bold text-lg mb-3 text-[#204071]">
+                            Members of Group: <span class="font-mono">${groupName}</span> 
+                            <span class="text-sm font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-full ml-2">${memberCount}</span>
+                        </h4>
+                        ${membersListHtml}
+                    </div>`;
+                // --- FIN: LÓGICA DE RENDERIZADO MEJORADA ---
+
+                log(`Successfully fetched ${memberCount} members for group ${groupName}.`, 'success');
 
             } catch (e) {
                 resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-3 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
                 log(`Error fetching group members: ${e.message}`, 'error');
             }
         };
+
+
 
         const updateSecurityHubDashboard = () => {
             log('Renderizando datos de Security Hub (IAM)...', 'info');
