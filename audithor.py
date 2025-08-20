@@ -1125,19 +1125,6 @@ def collect_inspector_findings(session):
     result_findings.sort(key=lambda f: severity_order.get(f.get('severity'), 99))
     return {"findings": result_findings}
 
-
-# ==============================================================================
-# ENDPOINTS API
-# ==============================================================================
-
-
-
-
-
-
-
-
-
 def collect_inspector_findings(session):
     """
     FUNCIÓN LENTA: Obtiene todos los hallazgos (findings) de Inspector.
@@ -1172,12 +1159,10 @@ def collect_inspector_findings(session):
 
 
 
+# ==============================================================================
+# LÓGICA ACM
+# ==============================================================================
 
-
-
-
-
-# --- Lógica para ACM ---
 def collect_acm_data_web(session):
     all_regions = session.get_available_regions('acm')
     result_certificates = []
@@ -1212,7 +1197,11 @@ def collect_acm_data_web(session):
     return {"certificates": result_certificates}
 
 
-# --- Lógica para Databases ---
+
+# ==============================================================================
+# LÓGICA DATABASES
+# ==============================================================================
+
 def collect_database_data(session):
     rds_instances = []
     aurora_clusters = []
@@ -1341,10 +1330,9 @@ def collect_database_data(session):
 
 
 
-
-
-
-# --- Lógica para Compute ---
+# ==============================================================================
+# LÓGICA COMPUTE
+# ==============================================================================
 
 def collect_compute_data(session):
 
@@ -1425,7 +1413,10 @@ def collect_compute_data(session):
     }
 
 
-# --- Lógica para Network Security Policies ---
+# ==============================================================================
+# LÓGICA NETWORK SECURITY POLICIES
+# ==============================================================================
+
 
 def collect_network_policies_data(session):
     regions = get_all_aws_regions(session) # Se obtiene la lista completa de regiones aquí
@@ -1562,8 +1553,6 @@ def collect_connectivity_data(session):
             
     return result
 
-
-# --- Lógica de Utilidad para formateo de Tablas ---
 PROTOCOLS = {'-1': 'ALL', '6': 'TCP', '17': 'UDP', '1': 'ICMP'}
 
 def _format_to_table(headers, rows, title):
@@ -1590,8 +1579,6 @@ def _format_to_table(headers, rows, title):
            f"| " + body_lines.replace("\n", " |\n| ") + " |\n" \
            f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+"
 
-
-# --- Network Detail Logic ---
 def format_sg_details_table(sg_details):
     sg = sg_details['SecurityGroups'][0]
     title = f"Detalles para Security Group: {sg['GroupId']} ({sg['GroupName']})"
@@ -1635,7 +1622,11 @@ def format_nacl_details_table(nacl_details):
         
     return _format_to_table(headers, rows, title)
 
-# --- Lógica para Playground ---
+
+# ==============================================================================
+# LÓGICA PLAYGROUND
+# ==============================================================================
+
 def pg_format_sg_rules(ec2_client, sg_id):
     """Obtiene y formatea las reglas de un Security Group en una tabla de texto."""
     sg = ec2_client.describe_security_groups(GroupIds=[sg_id])['SecurityGroups'][0]
@@ -1717,7 +1708,6 @@ def pg_get_ec2_details(ec2_client, instance_id):
             raise ValueError(f"No se encontró la instancia EC2 con ID '{instance_id}'.")
         raise
 
-
 def pg_get_rds_details(session, region, db_identifier, ec2_client):
     """Obtiene detalles de red de una instancia RDS."""
     rds_client = session.client('rds', region_name=region)
@@ -1735,19 +1725,19 @@ def pg_get_rds_details(session, region, db_identifier, ec2_client):
                 pass # Si no se puede resolver, no es crítico.
             
             # Creamos un mensaje de error claro y explicativo.
-            error_message = (f"Análisis no soportado: La instancia RDS '{db_identifier}' es públicamente accesible (IP: {public_ip}). "
-                           "Esta herramienta solo puede analizar rutas de red privadas dentro de una VPC. "
-                           "Para poder realizar el análisis, la base de datos debería tener el 'Acceso público' configurado en 'No' en la consola de AWS.")
+            error_message = (f"Unsupported analysis: The RDS instance '{db_identifier}' is publicly accessible (IP: {public_ip}). "
+                           "This tool can only analyze private network routes within a VPC. "
+                           "To perform the analysis, the database must have Public access set to No in the AWS console.")
             raise ValueError(error_message)
 
         endpoint = db.get('Endpoint', {}).get('Address')
         if not endpoint:
-            raise ValueError(f"La instancia RDS '{db_identifier}' no tiene un endpoint (podría estar creándose o en un estado no disponible).")
+            raise ValueError(f"The RDS instance '{db_identifier}' does not have an endpoint (it may be being created or in an unavailable state).")
         
         try:
             private_ip = socket.gethostbyname(endpoint)
         except socket.gaierror:
-            raise ValueError(f"No se pudo resolver la IP privada para el endpoint de RDS: {endpoint}")
+            raise ValueError(f"Could not resolve the private IP for the RDS endpoint: {endpoint}")
 
         all_subnets_in_vpc = ec2_client.describe_subnets(Filters=[{'Name': 'vpc-id', 'Values': [db['DBSubnetGroup']['VpcId']]}])['Subnets']
         current_subnet_id = None
@@ -1758,7 +1748,7 @@ def pg_get_rds_details(session, region, db_identifier, ec2_client):
         
         if not current_subnet_id:
             # Este error ahora solo saltará en casos muy extraños de configuración de red.
-            raise ValueError(f"No se pudo determinar la subred actual para la IP {private_ip} de la instancia RDS.")
+            raise ValueError(f"Could not determine the current subnet for the RDS instance IP {private_ip}.")
 
         return {
             "id": db['DBInstanceIdentifier'], "service": "RDS",
@@ -1770,7 +1760,6 @@ def pg_get_rds_details(session, region, db_identifier, ec2_client):
         if e.response['Error']['Code'] == 'DBInstanceNotFound':
             raise ValueError(f"No se encontró la instancia RDS con identificador '{db_identifier}'.")
         raise
-
 
 def pg_get_lambda_details(session, region, function_name, ec2_client):
     """Obtiene detalles de red de una función Lambda conectada a una VPC."""
@@ -2017,7 +2006,12 @@ def analyze_network_path_data(session, source_arn, target_arn):
     del result['perms']
     return result
 
-# --- INICIO: NUEVA LÓGICA PARA AWS CONFIG & SECURITY HUB ---
+
+
+
+# ==============================================================================
+# NUEVA LÓGICA PARA AWS CONFIG & SECURITY HUB
+# =============================================================================
 
 def sh_check_regional_services(session, regions):
     """
