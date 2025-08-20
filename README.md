@@ -15,6 +15,9 @@ AudiThor offers a wide range of auditing modules in a single place:
 
 * **🩺 Healthy Status & AI Reporting:** A centralized rules engine that analyzes the collected data and presents clear, actionable findings.
     * **AI Report Generation (Gemini):** Uses Google's AI to automatically generate a draft of an executive email summarizing critical findings, ideal for communicating with stakeholders.
+ 
+<img width="1832" height="619" alt="image" src="https://github.com/user-attachments/assets/1884b3a0-90b2-4a16-821b-bdc56c01af2c" />
+
 * **👤 Identity & Access (IAM):** Detailed analysis of users, groups, roles, password policies, privileged users, traditional federation (SAML/OIDC), and **AWS Identity Center (SSO)** configuration.
 * **🌐 Internet Exposure:** Detection of internet-exposed resources, such as public S3 buckets, EC2 instances, load balancers, open Security Groups, and more.
 * **🔗 Network Connectivity:** Inventory and analysis of network connectivity components, including **VPC Peering**, **Transit Gateway** attachments, **VPN** connections, and **VPC Endpoints**.
