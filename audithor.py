@@ -164,10 +164,11 @@ def collect_identity_center_data(session):
 
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-             return {"status": "Error", "message": "Access denied. Permissions are required for 'sso-admin' y 'identitystore'."}
-        return {"status": "Error", "message": f"Unexpected error while querying Identity Center.: {str(e)}"}
+             return {"status": "Error", "message": "Acceso denegado. Se necesitan permisos para 'sso-admin' y 'identitystore'."}
+        return {"status": "Error", "message": f"Error inesperado al consultar Identity Center: {str(e)}"}
     except Exception as e:
-        return {"status": "Error General", "message": f"An unexpected error occurred in the function: {str(e)}"}
+        return {"status": "Error General", "message": f"Ocurrió un error inesperado en la función: {str(e)}"}
+
 
 def detectar_privilegios(users, roles, groups, session):
     client = session.client("iam")
@@ -2278,7 +2279,7 @@ def run_iam_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": iam_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de IAM: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting IAM data: {str(e)}"}), 500
 
 @app.route('/api/run-securityhub-audit', methods=['POST'])
 def run_securityhub_audit():
@@ -2292,7 +2293,7 @@ def run_securityhub_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": { "accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z") }, "results": { "servicesStatus": enabled_service_status, "findings": findings_data } })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Security Hub: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Security Hub data: {str(e)}"}), 500
 
 @app.route('/api/run-exposure-audit', methods=['POST'])
 def run_exposure_audit():
@@ -2303,7 +2304,7 @@ def run_exposure_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": exposure_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar la exposición a Internet: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Internet exposure.: {str(e)}"}), 500
 
 @app.route('/api/run-guardduty-audit', methods=['POST'])
 def run_guardduty_audit():
@@ -2314,7 +2315,7 @@ def run_guardduty_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": guardduty_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de GuardDuty: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting GuardDuty data: {str(e)}"}), 500
 
 @app.route('/api/run-waf-audit', methods=['POST'])
 def run_waf_audit():
@@ -2325,7 +2326,7 @@ def run_waf_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": waf_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de WAF: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting WAF data {str(e)}"}), 500
 
 @app.route('/api/run-cloudtrail-audit', methods=['POST'])
 def run_cloudtrail_audit():
@@ -2336,7 +2337,7 @@ def run_cloudtrail_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": cloudtrail_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de CloudTrail: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting CloudTrail data.: {str(e)}"}), 500
 
 @app.route('/api/run-cloudtrail-lookup', methods=['POST'])
 def run_cloudtrail_lookup():
@@ -2351,7 +2352,7 @@ def run_cloudtrail_lookup():
     region = data.get('region')
 
     if not all([start_date_str, end_date_str, region]):
-        return jsonify({"error": "Faltan parámetros. Se requiere 'start_date', 'end_date' y 'region'."}), 400
+        return jsonify({"error": "Missing parameters. Required: 'start_date', 'end_date' y 'region'."}), 400
         
     try:
         # Añadir la hora para cubrir el día completo
@@ -2359,7 +2360,7 @@ def run_cloudtrail_lookup():
         end_time = (datetime.strptime(end_date_str, '%d-%m-%Y') + timedelta(days=1, seconds=-1)).replace(tzinfo=pytz.utc)
 
     except ValueError:
-        return jsonify({"error": "Formato de fecha inválido. Utilice 'dd-mm-yyyy'."}), 400
+        return jsonify({"error": "Invalid date format. Use: 'dd-mm-yyyy'."}), 400
 
     try:
         lookup_results = lookup_cloudtrail_events(session, region, event_name, start_time, end_time)
@@ -2376,7 +2377,7 @@ def run_cloudwatch_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": cloudwatch_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de CloudWatch/SNS: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting CloudWatch/SNS data: {str(e)}"}), 500
 
 @app.route('/api/run-inspector-audit', methods=['POST'])
 def run_inspector_audit():
@@ -2399,7 +2400,7 @@ def run_inspector_audit():
             "results": inspector_status 
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar el estado de Inspector: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Inspector status: {str(e)}"}), 500
 
 @app.route('/api/run-acm-audit', methods=['POST'])
 def run_acm_audit():
@@ -2410,7 +2411,7 @@ def run_acm_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": acm_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de ACM: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting ACM data: {str(e)}"}), 500
 
 @app.route('/api/run-compute-audit', methods=['POST'])
 def run_compute_audit():
@@ -2427,7 +2428,7 @@ def run_compute_audit():
             "results": compute_results
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Compute: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Compute data: {str(e)}"}), 500
 
 @app.route('/api/run-databases-audit', methods=['POST'])
 def run_databases_audit():
@@ -2445,7 +2446,7 @@ def run_databases_audit():
             "results": database_results
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Databases: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Databases data: {str(e)}"}), 500
 
 @app.route('/api/run-network-policies-audit', methods=['POST'])
 def run_network_policies_audit():
@@ -2462,7 +2463,7 @@ def run_network_policies_audit():
             "results": network_policies_results
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Network Policies: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Network Policies data: {str(e)}"}), 500
         
 @app.route('/api/run-config-sh-audit', methods=['POST'])
 def run_config_sh_audit():
@@ -2480,7 +2481,7 @@ def run_config_sh_audit():
             "results": results
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de Config & Security Hub: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Config & Security Hub data: {str(e)}"}), 500
 
 @app.route('/api/run-config-sh-status-audit', methods=['POST'])
 def run_config_sh_status_audit():
@@ -2505,7 +2506,7 @@ def run_config_sh_status_audit():
             }
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar el estado de Config & SH: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting Config & SH status: {str(e)}"}), 500
 
 @app.route('/api/run-network-detail-audit', methods=['POST'])
 def run_network_detail_audit():
@@ -2518,7 +2519,7 @@ def run_network_detail_audit():
     region = data.get('region')
 
     if not resource_id or not region:
-        return jsonify({"error": "Se requiere el ID del recurso y la región."}), 400
+        return jsonify({"error": "Resource ID and region are required."}), 400
 
     try:
         ec2_client = session.client("ec2", region_name=region)
@@ -2559,7 +2560,7 @@ def run_connectivity_audit():
             "results": connectivity_results
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de conectividad: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting connectivity data: {str(e)}"}), 500
 
 @app.route('/api/run-playground-audit', methods=['POST'])
 def run_playground_audit():
@@ -2570,7 +2571,7 @@ def run_playground_audit():
         source_arn = data.get('source_arn')
         target_arn = data.get('target_arn')
         if not source_arn or not target_arn:
-            return jsonify({"error": "Se requiere el ARN de origen y de destino."}), 400
+            return jsonify({"error": "Source and destination ARN are required."}), 400
 
         path_results = analyze_network_path_data(session, source_arn, target_arn)
 
@@ -2588,7 +2589,7 @@ def run_playground_audit():
     except ValueError as e: 
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al analizar la ruta de red: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while analyzing the network route: {str(e)}"}), 500
 
 @app.route('/api/run-kms-audit', methods=['POST'])
 def run_kms_audit():
@@ -2599,7 +2600,7 @@ def run_kms_audit():
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": kms_results })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de KMS: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting KMS data: {str(e)}"}), 500
 
 @app.route('/api/run-sslscan', methods=['POST'])
 def run_sslscan():
@@ -2636,24 +2637,24 @@ def run_sslscan():
             # Ahora usamos 'sslscan' directamente, sin la ruta fija.
             command = ['sslscan', '--no-colour', target]
             
-            print(f"Ejecutando comando: {' '.join(command)}")
+            print(f"Executing command: {' '.join(command)}")
 
             result = subprocess.run(
                 command, capture_output=True, text=True, timeout=120, check=False
             )
 
             if not result.stdout and not result.stderr:
-                results.append({"target": target, "error": "El comando se ejecutó pero no devolvió ninguna salida. Revisa los permisos o la instalación de sslscan en el servidor."})
+                results.append({"target": target, "error": "The command executed but returned no output. Check the permissions or the sslscan installation on the server"})
             else:
                 full_output = result.stdout + result.stderr
                 results.append({"target": target, "output": full_output})
 
         except FileNotFoundError:
-            results.append({"target": target, "error": f"Comando no encontrado. Verifica que sslscan esté instalado y en el PATH del sistema."})
+            results.append({"target": target, "error": f"Command not found. Verify that sslscan is installed and in the system PATH."})
         except subprocess.TimeoutExpired:
-            results.append({"target": target, "error": "El escaneo ha superado el tiempo de espera (120 segundos)."})
+            results.append({"target": target, "error": "The scan has exceeded the timeout (120 seconds)."})
         except Exception as e:
-            results.append({"target": target, "error": f"Ha ocurrido un error inesperado: {str(e)}"})
+            results.append({"target": target, "error": f"An unexpected error has occurred: {str(e)}"})
 
     for target in targets:
         thread = threading.Thread(target=scan_target, args=(target,))
@@ -2734,7 +2735,7 @@ def run_federation_audit():
             "results": federation_results
         })
     except Exception as e:
-        return jsonify({"error": f"Error inesperado al recopilar datos de federación: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error while collecting federation data: {str(e)}"}), 500
 
 @app.route('/api/run-access-analyzer-audit', methods=['POST'])
 def run_access_analyzer_audit():
