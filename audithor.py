@@ -13,11 +13,11 @@ import ipaddress
 import socket
 import re
 
-# --- Configuración de la aplicación Flask ---
+# --- CONF. APLICACIÓN FLASK ---
 app = Flask(__name__)
 CORS(app)
 
-# --- Lógica Común ---
+# --- LÓGICA COMÚN ---
 def get_session(data):
     try:
         access_key = data.get('access_key')
@@ -40,7 +40,8 @@ def get_all_aws_regions(session):
     ec2 = session.client("ec2", region_name="us-east-1")
     return [region['RegionName'] for region in ec2.describe_regions()['Regions']]
 
-# --- Lógica para IAM ---
+
+# --- LÓGICA IAM ---
 def collect_iam_data(session):
     client = session.client("iam")
     result_users, password_policy, result_roles, result_groups = [], {}, [], []
@@ -163,8 +164,6 @@ def collect_identity_center_data(session):
     except Exception as e:
         return {"status": "Error General", "message": f"Ocurrió un error inesperado en la función: {str(e)}"}
 
-
-
 def detectar_privilegios(users, roles, groups, session):
     client = session.client("iam")
     politicas_peligrosas = [ "AdministratorAccess", "PowerUserAccess", "IAMFullAccess", "Billing", "OrganizationAccountAccessRole", "AWSCloudFormationFullAccess", "AmazonEC2FullAccess", "AWSLambda_FullAccess", "SecretsManagerReadWrite", "AWSKeyManagementServicePowerUser", "AmazonS3FullAccess", "AWSCloudTrail_FullAccess", "ServiceQuotasFullAccess" ]
@@ -182,8 +181,6 @@ def detectar_privilegios(users, roles, groups, session):
     for group in groups:
         evidencia = [f"Política adjunta: {p}" for p in group["AttachedPolicies"] if p in politicas_peligrosas]
         if evidencia: group["IsPrivileged"], group["PrivilegeReasons"] = True, list(set(evidencia))
-
-
 
 def check_critical_permissions(session, users):
     """

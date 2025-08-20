@@ -4398,8 +4398,6 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             const accountAlias = federationApiData?.results?.iam_federation?.account_alias || "NoAlias";
             const timestamp = iamApiData.metadata.executionDate;
 
-            // --- CAMBIO CLAVE AQUÍ ---
-            // Nos aseguramos de exportar solo el contenido de '.results' para cada servicio.
             const exportData = {
                 metadata: {
                     accountId: accountId,
@@ -4411,6 +4409,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                 results: {
                     iam: iamApiData?.results || null,
                     federation: federationApiData?.results || null,
+                    accessAnalyzer: accessAnalyzerApiData?.results || null, // <-- AÑADIR ESTA LÍNEA
                     securityhub: securityHubApiData?.results || null,
                     exposure: exposureApiData?.results || null,
                     guardduty: guarddutyApiData?.results || null,
@@ -4447,6 +4446,8 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             log(`Resultados exportados correctamente en el fichero: ${filename}`, 'success');
         };
 
+
+
 // --- LÓGICA DE IMPORTACIÓN ---
 
         const handleJsonImport = (event) => {
@@ -4471,13 +4472,11 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 
                     const results = importedData.results;
                     
-                    // --- CAMBIO CLAVE AQUÍ ---
-                    // Ahora asignamos directamente el objeto del servicio, ya que no tiene la capa extra de 'metadata' y 'results'.
-                    // Creamos un objeto metadata genérico para mantener la consistencia interna.
                     const metadata = { accountId: importedData.metadata.accountId, executionDate: importedData.metadata.analysisTimestamp };
 
                     iamApiData = results.iam ? { metadata: metadata, results: results.iam } : null;
                     federationApiData = results.federation ? { metadata: metadata, results: results.federation } : null;
+                    accessAnalyzerApiData = results.accessAnalyzer ? { metadata: metadata, results: results.accessAnalyzer } : null; // <-- AÑADIR ESTA LÍNEA
                     securityHubApiData = results.securityhub ? { metadata: metadata, results: results.securityhub } : null;
                     exposureApiData = results.exposure ? { metadata: metadata, results: results.exposure } : null;
                     guarddutyApiData = results.guardduty ? { metadata: metadata, results: results.guardduty } : null;
@@ -4519,8 +4518,6 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             reader.readAsText(file);
             event.target.value = '';
         };
-
-
 
 
         const displayHealthyStatus = (selectedRegion) => {
