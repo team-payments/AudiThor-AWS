@@ -4,6 +4,7 @@
 
 <img width="1839" height="396" alt="image" src="https://github.com/user-attachments/assets/d890814c-e0a9-4fbe-8f95-8a5455dce423" />
 
+
 AudiThor is a local web application that provides a unified dashboard for conducting read-only security audits in AWS environments. It allows auditors, administrators, and security teams to get a quick and comprehensive overview of an account's security posture, identify potential risks, and verify policy compliance, especially those related to the PCI DSS standard.
 
 The majority of this project was developed with the assistance of an AI language model (Google's Gemini), which helped accelerate the implementation of various checks and the creation of the dashboard.
