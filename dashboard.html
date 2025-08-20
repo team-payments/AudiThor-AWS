@@ -444,7 +444,6 @@
 
             const { findings, summary } = accessAnalyzerApiData.results;
 
-            // 1. Renderizamos la nueva tabla de resumen arriba del todo
             let contentHtml = renderAccessAnalyzerStatusTable(summary);
 
             if (!findings || findings.length === 0) {
@@ -453,7 +452,6 @@
                 return;
             }
 
-            // 2. Construimos la tabla de hallazgos con las mejoras
             contentHtml += `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
                 <h3 class="font-bold text-lg mb-4 text-[#204071]">External Access Findings</h3>
                 <table class="min-w-full divide-y divide-gray-200">
@@ -468,6 +466,9 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">`;
 
+            const scannedAccountId = iamApiData?.metadata?.accountId;
+            const rolesFromScan = iamApiData?.results?.roles;
+
             findings.forEach(f => {
                 const publicBadge = f.IsPublic 
                     ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">YES</span>`
@@ -477,14 +478,39 @@
                     ? `<span class="font-bold text-red-600">* (Anyone)</span>` 
                     : f.Principal;
 
-                // ▼▼▼ CAMBIOS APLICADOS AQUÍ ▼▼▼
-                // - Clase 'text-xs' en todas las celdas (<td>) para reducir la fuente.
-                // - Clases 'break-all' y 'whitespace-normal' para mejorar el ajuste de texto.
+                // --- INICIO: NUEVA LÓGICA PARA EL BADGE "VIP" ---
+                let vipBadge = '';
+                // Solo procedemos si el recurso es un rol y tenemos los datos necesarios para comparar
+                if (f.ResourceType === 'AWS::IAM::Role' && scannedAccountId && rolesFromScan) {
+                    try {
+                        const resourceArn = f.Resource;
+                        const resourceAccountId = resourceArn.split(':')[4];
+
+                        // 1. Comprobamos si el rol pertenece a la cuenta que estamos escaneando
+                        if (resourceAccountId === scannedAccountId) {
+                            const roleNameParts = resourceArn.split('/');
+                            const roleName = roleNameParts[roleNameParts.length - 1];
+                            
+                            // 2. Buscamos el rol en los datos del escaneo de IAM
+                            const roleDetails = rolesFromScan.find(r => r.RoleName === roleName);
+                            
+                            // 3. Si lo encontramos y está marcado como privilegiado, añadimos el badge
+                            if (roleDetails && roleDetails.IsPrivileged) {
+                                vipBadge = '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>';
+                            }
+                        }
+                    } catch (e) { /* Si el parseo del ARN falla, simplemente no mostramos el badge */ }
+                }
+                // --- FIN: NUEVA LÓGICA PARA EL BADGE "VIP" ---
+
                 contentHtml += `
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-4 align-top whitespace-nowrap text-xs text-gray-600">${f.Region}</td>
                         <td class="px-4 py-4 align-top text-xs text-gray-800 font-mono break-all whitespace-normal">
-                            <span class="font-semibold">${f.ResourceType}</span><br>
+                            <div>
+                                ${vipBadge}
+                                <span class="font-semibold">${f.ResourceType}</span>
+                            </div>
                             ${f.Resource}
                         </td>
                         <td class="px-4 py-4 align-top whitespace-normal text-xs text-gray-600 font-mono break-all">${principalDisplay}</td>
@@ -496,6 +522,8 @@
             contentHtml += `</tbody></table></div>`;
             container.innerHTML = contentHtml;
         };
+
+
 
         const createIamResumenHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-8">
@@ -841,14 +869,29 @@
         };
         
         const getIamPermissionDetails = () => {
-            log('Buscando detalles de permisos IAM...', 'info');
-            const principalName = document.getElementById('iam-principal-name').value.trim();
+            log('Fetching IAM permission details...', 'info');
+            const rawInput = document.getElementById('iam-principal-name').value.trim();
             const resultsContainer = document.getElementById('iam-details-result-container');
+            let principalNameToSearch = rawInput; // Default to searching for the raw input
 
-            if (!principalName) {
-                resultsContainer.innerHTML = `<p class="text-yellow-600 font-medium">Please provide a name to search.</p>`;
+            if (!rawInput) {
+                resultsContainer.innerHTML = `<p class="text-yellow-600 font-medium">Please provide a name or ARN to search.</p>`;
                 return;
             }
+
+            // --- NEW: ARN PARSING LOGIC ---
+            if (rawInput.toLowerCase().startsWith('arn:aws:iam::')) {
+                try {
+                    // Split the ARN by "/" and get the last part, which is the name.
+                    const parts = rawInput.split('/');
+                    principalNameToSearch = parts[parts.length - 1];
+                    log(`ARN detected. Searching for extracted name: '${principalNameToSearch}'`, 'info');
+                } catch (e) {
+                    log('Error parsing ARN. Using full value.', 'error');
+                    // If parsing fails, continue with the original input
+                }
+            }
+            // --- END: NEW LOGIC ---
 
             if (!iamApiData || !iamApiData.results) {
                 resultsContainer.innerHTML = `<p class="text-red-600 font-medium">No IAM data loaded. Please run an analysis first.</p>`;
@@ -860,65 +903,69 @@
             let foundPrincipal = null;
             let principalType = '';
 
-            const user = users.find(u => u.UserName.toLowerCase() === principalName.toLowerCase());
+            // The search logic remains the same, but now uses the potentially extracted name
+            const user = users.find(u => u.UserName.toLowerCase() === principalNameToSearch.toLowerCase());
             if (user) {
                 foundPrincipal = user;
-                principalType = 'Usuario';
+                principalType = 'User';
             } else {
-                const group = groups.find(g => g.GroupName.toLowerCase() === principalName.toLowerCase());
+                const group = groups.find(g => g.GroupName.toLowerCase() === principalNameToSearch.toLowerCase());
                 if (group) {
                     foundPrincipal = group;
-                    principalType = 'Grupo';
+                    principalType = 'Group';
                 } else {
-                    const role = roles.find(r => r.RoleName.toLowerCase() === principalName.toLowerCase());
+                    const role = roles.find(r => r.RoleName.toLowerCase() === principalNameToSearch.toLowerCase());
                     if (role) {
                         foundPrincipal = role;
-                        principalType = 'Rol';
+                        principalType = 'Role';
                     }
                 }
             }
-
-            renderIamPermissionDetails(foundPrincipal, principalType, principalName);
+            
+            // Pass the original input to the render function for a clearer error message
+            renderIamPermissionDetails(foundPrincipal, principalType, rawInput);
         };
-        
-        const renderIamPermissionDetails = (principal, type, name) => {
+
+        const renderIamPermissionDetails = (principal, type, searchedTerm) => {
             const resultsContainer = document.getElementById('iam-details-result-container');
             if (!principal) {
-                resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">No encontrado</h4><p>No se encontró ningún usuario, grupo o rol con el nombre '${name}'.</p></div>`;
-                log(`Principal IAM '${name}' no encontrado.`, 'error');
+                // Now uses the original search term in the error message
+                resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Not Found</h4><p>Could not find any user, group, or role with the name or ARN '${searchedTerm}'.</p></div>`;
+                log(`IAM Principal '${searchedTerm}' not found.`, 'error');
                 return;
             }
 
             let detailsToShow = {};
+            const name = type === 'User' ? principal.UserName : (type === 'Group' ? principal.GroupName : principal.RoleName);
 
-            if (type === 'Usuario') {
+            if (type === 'User') {
                 detailsToShow = {
-                    Tipo: 'Usuario',
-                    Nombre: principal.UserName,
-                    PermisosDirectos: {
-                        PoliticasAdjuntas: principal.AttachedPolicies,
-                        PoliticasInline: principal.InlinePolicies,
+                    Type: 'User',
+                    Name: principal.UserName,
+                    DirectPermissions: {
+                        AttachedPolicies: principal.AttachedPolicies,
+                        InlinePolicies: principal.InlinePolicies,
                     },
-                    PermisosHeredados: {
-                         Grupos: principal.Groups,
-                         RolesAsumibles_por_Tag: principal.Roles,
+                    InheritedPermissions: {
+                         Groups: principal.Groups,
+                         AssumableRoles_by_Tag: principal.Roles,
                     }
                 };
-            } else if (type === 'Grupo') {
+            } else if (type === 'Group') {
                  detailsToShow = {
-                    Tipo: 'Grupo',
-                    Nombre: principal.GroupName,
-                    Permisos: {
-                        PoliticasAdjuntas: principal.AttachedPolicies,
+                    Type: 'Group',
+                    Name: principal.GroupName,
+                    Permissions: {
+                        AttachedPolicies: principal.AttachedPolicies,
                     }
                 };
-            } else if (type === 'Rol') {
+            } else if (type === 'Role') {
                  detailsToShow = {
-                    Tipo: 'Rol',
-                    Nombre: principal.RoleName,
-                    Permisos: {
-                        PoliticasAdjuntas: principal.AttachedPolicies,
-                        PoliticasInline: principal.InlinePolicies
+                    Type: 'Role',
+                    Name: principal.RoleName,
+                    Permissions: {
+                        AttachedPolicies: principal.AttachedPolicies,
+                        InlinePolicies: principal.InlinePolicies
                     }
                 };
             }
