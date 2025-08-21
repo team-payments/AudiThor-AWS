@@ -592,7 +592,30 @@
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Password Policies</p></div><div class="flex justify-between items-end pt-4"><p id="iam-password-compliance" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-green-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 text-green-600" viewBox="0 0 16 16"><path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z"/><path d="M7 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 1 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0M7 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 0 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0"/></svg></div></div></div>
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">IAM Findings (Crit/High)</p></div><div class="flex justify-between items-end pt-4"><p id="iam-critical-findings" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-orange-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 text-orange-600" viewBox="0 0 16 16"> <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></div></div></div>
             </div>`;
-        const createIamUsuariosHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"> <h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Users List</h3> <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Use of Password</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MFA</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groups</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inline Policies</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Access Keys</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles (Tag)</th></tr></thead><tbody id="users-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div> </div>`;
+        
+        const createIamUsuariosHtml = () => `
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Users List</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Use of Password</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MFA</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groups</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inline Policies</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-3/12">Access Keys</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>`;
+      
+        
         const createIamGruposHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Groups List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="groups-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
         const createIamRolesHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Roles List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
         const createIamPoliticasHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Account password policy</h3><div id="password-policy-container"></div></div>`;   
@@ -859,10 +882,6 @@
             }
         };
 
-
-
-
-
         const setupModalControls = () => {
             const modal = document.getElementById('details-modal');
             const closeBtn = document.getElementById('modal-close-btn');
@@ -877,6 +896,69 @@
                 });
             }
         };
+
+        const openModalWithAccessKeyDetails = (userIndex) => {
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+
+            // Recuperamos los datos del usuario usando su índice en el array original
+            const user = iamApiData.results.users[userIndex];
+
+            if (!modal || !user || !user.AccessKeys || user.AccessKeys.length === 0) return;
+
+            // Rellenamos el título y el contenido de la modal
+            modalTitle.textContent = `Access Keys for User: ${user.UserName}`;
+
+            const keysDetailsHtml = user.AccessKeys.map(k => {
+                const createDate = new Date(k.CreateDate);
+                const now = new Date();
+                const ageDays = Math.floor((now - createDate) / (1000 * 60 * 60 * 24));
+                const ageClass = ageDays > 90 ? 'text-red-600 font-bold' : 'text-gray-600';
+                const statusClass = k.Status === 'Active' ? 'text-green-600' : 'text-gray-500';
+                const lastUsed = k.LastUsedDate !== 'N/A' ? new Date(k.LastUsedDate).toLocaleDateString() : 'Never';
+
+                return `
+                    <div class="p-3 bg-gray-100 rounded-md border border-gray-200 text-xs text-left">
+                        <div class="font-mono font-semibold text-gray-800">${k.AccessKeyId}</div>
+                        <div class="mt-1"><span class="font-semibold">Status:</span> <span class="${statusClass}">${k.Status}</span></div>
+                        <div><span class="font-semibold">Age:</span> <span class="${ageClass}">${ageDays} days</span></div>
+                        <div><span class="font-semibold">Last Used:</span> ${lastUsed}</div>
+                    </div>
+                `;
+            }).join('');
+
+            modalContent.innerHTML = `<div class="space-y-3">${keysDetailsHtml}</div>`;
+
+            // Mostramos la modal
+            modal.classList.remove('hidden');
+        };
+
+        const openModalWithUserGroups = (userIndex) => {
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+
+            // Recuperamos los datos del usuario usando su índice
+            const user = iamApiData.results.users[userIndex];
+
+            if (!modal || !user || !user.Groups || user.Groups.length === 0) return;
+
+            // Rellenamos el título y el contenido de la modal
+            modalTitle.textContent = `Groups for User: ${user.UserName}`;
+
+            const groupsListHtml = user.Groups.map(groupName => {
+                return `<div class="p-3 bg-gray-100 rounded-md border border-gray-200 text-sm text-left font-semibold text-gray-800">
+                            ${groupName}
+                        </div>`;
+            }).join('');
+
+            modalContent.innerHTML = `<div class="space-y-3">${groupsListHtml}</div>`;
+
+            // Mostramos la modal
+            modal.classList.remove('hidden');
+        };
+
         // --- FIN: NUEVAS FUNCIONES PARA LA MODAL ---
 
 
@@ -923,67 +1005,54 @@
             const tableBody = document.getElementById('users-table-body');
             tableBody.innerHTML = '';
             if (!users || users.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-4">No users were found.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-gray-500 py-4">No users were found.</td></tr>`;
                 return;
             }
-            users.forEach(user => {
+            
+            users.forEach((user, index) => {
                 const vipBadge = user.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : '';
                 const passwordEnabled = user.PasswordEnabled ? 'YES' : 'NO';
                 const mfaEnabled = user.MFADevices.length > 0 ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">NO</span>';
-                const groups = user.Groups.join(', ') || '-';
+                
+                let groupsHtml = '-';
+                if (user.Groups && user.Groups.length > 0) {
+                    // --- AÑADIDO "whitespace-nowrap" ---
+                    groupsHtml = `<button 
+                                      onclick="openModalWithUserGroups(${index})" 
+                                      class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition whitespace-nowrap">
+                                      View (${user.Groups.length})
+                                  </button>`;
+                }
+
                 const attachedPolicies = user.AttachedPolicies.join(', ') || '-';
                 const inlinePolicies = user.InlinePolicies.join(', ') || '-';
-                const roles = user.Roles.join(', ') || '-';
-
+                
                 let accessKeysHtml = '-';
                 if (user.AccessKeys && user.AccessKeys.length > 0) {
-                    const keysDetails = user.AccessKeys.map(k => {
-                        const createDate = new Date(k.CreateDate);
-                        const now = new Date();
-                        const ageDays = Math.floor((now - createDate) / (1000 * 60 * 60 * 24));
-                        const ageClass = ageDays > 90 ? 'text-red-600 font-bold' : 'text-gray-600';
-                        const statusClass = k.Status === 'Active' ? 'text-green-600' : 'text-gray-500';
-                        const lastUsed = k.LastUsedDate !== 'N/A' ? new Date(k.LastUsedDate).toLocaleDateString() : 'Never';
-
-                        return `
-                            <div class="p-2 bg-gray-100 rounded-md border border-gray-200 text-xs">
-                                <div class="font-mono font-semibold text-gray-800">${k.AccessKeyId}</div>
-                                <div><span class="font-semibold">Status:</span> <span class="${statusClass}">${k.Status}</span></div>
-                                <div><span class="font-semibold">Age:</span> <span class="${ageClass}">${ageDays} days</span></div>
-                                <div><span class="font-semibold">Last Use:</span> ${lastUsed}</div>
-                            </div>
-                        `;
-                    }).join('');
-
-                    accessKeysHtml = `
-                        <details class="group">
-                            <summary class="font-semibold text-blue-600 cursor-pointer list-none flex items-center">
-                                <svg class="w-4 h-4 mr-1 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                ${user.AccessKeys.length} Access Key(s)
-                            </summary>
-                            <div class="mt-2 pl-2 flex flex-col space-y-2">
-                                ${keysDetails}
-                            </div>
-                        </details>
-                    `;
+                    // --- AÑADIDO "whitespace-nowrap" ---
+                    accessKeysHtml = `<button 
+                                        onclick="openModalWithAccessKeyDetails(${index})" 
+                                        class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition whitespace-nowrap">
+                                        View (${user.AccessKeys.length})
+                                      </button>`;
                 }
-                const accessKeys = accessKeysHtml;
-
+                
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
+                
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-xs font-medium text-[#204071] flex items-center">${vipBadge}${user.UserName}</td> 
                     <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${passwordEnabled}</td> 
                     <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${user.PasswordLastUsed}</td> 
                     <td class="px-6 py-4 whitespace-nowrap text-xs">${mfaEnabled}</td> 
-                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${groups}</td> 
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${groupsHtml}</td> 
                     <td class="px-6 py-4 text-xs text-gray-500 break-words">${attachedPolicies}</td> 
                     <td class="px-6 py-4 text-xs text-gray-500 break-words">${inlinePolicies}</td> 
-                    <td class="px-6 py-4 text-xs text-gray-500 align-top">${accessKeys}</td> 
-                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${roles}</td>`;
+                    <td class="px-6 py-4 text-xs text-gray-500 align-top">${accessKeysHtml}</td>`;
                 tableBody.appendChild(row);
             });
         };
+
 
         const renderGroupsTable = (groups) => { const tableBody = document.getElementById('groups-table-body'); tableBody.innerHTML = ''; if (!groups || groups.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No groups were found.</td></tr>`; return; } groups.forEach(group => { const vipBadge = group.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = group.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#204071] flex items-center">${vipBadge}${group.GroupName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(group.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
         
