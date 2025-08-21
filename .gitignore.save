@@ -1,0 +1,27 @@
+# ============================================================================
+# .gitignore para un proyecto Python / Flask
+# ============================================================================
+
+# Ficheros de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entorno virtual
+# Reemplaza 'venv' por el nombre de tu carpeta de entorno si es diferente
+venv/
+.venv/
+ENV/
+env/
+ENV/
+
+# Ficheros específicos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Ficheros de configuración de IDEs populares
+.vscode/
+.idea/
+
+# Ficheros de logs
+*.log
