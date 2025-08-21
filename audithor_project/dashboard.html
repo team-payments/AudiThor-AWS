@@ -217,6 +217,21 @@
         <div id="log-container" class="flex-1 bg-slate-900 p-2 rounded overflow-y-auto text-xs space-y-1"></div>
     </div>
 
+    <div id="details-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-xl shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b">
+                    <h3 id="modal-title" class="text-xl leading-6 font-bold text-[#204071]">Detalles del Grupo</h3>
+                    <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div id="modal-content" class="mt-2 px-7 py-3">
+                    </div>
+            </div>
+        </div>
+    </div>
+
     <script>
 
 
@@ -757,56 +772,56 @@
                                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
                                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Permission Set (Role)</th>
                                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">AWS Account ID</th>
+                                                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Details</th>
                                                 </tr></thead>
                                                 <tbody class="bg-white divide-y divide-gray-200">`;
                     assignments.forEach(a => {
                         const vipBadge = a.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : '';
                         
-                        identityCenterHtml += `<tr class="hover:bg-gray-50 cursor-pointer" onclick="showSsoGroupMembers(this, '${a.GroupId}', '${a.GroupName}')">
+                        // --- CAMBIO: Se ha eliminado el onclick de la fila <tr> ---
+                        identityCenterHtml += `<tr class="hover:bg-gray-50">
                                                 <td class="px-4 py-3 text-sm font-medium text-gray-800">${a.GroupName}</td>
                                                 <td class="px-4 py-3 text-sm text-gray-600">${vipBadge}${a.PermissionSetName}</td>
                                                 <td class="px-4 py-3 text-sm text-gray-600 font-mono">${a.AccountId}</td>
+                                                <td class="px-4 py-3 text-center">
+                                                    <button onclick="openModalWithSsoDetails('${a.GroupId}', '${a.GroupName}')" class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">View</button>
+                                                </td>
                                             </tr>`;
                     });
                     identityCenterHtml += `</tbody></table></div>`;
                 } else {
                     identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center is enabled, but no group permission assignments were found.</p>`;
                 }
+            // --- CAMBIO: Se elimina el contenedor de detalles que había debajo de la tabla ---
             } else {
                 const message = identity_center.message || "Could not retrieve Identity Center information. Necessary permissions (sso-admin, identitystore) may be missing or the service is not configured.";
                 identityCenterHtml += `<p class="text-center text-gray-500 py-4">${message}</p>`;
             }
-
-            identityCenterHtml += `<div id="sso-group-members-container" class="mt-6"></div></div>`;
+            
+            identityCenterHtml += `</div>`; // Cierre del contenedor principal de Identity Center
             
             container.innerHTML = aliasHtml + identityCenterHtml;
         };
 
+        const openModalWithSsoDetails = async (groupId, groupName) => {
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
 
+            if (!modal || !modalTitle || !modalContent) return;
 
-        const showSsoGroupMembers = async (rowElement, groupId, groupName) => {
-            const resultsContainer = document.getElementById('sso-group-members-container');
-            if (!resultsContainer) return;
-
-            // Resaltar la fila seleccionada y quitar el resaltado de las demás
-            const allRows = document.querySelectorAll('#sso-assignments-table tbody tr');
-            allRows.forEach(row => row.classList.remove('bg-blue-100', 'font-semibold'));
-            rowElement.classList.add('bg-blue-100', 'font-semibold');
-
-            // --- INICIO: UI DE CARGA MEJORADA ---
-            resultsContainer.innerHTML = `
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <h4 class="font-bold text-lg mb-3 text-[#204071]">
-                        Members of Group: <span class="font-mono">${groupName}</span>
-                    </h4>
-                    <div class="flex items-center space-x-2 text-gray-500 p-4 justify-center">
-                        <div class="spinner-small" style="border-left-color: #204071; width: 16px; height: 16px; border-width: 2px;"></div>
-                        <span>Loading members...</span>
-                    </div>
+            // 1. Preparamos y mostramos la modal con el nuevo estado de carga "skeleton"
+            modalTitle.textContent = `Members of Group: ${groupName}`;
+            modalContent.innerHTML = `
+                <div class="space-y-3 animate-pulse p-2">
+                    <div class="h-8 bg-slate-200 rounded-md w-full"></div>
+                    <div class="h-8 bg-slate-200 rounded-md w-5/6"></div>
+                    <div class="h-8 bg-slate-200 rounded-md w-2/3"></div>
                 </div>`;
-            log(`Fetching members for SSO Group ID: ${groupId}`, 'info');
-            // --- FIN: UI DE CARGA MEJORADA ---
+            modal.classList.remove('hidden');
 
+            // 2. Hacemos la llamada a la API (misma lógica que antes)
+            log(`Fetching members for SSO Group ID: ${groupId}`, 'info');
             const payload = {
                 access_key: accessKeyInput.value.trim(),
                 secret_key: secretKeyInput.value.trim(),
@@ -821,41 +836,48 @@
                     body: JSON.stringify(payload)
                 });
                 const data = await response.json();
-
                 if (!response.ok) throw new Error(data.error);
 
-                // --- INICIO: LÓGICA DE RENDERIZADO MEJORADA ---
+                // 3. Renderizamos el resultado dentro de la modal
                 const memberCount = data.members ? data.members.length : 0;
                 let membersListHtml = '';
-
                 if (memberCount > 0) {
-                    membersListHtml = '<div class="space-y-2">';
+                    membersListHtml = '<div class="space-y-2 text-left">';
                     data.members.forEach(member => {
-                        // Cada miembro se muestra en una "píldora" con estilo
                         membersListHtml += `<div class="bg-slate-100 text-slate-800 text-sm font-mono p-2 rounded-md">${member}</div>`;
                     });
                     membersListHtml += '</div>';
                 } else {
                     membersListHtml = '<p class="text-sm text-gray-500 text-center py-4">This group has no members.</p>';
                 }
-
-                resultsContainer.innerHTML = `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <h4 class="font-bold text-lg mb-3 text-[#204071]">
-                            Members of Group: <span class="font-mono">${groupName}</span> 
-                            <span class="text-sm font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-full ml-2">${memberCount}</span>
-                        </h4>
-                        ${membersListHtml}
-                    </div>`;
-                // --- FIN: LÓGICA DE RENDERIZADO MEJORADA ---
-
+                modalContent.innerHTML = membersListHtml;
                 log(`Successfully fetched ${memberCount} members for group ${groupName}.`, 'success');
 
             } catch (e) {
-                resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-3 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+                modalContent.innerHTML = `<div class="bg-red-50 text-red-700 p-3 rounded-lg text-left"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
                 log(`Error fetching group members: ${e.message}`, 'error');
             }
         };
+
+
+
+
+
+        const setupModalControls = () => {
+            const modal = document.getElementById('details-modal');
+            const closeBtn = document.getElementById('modal-close-btn');
+            if (modal && closeBtn) {
+                // Cerrar al hacer clic en el botón de cerrar
+                closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+                // Cerrar al hacer clic fuera del contenido de la modal (en el fondo oscuro)
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'details-modal') {
+                        modal.classList.add('hidden');
+                    }
+                });
+            }
+        };
+        // --- FIN: NUEVAS FUNCIONES PARA LA MODAL ---
 
 
 
@@ -4913,6 +4935,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             document.getElementById('export-results-button').addEventListener('click', exportResultsToJson);
             importButton.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', handleJsonImport);
+            setupModalControls();
         });
 
 
