@@ -959,6 +959,46 @@
             modal.classList.remove('hidden');
         };
 
+        const openModalWithEc2Tags = (instanceIndex) => {
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+
+            // Recuperamos los datos de la instancia usando su índice en el array original
+            const instance = computeApiData.results.ec2_instances[instanceIndex];
+
+            if (!modal || !instance || !instance.Tags) return;
+
+            // Rellenamos el título de la modal
+            modalTitle.textContent = `Tags for Instance: ${instance.InstanceId}`;
+
+            const tags = instance.Tags;
+            const tagCount = Object.keys(tags).length;
+
+            let tagsListHtml = '';
+            if (tagCount > 0) {
+                // Creamos una lista de clave-valor
+                tagsListHtml = '<div class="space-y-2 text-left">';
+                for (const key in tags) {
+                    tagsListHtml += `
+                        <div class="flex items-center bg-slate-100 p-2 rounded-md text-sm">
+                            <span class="font-bold text-slate-600 w-1/3">${key}:</span>
+                            <span class="font-mono text-slate-800 w-2/3">${tags[key]}</span>
+                        </div>
+                    `;
+                }
+                tagsListHtml += '</div>';
+            } else {
+                tagsListHtml = '<p class="text-sm text-gray-500 text-center py-4">This instance has no tags.</p>';
+            }
+
+            modalContent.innerHTML = tagsListHtml;
+
+            // Mostramos la modal
+            modal.classList.remove('hidden');
+        };
+
+
         // --- FIN: NUEVAS FUNCIONES PARA LA MODAL ---
 
 
@@ -2506,7 +2546,7 @@
             document.getElementById('compute-total-eks').textContent = eks.length;
             document.getElementById('compute-total-ecs').textContent = ecs.length;
         };
-  
+
         const renderEc2InstancesTable = (instances, allRegions, selectedState = 'all', selectedRegion = 'all') => {
             
             const regionOptions = allRegions.map(r => `<option value="${r}" ${selectedRegion === r ? 'selected' : ''}>${r}</option>`).join('');
@@ -2534,8 +2574,9 @@
                 return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}<p class="text-center text-gray-500 py-4">No EC2 instances matching the selected filters were found.</p></div>`;
             }
 
+            // Cabeceras simples, sin onclick ni cursores especiales
             let tableContent = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Regin</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instance ID</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' +
@@ -2546,8 +2587,17 @@
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             
-            instances.forEach(i => {
-                const tagsStr = Object.entries(i.Tags).map(([k, v]) => `${k}:${v}`).join(', ') || '-';
+            instances.forEach((i, index) => {
+                // Lógica para crear el botón de "View" para los tags
+                const tagCount = Object.keys(i.Tags).length;
+                let tagsHtml = '-';
+                if (tagCount > 0) {
+                    tagsHtml = `<button 
+                                    onclick="openModalWithEc2Tags(${index})" 
+                                    class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition whitespace-nowrap">
+                                    View (${tagCount})
+                                </button>`;
+                }
                 
                 const sgHtml = i.SecurityGroups && i.SecurityGroups.length > 0
                     ? i.SecurityGroups.map(sg => `<span class="inline-block bg-gray-100 text-gray-800 text-xs font-medium mr-2 mb-1 px-2.5 py-0.5 rounded-full">${sg}</span>`).join('')
@@ -2566,19 +2616,17 @@
                                     onclick="copyToClipboard(this, '${i.ARN}')" 
                                     title="${i.ARN}" 
                                     class="p-1 rounded-md hover:bg-gray-200 transition">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard w-5 h-5 text-gray-500" viewBox="0 0 16 16">
-                                        <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
-                                        <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
-                                    </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard w-5 h-5 text-gray-500" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
                                 </button>
                             </td>
-                            <td class="px-4 py-4 text-sm text-gray-600 break-all">${tagsStr}</td>
+                            <td class="px-4 py-4 text-sm text-gray-600">${tagsHtml}</td>
                         </tr>`;
             });
             tableContent += '</tbody></table></div>';
             
             return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}${tableContent}</div>`;
         };
+
 
         const renderLambdaFunctionsTable = (functions) => {
             if (!functions || functions.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Lambda functions were found.</p></div>';

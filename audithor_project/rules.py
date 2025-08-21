@@ -507,6 +507,24 @@ def check_docdb_cluster_unencrypted(audit_data):
             })
     return failing_resources
 
+def check_ec2_publicly_exposed(audit_data):
+    """
+    Checks for EC2 instances that have a public IP address assigned.
+    """
+    failing_resources = []
+    # Safely navigate to the list of EC2 instances
+    ec2_instances = audit_data.get("compute", {}).get("ec2_instances", [])
+
+    for instance in ec2_instances:
+        # Check if the PublicIpAddress key exists and has a valid value
+        if instance.get("PublicIpAddress") and instance.get("PublicIpAddress") != "N/A":
+            failing_resources.append({
+                "resource": instance.get("InstanceId", "Unknown ID"),
+                "region": instance.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -753,6 +771,15 @@ RULES_TO_CHECK = [
         "description": "A public load balancer (ALB/NLB) has been detected whose HTTPS/TLS listener allows the use of outdated TLS versions (TLS 1.0 or TLS 1.1). These protocols have known vulnerabilities (such as POODLE and BEAST) and do not support modern encryption algorithms, exposing traffic to potential interception and decryption attacks.",
         "remediation": "Navigate to the EC2 console -> Load Balancers. Select the affected listener and edit its configuration to assign a modern security policy that requires at least TLSv1.2, such as 'ELBSecurityPolicy-TLS-1-2-2017-01' or a later version.",
         "check_function": check_alb_outdated_tls_policy
+    },
+    {
+        "rule_id": "EXPOSURE_002",
+        "section": "Internet Exposure",
+        "name": "EC2 instance with a public IP address",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An EC2 instance has been detected with a public IP address, making it directly accessible from the Internet. This increases the attack surface, exposing it to scans, brute-force attacks, and exploitation of unpatched vulnerabilities.",
+        "remediation": "Review if the instance requires direct public access. If not, disassociate the Elastic IP or modify the subnet settings to prevent auto-assignment of public IPs. If public access is necessary, ensure its Security Group is highly restrictive, allowing traffic only from trusted sources on the required ports.",
+        "check_function": check_ec2_publicly_exposed
     },
     {
         "rule_id": "ACM_001",
