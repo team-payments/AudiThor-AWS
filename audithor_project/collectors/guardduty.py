@@ -71,5 +71,6 @@ def collect_guardduty_data(session):
             "Title": f.get("Title", "N/A")
         })
     processed_findings.sort(key=lambda x: x["SeverityScore"], reverse=True)
-    
+    print("DEBUG: Datos de GuardDuty generados:", json.dumps({"status": status_by_region}, indent=2))
+
     return {"status": status_by_region, "findings": processed_findings}

@@ -1490,7 +1490,7 @@
 
         const renderGuarddutyStatusTable = (statusList) => {
             // --- AÑADIDO: Filtramos la lista para quedarnos solo con las regiones habilitadas ---
-            const activeRegions = statusList.filter(s => s.Status.toLowerCase() === 'habilitado');
+            const activeRegions = statusList.filter(s => s.Status.toLowerCase() === 'enabled');
 
             // --- MODIFICADO: Comprobamos si la lista FILTRADA está vacía ---
             if (!activeRegions || activeRegions.length === 0) {

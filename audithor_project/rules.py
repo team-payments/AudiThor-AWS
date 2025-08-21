@@ -72,7 +72,7 @@ def check_guardduty_disabled(audit_data):
         return failing_resources
 
     for status in guardduty_status:
-        if status.get("Status") != "Habilitado":
+        if status.get("Status") != "Enabled":
             failing_resources.append({
                 "resource": "GuardDuty",
                 "region": status.get('Region')
@@ -243,7 +243,7 @@ def check_guardduty_malware_protection_disabled_with_ec2(audit_data):
     for status in guardduty_status:
         region = status.get("Region")
         
-        cond1_gd_enabled = status.get("Status") == "Habilitado"
+        cond1_gd_enabled = status.get("Status") == "Enabled"
         cond2_malware_disabled = status.get("EC2 Malware Protection") in ["Deshabilitado", "N/A"]
         cond3_ec2_present = region in regions_with_ec2
 
