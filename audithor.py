@@ -33,7 +33,7 @@ def get_session(data):
         secret_key = data.get('secret_key')
         session_token = data.get('session_token')
         if not access_key or not secret_key:
-            return None, "Access Key o Secret Key no proporcionadas."
+            return None, "Access Key or Secret Key not provided."
         session = boto3.Session(
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
@@ -43,7 +43,7 @@ def get_session(data):
         sts.get_caller_identity()
         return session, None
     except Exception as e:
-        return None, f"Error al validar credenciales de AWS: {str(e)}"
+        return None, f"Error validating AWS credentials: {str(e)}"
 
 def get_all_aws_regions(session):
     ec2 = session.client("ec2", region_name="us-east-1")
@@ -156,7 +156,7 @@ def collect_identity_center_data(session):
                                 })
 
         return {
-            "status": "Encontrado",
+            "status": "Found",
             "instance_arn": instance_arn,
             "identity_store_id": identity_store_id,
             "assignments": sorted(assignments, key=lambda x: (x['GroupName'], x['PermissionSetName']))
@@ -164,7 +164,7 @@ def collect_identity_center_data(session):
 
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-             return {"status": "Error", "message": "Access denied. Permissions are required for 'sso-admin' y 'identitystore'."}
+             return {"status": "Error", "message": "Access denied. Permissions are required for 'sso-admin' and 'identitystore'."}
         return {"status": "Error", "message": f"Unexpected error while querying Identity Center: {str(e)}"}
     except Exception as e:
         return {"status": "General Error", "message": f"An unexpected error occurred in the function: {str(e)}"}
@@ -1356,7 +1356,7 @@ def collect_database_data(session):
 
         except ClientError as e:
             if e.response['Error']['Code'] not in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
-                print(f"Error procesando bases de datos en la región {region}: {e}")
+                print(f"Error processing databases in the region {region}: {e}")
             continue
     
     return {
@@ -1619,7 +1619,7 @@ def _format_to_table(headers, rows, title):
 
 def format_sg_details_table(sg_details):
     sg = sg_details['SecurityGroups'][0]
-    title = f"Detalles para Security Group: {sg['GroupId']} ({sg['GroupName']})"
+    title = f"Security Group details: {sg['GroupId']} ({sg['GroupName']})"
     headers = ['Dirección', 'Protocolo', 'Puerto', 'Origen/Destino', 'Descripción']
     rows = []
 
@@ -1643,7 +1643,7 @@ def format_sg_details_table(sg_details):
 
 def format_nacl_details_table(nacl_details):
     nacl = nacl_details['NetworkAcls'][0]
-    title = f"Detalles para Network ACL: {nacl['NetworkAclId']}"
+    title = f"Network ACL details: {nacl['NetworkAclId']}"
     headers = ['# Regla', 'Dirección', 'Acción', 'Protocolo', 'Puerto', 'CIDR', 'Tags']
     rows = []
     
@@ -1956,7 +1956,7 @@ def analyze_network_path_data(session, source_arn, target_arn):
     target = pg_get_resource_network_details(session, target_arn)
 
     if source['vpc_id'] != target['vpc_id']:
-        return {'status': 'UNREACHABLE', 'reason': f"The resources are in different VPCs ({source['vpc_id']} y {target['vpc_id']}) and this analysis does not cover Peering/Transit Gateway.", 'tables': [], 'detail_tables': {}}
+        return {'status': 'UNREACHABLE', 'reason': f"The resources are in different VPCs ({source['vpc_id']} and {target['vpc_id']}) and this analysis does not cover Peering/Transit Gateway.", 'tables': [], 'detail_tables': {}}
     
     region = source_arn.split(':')[3]
     ec2 = session.client('ec2', region_name=region)
@@ -1999,11 +1999,11 @@ def analyze_network_path_data(session, source_arn, target_arn):
                     
                     nacl_out_allowed, nacl_out_rule = pg_check_nacl_fully(ec2, source['subnet_id'], 'outbound', target['private_ip'], report_proto, report_from if report_from != -1 else 0)
                     if not nacl_out_allowed:
-                        result['reason'] = f"Bloqueado por NACL de salida: Regla #{nacl_out_rule.get('RuleNumber')} ({nacl_out_rule.get('RuleAction')} en {nacl_out_rule.get('AclId')})"; continue
+                        result['reason'] = f"Blocked by outbound NACL: Rule #{nacl_out_rule.get('RuleNumber')} ({nacl_out_rule.get('RuleAction')} in {nacl_out_rule.get('AclId')})"; continue
                     
                     nacl_in_allowed, nacl_in_rule = pg_check_nacl_fully(ec2, target['subnet_id'], 'inbound', source['private_ip'], report_proto, report_from if report_from != -1 else 0)
                     if not nacl_in_allowed:
-                        result['reason'] = f"Bloqueado por NACL de entrada: Regla #{nacl_in_rule.get('RuleNumber')} ({nacl_in_rule.get('RuleAction')} en {nacl_in_rule.get('AclId')})"; continue
+                        result['reason'] = f"Blocked by inbound NACL: Rule #{nacl_in_rule.get('RuleNumber')} ({nacl_in_rule.get('RuleAction')} in {nacl_in_rule.get('AclId')})"; continue
                     
                     path_found_for_target = True
                     result['status'] = 'REACHABLE'
@@ -2352,7 +2352,7 @@ def run_cloudtrail_lookup():
     region = data.get('region')
 
     if not all([start_date_str, end_date_str, region]):
-        return jsonify({"error": "Missing parameters. Required: 'start_date', 'end_date' y 'region'."}), 400
+        return jsonify({"error": "Missing parameters. Required: 'start_date', 'end_date' and 'region'."}), 400
         
     try:
         # Añadir la hora para cubrir el día completo
@@ -2697,7 +2697,7 @@ def run_executive_summary():
                 for resource in violating_resources_raw:
                     if isinstance(resource, dict):
                         affected_resources_structured.append({
-                            "display": f"{resource['resource']} en {resource['region']}",
+                            "display": f"{resource['resource']} in {resource['region']}",
                             "region": resource.get("region", "Global")
                         })
                     else:

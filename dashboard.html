@@ -934,7 +934,7 @@
                             <label for="iam-principal-name" class="block text-sm font-medium text-gray-700 mb-1">Name of User, Group, or Role</label>
                             <input type="text" id="iam-principal-name" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="Ej: admin-user, DevelopersGroup, EC2AdminRole">
                         </div>
-                        <button id="iam-get-details-btn" class="w-full sm:w-auto bg-[#204071] text-white px-5 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition">Ver Detalle</button>
+                        <button id="iam-get-details-btn" class="w-full sm:w-auto bg-[#204071] text-white px-5 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition">View details</button>
                     </div>
                 </div>
                 <div id="iam-details-result-container" class="mt-6"></div>
@@ -1494,7 +1494,7 @@
             </div>`;
         const updateCloudtrailSummaryCards = (trails, events) => { const activeTrails = trails.filter(t => t.IsLogging).length; const inactiveTrails = trails.length - activeTrails; document.getElementById('ct-total-trails').textContent = trails.length; document.getElementById('ct-active-trails').textContent = activeTrails; document.getElementById('ct-inactive-trails').textContent = inactiveTrails; document.getElementById('ct-total-events').textContent = events.length; };
         const createCloudtrailSecurityHubHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">Findings de Seguridad Activos (CloudTrail)</h3><div id="sh-cloudtrail-findings-container" class="overflow-x-auto"></div></div>`;
-        const renderCloudtrailTrailsView = (trails) => { if (!trails || trails.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No CloudTrail trails were found in the account.</p></div>'; let summaryTable = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Resumen de Trails</h3><div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-8"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Home Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multi-Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logging Status</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; trails.forEach(t => { const loggingStatus = t.IsLogging ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Detenido</span>`; summaryTable += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${t.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.HomeRegion}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.IsMultiRegionTrail ? 'YES' : 'NO'}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${loggingStatus}</td></tr>`; }); summaryTable += '</tbody></table></div>'; let detailsHtml = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Detalles de Configuración por Trail</h3><div class="space-y-6">'; trails.forEach(t => { const validationBadge = t.LogFileValidationEnabled ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Habilitada</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Deshabilitada</span>`; const kmsBadge = t.KmsKeyId ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">NO</span>`; detailsHtml += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-3 pb-2 border-b">${t.Name}</h4><ul class="space-y-2 text-sm"><li class="flex justify-between"><span class="font-medium text-gray-600">Validación de Integridad:</span><span>${validationBadge}</span></li><li class="flex justify-between"><span class="font-medium text-gray-600">Cifrado con KMS:</span><span>${kmsBadge}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">Bucket S3:</span><span class="font-mono text-gray-800">${t.S3BucketName || '-'}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">CloudWatch Log Group:</span><span class="font-mono text-xs text-gray-800">${t.CloudWatchLogsLogGroupArn ? t.CloudWatchLogsLogGroupArn.split(':log-group:')[1] : '-'}</span></li></ul></div>`; }); detailsHtml += '</div>'; return summaryTable + detailsHtml; };
+        const renderCloudtrailTrailsView = (trails) => { if (!trails || trails.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No CloudTrail trails were found in the account.</p></div>'; let summaryTable = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Resumen de Trails</h3><div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-8"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Home Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multi-Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logging Status</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; trails.forEach(t => { const loggingStatus = t.IsLogging ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Detenido</span>`; summaryTable += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${t.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.HomeRegion}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${t.IsMultiRegionTrail ? 'YES' : 'NO'}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${loggingStatus}</td></tr>`; }); summaryTable += '</tbody></table></div>'; let detailsHtml = '<h3 class="font-bold text-lg mb-4 text-[#204071]">Trail configuration details</h3><div class="space-y-6">'; trails.forEach(t => { const validationBadge = t.LogFileValidationEnabled ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Habilitada</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Deshabilitada</span>`; const kmsBadge = t.KmsKeyId ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>` : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">NO</span>`; detailsHtml += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-3 pb-2 border-b">${t.Name}</h4><ul class="space-y-2 text-sm"><li class="flex justify-between"><span class="font-medium text-gray-600">Validación de Integridad:</span><span>${validationBadge}</span></li><li class="flex justify-between"><span class="font-medium text-gray-600">Cifrado con KMS:</span><span>${kmsBadge}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">Bucket S3:</span><span class="font-mono text-gray-800">${t.S3BucketName || '-'}</span></li><li class="flex justify-between items-center"><span class="font-medium text-gray-600">CloudWatch Log Group:</span><span class="font-mono text-xs text-gray-800">${t.CloudWatchLogsLogGroupArn ? t.CloudWatchLogsLogGroupArn.split(':log-group:')[1] : '-'}</span></li></ul></div>`; }); detailsHtml += '</div>'; return summaryTable + detailsHtml; };
         const renderCloudtrailEventsTable = (events) => { if (!events || events.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No events of interest were found in the last 7 days.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event Name</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Origen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; events.forEach(e => { const eventDate = new Date(e.EventTime).toLocaleString(); table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${eventDate}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${e.EventName}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.Username}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${e.EventRegion}</td> <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600 font-mono">${e.SourceIPAddress}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
 
         const renderCloudtrailLookUpView = (allRegions) => {
@@ -2527,7 +2527,7 @@
                         <a href="#" data-tab="np-vpcs-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">VPCs (${vpcs.length})</a>
                         <a href="#" data-tab="np-acls-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Network ACLs (${acls.length})</a>
                         <a href="#" data-tab="np-sgs-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Groups (${security_groups.length})</a>
-                        <a href="#" data-tab="np-detail-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Detalle</a>
+                        <a href="#" data-tab="np-detail-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Details</a>
                     </nav>
                 </div>
                 <div id="network-policies-tab-content-container">
@@ -2535,7 +2535,7 @@
                         ${createNetworkPoliciesSummaryCardsHtml()}
                         <div id="vpc-diagram-container" class="mt-8">
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
-                                <h3 class="text-xl font-bold text-[#204071]">Diagrama de Red</h3>
+                                <h3 class="text-xl font-bold text-[#204071]">Network Diagram</h3>
                                 <div class="flex items-center gap-x-6 gap-y-2 flex-wrap">
                                     <div class="flex items-center gap-2">
                                         <label for="vpc-diagram-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
@@ -2546,7 +2546,7 @@
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" id="vpc-diagram-hide-empty-filter" class="h-4 w-4 rounded border-gray-300 text-[#eb3496] focus:ring-[#eb3496]">
-                                        <label for="vpc-diagram-hide-empty-filter" class="text-sm font-medium text-gray-700">Ocultar VPCs vacías</label>
+                                        <label for="vpc-diagram-hide-empty-filter" class="text-sm font-medium text-gray-700">Hide empty VPCs</label>
                                     </div>
                                 </div>
                                 </div>
@@ -2657,7 +2657,7 @@
                     </div>
                 </div>
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                    <div><p class="text-sm text-gray-500">VPCs por Defecto</p></div>
+                    <div><p class="text-sm text-gray-500">Default VPCs</p></div>
                     <div class="flex justify-between items-end pt-4">
                         <p id="np-default-vpcs" class="text-3xl font-bold text-yellow-600">--</p>
                         <div class="bg-orange-100 p-3 rounded-full"> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-6 h-6 text-orange-600" viewBox="0 0 16 16">
@@ -2833,7 +2833,7 @@
                 <div class="bg-white border border-gray-200 rounded-xl shadow-md">
                     <div class="bg-gray-50 p-3 border-b border-gray-200 rounded-t-xl">
                         <h3 class="text-lg font-bold text-[#204071]">${vpc.Tags['Name'] || vpc.VpcId}</h3>
-                        <p class="text-sm text-gray-500 font-mono">${vpc.Region} | ${vpc.VpcId} | ${vpc.CidrBlock} | ${vpcSubnets.length} subredes | ${totalResources} recursos</p>
+                        <p class="text-sm text-gray-500 font-mono">${vpc.Region} | ${vpc.VpcId} | ${vpc.CidrBlock} | ${vpcSubnets.length} subnets | ${totalResources} resources</p>
                     </div>
                     <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 `;
@@ -3853,7 +3853,7 @@
                 // --- INICIO DE LA MODIFICACIÓN ---
                 // Ahora, añadimos las tablas de detalles si existen
                 if (detail_tables && Object.keys(detail_tables).length > 0) {
-                    resultHtml += '<h3 class="text-xl font-bold text-[#204071] mt-8 mb-4 border-b pb-2">Detalles de los Recursos Involucrados</h3>';
+                    resultHtml += '<h3 class="text-xl font-bold text-[#204071] mt-8 mb-4 border-b pb-2">Details of the Involved Resources</h3>';
                     for (const resourceId in detail_tables) {
                         resultHtml += `
                             <div class="mt-4">
@@ -4328,7 +4328,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         const createDatabasesSummaryCardsHtml = () => `
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
                         <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                            <div><p class="text-sm text-gray-500">Instancias RDS (Standalone)</p></div>
+                            <div><p class="text-sm text-gray-500">RDS Instances (Standalone)</p></div>
                             <div class="flex justify-between items-end pt-4">
                                 <p id="db-total-rds" class="text-3xl font-bold text-[#204071]">--</p>
                                 <div class="bg-blue-100 p-3 rounded-full">
@@ -4339,7 +4339,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                             </div>
                         </div>
                         <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                            <div><p class="text-sm text-gray-500">Clústeres Aurora</p></div>
+                            <div><p class="text-sm text-gray-500">Aurora Clusters</p></div>
                             <div class="flex justify-between items-end pt-4">
                                 <p id="db-total-aurora" class="text-3xl font-bold text-[#204071]">--</p>
                                 <div class="bg-green-100 p-3 rounded-full">
@@ -4350,7 +4350,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                             </div>
                         </div>
                         <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                            <div><p class="text-sm text-gray-500">Tablas DynamoDB</p></div>
+                            <div><p class="text-sm text-gray-500">DynamoDB Tables</p></div>
                             <div class="flex justify-between items-end pt-4">
                                 <p id="db-total-dynamodb" class="text-3xl font-bold text-[#204071]">--</p>
                                 <div class="bg-purple-100 p-3 rounded-full">
@@ -4361,7 +4361,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                             </div>
                         </div>
                         <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                            <div><p class="text-sm text-gray-500">Clústeres DocumentDB</p></div>
+                            <div><p class="text-sm text-gray-500">DocumentDB Clusters</p></div>
                             <div class="flex justify-between items-end pt-4">
                                 <p id="db-total-docdb" class="text-3xl font-bold text-[#204071]">--</p>
                                 <div class="bg-teal-100 p-3 rounded-full">
