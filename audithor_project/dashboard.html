@@ -256,21 +256,32 @@
 
         // --- LÓGICA DE ANÁLISIS ---
         const runAnalysisFromInputs = async () => {
-            // ... (toda la parte inicial de reseteo y configuración es igual)
+            // Resetear estado
             iamApiData = null; securityHubApiData = null; exposureApiData = null; guarddutyApiData = null; wafApiData = null; cloudtrailApiData = null; cloudwatchApiData = null; inspectorApiData = null; acmApiData = null; computeApiData = null; databasesApiData = null; networkPoliciesApiData = null; connectivityApiData = null; playgroundApiData = null; allAvailableRegions = []; lastCloudtrailLookupResults = []; federationApiData = null; configSHApiData = null; configSHStatusApiData = null; kmsApiData = null;
             document.querySelectorAll('.view').forEach(v => v.innerHTML = '');
             document.getElementById('iam-view').innerHTML = createInitialEmptyState();
-            const summaryContainer = document.getElementById('executive-summary-container');
-            if (summaryContainer) { summaryContainer.innerHTML = '<div class="text-center py-16"><div class="spinner mx-auto"></div><p class="mt-2 text-sm text-gray-500">Ejecutando análisis...</p></div>'; }
-            log('Starting full analysis......', 'info');
-            const accessKey = accessKeyInput.value.trim(); const secretKey = secretKeyInput.value.trim(); const sessionToken = sessionTokenInput.value.trim();
-            if (!accessKey || !secretKey) { const msg = 'Please enter the Access Key ID and Secret Access Key.'; errorMessageDiv.textContent = msg; errorMessageDiv.classList.remove('hidden'); log(msg, 'error'); return; }
+            
+            log('Starting full analysis...', 'info');
+            const accessKey = accessKeyInput.value.trim(); 
+            const secretKey = secretKeyInput.value.trim(); 
+            const sessionToken = sessionTokenInput.value.trim();
+            if (!accessKey || !secretKey) { 
+                const msg = 'Please enter the Access Key ID and Secret Access Key.'; 
+                errorMessageDiv.textContent = msg; 
+                errorMessageDiv.classList.remove('hidden'); 
+                log(msg, 'error'); 
+                return; 
+            }
             const payload = { access_key: accessKey, secret_key: secretKey };
-            if (sessionToken) { payload.session_token = sessionToken; log('A Session Token has been detected.', 'info'); }
-            runAnalysisBtn.disabled = true; loadingSpinner.classList.remove('hidden'); buttonText.textContent = 'Scanning...'; errorMessageDiv.classList.add('hidden');
-            // ... (toda la lógica de las llamadas a la API es igual)
+            if (sessionToken) { payload.session_token = sessionToken; }
+            
+            runAnalysisBtn.disabled = true; 
+            loadingSpinner.classList.remove('hidden'); 
+            buttonText.textContent = 'Scanning...'; 
+            errorMessageDiv.classList.add('hidden');
+            
             try {
-                log('Calling AWS APIs...', 'info');
+                log('Calling all AWS APIs...', 'info');
                 const apiCalls = {
                     iam: fetch('http://127.0.0.1:5001/api/run-iam-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     accessAnalyzer: fetch('http://127.0.0.1:5001/api/run-access-analyzer-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
@@ -290,29 +301,57 @@
                     kms: fetch('http://127.0.0.1:5001/api/run-kms-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     connectivity: fetch('http://127.0.0.1:5001/api/run-connectivity-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                 };
+                
                 const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
-                    try { const response = await promise; if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || `HTTP error! status: ${response.status}`); } return [key, await response.json()]; } catch (error) { log(`Error for API '${key}': ${error.message}`, 'error'); return [key, null]; }
+                    try { 
+                        const response = await promise; 
+                        if (!response.ok) { 
+                            const errorData = await response.json(); 
+                            throw new Error(errorData.error || `HTTP error! status: ${response.status}`); 
+                        } 
+                        return [key, await response.json()]; 
+                    } catch (error) { 
+                        log(`Error for API '${key}': ${error.message}`, 'error'); 
+                        return [key, null]; 
+                    }
                 });
+
                 const resolvedPromises = await Promise.all(promises);
                 const results = Object.fromEntries(resolvedPromises);
-                iamApiData = results.iam; accessAnalyzerApiData = results.accessAnalyzer; securityHubApiData = results.securityhub; exposureApiData = results.exposure; guarddutyApiData = results.guardduty; wafApiData = results.waf; cloudtrailApiData = results.cloudtrail; cloudwatchApiData = results.cloudwatch; inspectorApiData = results.inspector; acmApiData = results.acm; computeApiData = results.compute; databasesApiData = results.databases; networkPoliciesApiData = results.network_policies; federationApiData = results.federation; configSHStatusApiData = results.config_sh_status; kmsApiData = results.kms; connectivityApiData = results.connectivity;
-                if (!iamApiData || !networkPoliciesApiData) { throw new Error("One or more critical API calls failed. Cannot continue."); }
+
+                iamApiData = results.iam; 
+                accessAnalyzerApiData = results.accessAnalyzer; 
+                securityHubApiData = results.securityhub; 
+                exposureApiData = results.exposure; 
+                guarddutyApiData = results.guardduty; 
+                wafApiData = results.waf; 
+                cloudtrailApiData = results.cloudtrail; 
+                cloudwatchApiData = results.cloudwatch; 
+                inspectorApiData = results.inspector; 
+                acmApiData = results.acm; 
+                computeApiData = results.compute; 
+                databasesApiData = results.databases; 
+                networkPoliciesApiData = results.network_policies; 
+                federationApiData = results.federation; // <--- Aquí se guarda
+                configSHStatusApiData = results.config_sh_status; 
+                kmsApiData = results.kms; 
+                connectivityApiData = results.connectivity;
+                
+                if (!iamApiData || !networkPoliciesApiData) { 
+                    throw new Error("One or more critical API calls failed. Cannot continue."); 
+                }
+                
                 allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
                 log('All data has been received.', 'success');
+                
                 buildAndRenderAllViews();
-
-                // --- ▼▼▼ CAMBIO IMPORTANTE AQUÍ ▼▼▼ ---
-                // Ahora simplemente llamamos a nuestra nueva función.
                 await runAndDisplayHealthyStatus();
-                // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
 
             } catch (error) {
                 const errorMsg = `Error: ${error.message || 'An unknown error occurred.'}`;
                 console.error('Detailed Error:', error);
                 errorMessageDiv.textContent = errorMsg;
                 errorMessageDiv.classList.remove('hidden');
-                document.getElementById('iam-view').innerHTML = createInitialEmptyState();
-                if (summaryContainer) { summaryContainer.innerHTML = `<div class="text-center py-16 text-red-600">${errorMsg}</div>`; }
                 log(`${errorMsg}`, 'error');
             } finally {
                 runAnalysisBtn.disabled = false;
@@ -321,6 +360,9 @@
             }
         };
 
+
+
+        
         // --- LÓGICA DE RENDERIZADO ---
         const buildAndRenderAllViews = () => {
             try {
@@ -678,44 +720,52 @@
 
         const renderFederationView = () => {
             const container = document.getElementById('federation-content');
-            if (!container || !federationApiData) return;
+            // --- CORRECCIÓN 1: Añadida comprobación de nulidad ---
+            if (!container || !federationApiData || !federationApiData.results) {
+                // Si no hay datos, muestra un mensaje claro y sale de la función.
+                if(container) container.innerHTML = '<p class="text-center text-gray-500 py-4">Los datos de federación no están disponibles. Ejecuta un análisis o revisa si hay errores de API.</p>';
+                return;
+            }
 
-            const { iam_federation, identity_center } = federationApiData.results;
+            // --- CORRECCIÓN 2: Fallback para los objetos internos ---
+            // Proporciona objetos vacíos por defecto si alguna de las claves no existe en la respuesta.
+            const { iam_federation = {}, identity_center = {} } = federationApiData.results;
 
+            // --- Sección de Federación IAM (Alias de cuenta, etc.) ---
             let aliasHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-                                <h3 class="font-bold text-lg mb-2 text-[#204071]">Account Alias</h3>`;
+                                <h3 class="font-bold text-lg mb-2 text-[#204071]">Alias de Cuenta</h3>`;
             if (iam_federation.account_alias) {
                 const signInUrl = `https://${iam_federation.account_alias}.signin.aws.amazon.com/console`;
                 aliasHtml += `<p class="text-sm text-gray-600">Alias: <strong class="font-mono bg-gray-100 p-1 rounded">${iam_federation.account_alias}</strong></p>
-                            <p class="text-sm text-gray-600 mt-2">Sign-in URL:</p>
+                            <p class="text-sm text-gray-600 mt-2">URL de inicio de sesión:</p>
                             <a href="${signInUrl}" target="_blank" class="text-blue-600 hover:underline font-mono text-sm break-all">${signInUrl}</a>`;
             } else {
-                aliasHtml += `<p class="text-sm text-gray-600">This account does not have a custom alias configured.</p>`;
+                aliasHtml += `<p class="text-sm text-gray-600">Esta cuenta no tiene un alias personalizado configurado.</p>`;
             }
             aliasHtml += `</div>`;
             
+            // --- Sección de AWS Identity Center (SSO) ---
             let identityCenterHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
                                         <h3 class="font-bold text-lg mb-4 text-[#204071]">AWS Identity Center (SSO)</h3>`;
 
-            if (identity_center.status === 'Encontrado') {
+            if (identity_center.status === 'Found') {
                 const { instance_arn, assignments } = identity_center;
 
                 identityCenterHtml += `<div class="mb-6 space-y-2 text-sm">
-                                            <p><strong class="text-gray-600">Instance ARN:</strong> <span class="font-mono bg-gray-100 p-1 rounded">${instance_arn}</span></p>
+                                            <p><strong class="text-gray-600">ARN de la Instancia:</strong> <span class="font-mono bg-gray-100 p-1 rounded">${instance_arn}</span></p>
                                         </div>`;
 
-                if (assignments.length > 0) {
-                    identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Permission Assignments</h4>
+                if (assignments && assignments.length > 0) {
+                    identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Asignaciones de Permisos</h4>
                                             <div class="overflow-x-auto">
                                             <table id="sso-assignments-table" class="min-w-full divide-y divide-gray-200">
                                                 <thead class="bg-gray-50"><tr>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Permission Set (Role)</th>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">AWS Account ID</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grupo</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Set de Permisos (Rol)</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID de Cuenta de AWS</th>
                                                 </tr></thead>
                                                 <tbody class="bg-white divide-y divide-gray-200">`;
                     assignments.forEach(a => {
-                        // --- ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼ ---
                         const vipBadge = a.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : '';
                         
                         identityCenterHtml += `<tr class="hover:bg-gray-50 cursor-pointer" onclick="showSsoGroupMembers(this, '${a.GroupId}', '${a.GroupName}')">
@@ -723,14 +773,14 @@
                                                 <td class="px-4 py-3 text-sm text-gray-600">${vipBadge}${a.PermissionSetName}</td>
                                                 <td class="px-4 py-3 text-sm text-gray-600 font-mono">${a.AccountId}</td>
                                             </tr>`;
-                        // --- ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲ ---
                     });
                     identityCenterHtml += `</tbody></table></div>`;
                 } else {
-                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center is enabled, but no group permission assignments were found.</p>`;
+                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center está habilitado, pero no se encontraron asignaciones de permisos a grupos.</p>`;
                 }
             } else {
-                identityCenterHtml += `<p class="text-center text-gray-500 py-4">${identity_center.message}</p>`;
+                const message = identity_center.message || "No se pudo recuperar la información de Identity Center. Pueden faltar los permisos necesarios (sso-admin, identitystore) o el servicio no está configurado.";
+                identityCenterHtml += `<p class="text-center text-gray-500 py-4">${message}</p>`;
             }
 
             identityCenterHtml += `<div id="sso-group-members-container" class="mt-6"></div></div>`;
@@ -4523,9 +4573,10 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 
 
 // --- LÓGICA DE EXPORTACIÓN ---
+
         const exportResultsToJson = () => {
             if (!iamApiData) {
-                alert("Warning: You must run an analysis first before exporting the results.");
+                alert("Aviso: Debes ejecutar un análisis primero antes de exportar los resultados.");
                 return;
             }
 
@@ -4549,7 +4600,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                 results: {
                     iam: iamApiData?.results || null,
                     federation: federationApiData?.results || null,
-                    accessAnalyzer: accessAnalyzerApiData?.results || null, // <-- AÑADIR ESTA LÍNEA
+                    accessAnalyzer: accessAnalyzerApiData?.results || null,
                     securityhub: securityHubApiData?.results || null,
                     exposure: exposureApiData?.results || null,
                     guardduty: guarddutyApiData?.results || null,
@@ -4564,7 +4615,12 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     configAndSecurityHubStatus: configSHStatusApiData?.results || null,
                     configAndSecurityHubDeepScan: configSHApiData?.results || null,
                     kms: kmsApiData?.results || null, 
-                    playground: playgroundApiData?.results || null,
+                    // --- MODIFICACIÓN CLAVE AQUÍ ---
+                    // Ahora guardamos un objeto que contiene tanto los resultados del traceroute como los del sslscan.
+                    playground: {
+                        traceroute: playgroundApiData?.results || null,
+                        sslscan: playgroundApiData?.sslscan || null
+                    },
                     connectivity: connectivityApiData?.results || null
                 }
             };
@@ -4588,17 +4644,16 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 
 
 
-
 // --- LÓGICA DE IMPORTACIÓN ---
 
         const handleJsonImport = (event) => {
             const file = event.target.files[0];
             if (!file) {
-                log('No file was selected.', 'info');
+                log('No se seleccionó ningún fichero.', 'info');
                 return;
             }
 
-            log(`Loading file: ${file.name}...`, 'info');
+            log(`Cargando fichero: ${file.name}...`, 'info');
             const reader = new FileReader();
 
             reader.onload = (e) => {
@@ -4606,18 +4661,17 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     const importedData = JSON.parse(e.target.result);
 
                     if (!importedData.metadata || !importedData.results) {
-                        throw new Error("The JSON file does not have the expected structure. (metadata/results).");
+                        throw new Error("El fichero JSON no tiene la estructura esperada (metadata/results).");
                     }
 
-                    log(`JSON file parsed successfully. Account: ${importedData.metadata.accountId}`, 'info');
+                    log(`Fichero JSON parseado correctamente. Cuenta: ${importedData.metadata.accountId}`, 'info');
 
                     const results = importedData.results;
-                    
                     const metadata = { accountId: importedData.metadata.accountId, executionDate: importedData.metadata.analysisTimestamp };
 
                     iamApiData = results.iam ? { metadata: metadata, results: results.iam } : null;
                     federationApiData = results.federation ? { metadata: metadata, results: results.federation } : null;
-                    accessAnalyzerApiData = results.accessAnalyzer ? { metadata: metadata, results: results.accessAnalyzer } : null; // <-- AÑADIR ESTA LÍNEA
+                    accessAnalyzerApiData = results.accessAnalyzer ? { metadata: metadata, results: results.accessAnalyzer } : null;
                     securityHubApiData = results.securityhub ? { metadata: metadata, results: results.securityhub } : null;
                     exposureApiData = results.exposure ? { metadata: metadata, results: results.exposure } : null;
                     guarddutyApiData = results.guardduty ? { metadata: metadata, results: results.guardduty } : null;
@@ -4632,33 +4686,44 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     configSHStatusApiData = results.configAndSecurityHubStatus ? { metadata: metadata, results: results.configAndSecurityHubStatus } : null;
                     configSHApiData = results.configAndSecurityHubDeepScan ? { metadata: metadata, results: results.configAndSecurityHubDeepScan } : null;
                     kmsApiData = results.kms ? { metadata: metadata, results: results.kms } : null;
-                    playgroundApiData = results.playground ? { metadata: metadata, results: results.playground } : null;
                     connectivityApiData = results.connectivity ? { metadata: metadata, results: results.connectivity } : null;
                     
+                    // --- MODIFICACIÓN CLAVE AQUÍ ---
+                    // Reconstruimos el objeto playgroundApiData a partir de la nueva estructura del JSON.
+                    const playgroundImportData = results.playground || {};
+                    playgroundApiData = {
+                        metadata: metadata,
+                        results: playgroundImportData.traceroute || null,
+                        sslscan: playgroundImportData.sslscan || null
+                    };
+
                     allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
 
-                    log('Data imported into the application state.', 'success');
+                    log('Datos importados al estado de la aplicación.', 'success');
                     
                     buildAndRenderAllViews();
                     runAndDisplayHealthyStatus();
 
                 } catch (error) {
-                    log(`Error importing the JSON file: ${error.message}`, 'error');
+                    log(`Error importando el fichero JSON: ${error.message}`, 'error');
                     console.error(error);
-                    errorMessageDiv.textContent = 'Error: The selected file is not a valid JSON or has an incorrect format.';
+                    errorMessageDiv.textContent = 'Error: El fichero seleccionado no es un JSON válido o tiene un formato incorrecto.';
                     errorMessageDiv.classList.remove('hidden');
                 }
             };
 
             reader.onerror = () => {
-                log('Error reading the file.', 'error');
-                errorMessageDiv.textContent = 'Error: The selected file could not be read.';
+                log('Error leyendo el fichero.', 'error');
+                errorMessageDiv.textContent = 'Error: No se pudo leer el fichero seleccionado.';
                 errorMessageDiv.classList.remove('hidden');
             };
 
             reader.readAsText(file);
             event.target.value = '';
         };
+
+
+
 
         const displayHealthyStatus = (selectedRegion) => {
             const container = document.getElementById('healthy-status-container');
