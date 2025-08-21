@@ -10,9 +10,12 @@ import pytz
 import json
 import subprocess
 import shutil
+import boto3
 
 # Importa el motor de reglas (sin cambios)
 from rules import RULES_TO_CHECK
+from collectors.network_policies import get_network_details_table
+from botocore.exceptions import BotoCoreError, ClientError
 
 # --- 1. IMPORTA TUS NUEVOS MÓDULOS ---
 from collectors import (
@@ -20,6 +23,36 @@ from collectors import (
     cloudwatch, inspector, kms, acm, compute, databases,
     network_policies, connectivity, config_sh, playground
 )
+
+
+
+
+def get_boto_session(access_key, secret_key, session_token=None):
+    """Creates and returns a Boto3 session from credentials."""
+    try:
+        # If the session token is empty or None, don't include it
+        if session_token:
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token
+            )
+        else:
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key
+            )
+        
+        # Verify that the credentials are valid by making a simple call
+        sts_client = session.client('sts')
+        sts_client.get_caller_identity()
+        
+        return session
+    except (BotoCoreError, ClientError) as e:
+        # If credentials are invalid or another error occurs, return None
+        print(f"[ERROR] Boto3 session could not be created: {e}")
+        return None
+
 
 # ==============================================================================
 # CONF. APLICACIÓN FLASK
@@ -220,25 +253,49 @@ def run_config_sh_status_audit():
     except Exception as e:
         return jsonify({"error": f"Unexpected error while collecting Config & SH status: {str(e)}"}), 500
 
+
 @app.route('/api/run-network-detail-audit', methods=['POST'])
-def run_network_detail_audit():
-    session, error = utils.get_session(request.get_json())
-    if error: return jsonify({"error": error}), 401
-    
-    data = request.get_json()
-    resource_id = data.get('resource_id')
-    region = data.get('region')
-
-    if not resource_id or not region:
-        return jsonify({"error": "Resource ID and region are required."}), 400
-
+def handle_network_detail_audit():
+    """
+    Handles the request to get detailed rules for a specific network resource.
+    """
+    # Obtenemos las credenciales y creamos la sesión de Boto3
+    # (Asegúrate de que tu lógica para get_boto_session esté aquí)
     try:
-        details_table = network_policies.get_network_details_table(session, region, resource_id)
-        return jsonify({"results": {"details_table": details_table}})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid request: No JSON payload found."}), 400
+
+        access_key = data.get('access_key')
+        secret_key = data.get('secret_key')
+        session_token = data.get('session_token')
+
+        session = get_boto_session(access_key, secret_key, session_token)
+        if not session:
+            return jsonify({"error": "Failed to create AWS session from provided credentials."}), 500
+
+        # Extraemos el ID y la región del cuerpo de la petición
+        resource_id = data.get('resource_id')
+        region = data.get('region')
+
+        if not resource_id or not region:
+            return jsonify({"error": "Missing 'resource_id' or 'region' in the request payload."}), 400
+
+        # --- LÓGICA CORREGIDA Y SIMPLIFICADA ---
+        # Llamamos directamente a la función robusta que ya depuramos en network_policies.py
+        details = get_network_details_table(session, resource_id, region)
+        
+        # Si la función devuelve un string que empieza con "Error:", lo tratamos como un error del lado del cliente
+        if isinstance(details, str) and details.startswith("Error:"):
+            return jsonify({"error": details}), 400
+
+        # Si todo va bien, devolvemos el resultado
+        return jsonify({"results": {"details_table": details}})
+
     except Exception as e:
-        return jsonify({"error": f"Unexpected Error: {str(e)}"}), 500
+        # Capturamos cualquier otro error inesperado y lo devolvemos de forma clara
+        print(f"[ERROR] en handle_network_detail_audit: {e}") # Log para tu consola
+        return jsonify({"error": f"An unexpected server error occurred: {str(e)}"}), 500
 
 @app.route('/api/run-connectivity-audit', methods=['POST'])
 def run_connectivity_audit():

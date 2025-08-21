@@ -48,12 +48,17 @@ def collect_compute_data(session):
             lambda_paginator = lambda_client.get_paginator("list_functions")
             for page in lambda_paginator.paginate():
                 for function in page.get("Functions", []):
+                    vpc_config = function.get("VpcConfig", {})
+                    security_groups = vpc_config.get("SecurityGroupIds", [])
+                    vpc_id = vpc_config.get("VpcId", "N/A")
                     result_lambda_functions.append({
                         "Region": region, "FunctionName": function.get("FunctionName"),
                         "Runtime": function.get("Runtime"), "MemorySize": function.get("MemorySize"),
                         "Timeout": function.get("Timeout"), "LastModified": str(function.get("LastModified")),
                         "ARN": function.get("FunctionArn"),
-                        "VpcConfig": function.get("VpcConfig", {})
+                        "VpcConfig": function.get("VpcConfig", {}),
+                        "SecurityGroups": security_groups,
+                        "VpcId": vpc_id
                     })
 
             eks_clusters = eks_client.list_clusters().get("clusters", [])

@@ -16,17 +16,17 @@ def collect_guardduty_data(session):
             
             if not detectors.get("DetectorIds"):
                 # --- MODIFICADO: Añadimos las nuevas claves también al estado por defecto ---
-                status_by_region.append({"Region": region, "Status": "No Habilitado", "S3 Logs": "-", "Kubernetes Logs": "-", "EC2 Malware Protection": "-", "EKS Malware Protection": "-"})
+                status_by_region.append({"Region": region, "Status": "Not Enabled", "S3 Logs": "-", "Kubernetes Logs": "-", "EC2 Malware Protection": "-", "EKS Malware Protection": "-"})
                 continue
 
             detector_id = detectors["DetectorIds"][0]
             detector_details = gd_client.get_detector(DetectorId=detector_id)
             
-            features = {f["Name"]: "Habilitado" if f["Status"] == "ENABLED" else "Deshabilitado" for f in detector_details.get("Features", [])}
+            features = {f["Name"]: "Enabled" if f["Status"] == "ENABLED" else "Disabled" for f in detector_details.get("Features", [])}
 
             status_by_region.append({
                 "Region": region,
-                "Status": "Habilitado" if detector_details.get("Status") == "ENABLED" else "Suspendido",
+                "Status": "Enabled" if detector_details.get("Status") == "ENABLED" else "Suspended",
                 "S3 Logs": features.get("S3_DATA_EVENTS", "N/A"),
                 "Kubernetes Logs": features.get("KUBERNETES_AUDIT_LOGS", "N/A"),
                 "EC2 Malware Protection": features.get("MALWARE_PROTECTION", "N/A"),

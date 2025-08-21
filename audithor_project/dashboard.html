@@ -132,7 +132,7 @@
                                 <path d="M14 13.5v-7a.5.5 0 0 0-.5-.5H12V4.5a.5.5 0 0 0-.5-.5h-1v-.5A.5.5 0 0 0 10 3H6a.5.5 0 0 0-.5.5V4h-1a.5.5 0 0 0-.5.5V6H2.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5M3.75 11h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-1.5a.25.25 0 0 1 .25-.25m2 0h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-1.5a.25.25 0 0 1 .25-.25m1.75.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zM9.75 11h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-1.5a.25.25 0 0 1 .25-.25m1.75.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v1.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25z"/>
                                 <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM1 2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z"/>
                             </svg>
-                            <span>Conectividad de Red</span>
+                            <span>Network Connectivity</span>
                         </a>
                     </div>
                     <div>
@@ -720,31 +720,25 @@
 
         const renderFederationView = () => {
             const container = document.getElementById('federation-content');
-            // --- CORRECCIÓN 1: Añadida comprobación de nulidad ---
             if (!container || !federationApiData || !federationApiData.results) {
-                // Si no hay datos, muestra un mensaje claro y sale de la función.
-                if(container) container.innerHTML = '<p class="text-center text-gray-500 py-4">Los datos de federación no están disponibles. Ejecuta un análisis o revisa si hay errores de API.</p>';
+                if(container) container.innerHTML = '<p class="text-center text-gray-500 py-4">Federation data is not available. Run a scan or check for API errors.</p>';
                 return;
             }
 
-            // --- CORRECCIÓN 2: Fallback para los objetos internos ---
-            // Proporciona objetos vacíos por defecto si alguna de las claves no existe en la respuesta.
             const { iam_federation = {}, identity_center = {} } = federationApiData.results;
 
-            // --- Sección de Federación IAM (Alias de cuenta, etc.) ---
             let aliasHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-                                <h3 class="font-bold text-lg mb-2 text-[#204071]">Alias de Cuenta</h3>`;
+                                <h3 class="font-bold text-lg mb-2 text-[#204071]">Account Alias</h3>`;
             if (iam_federation.account_alias) {
                 const signInUrl = `https://${iam_federation.account_alias}.signin.aws.amazon.com/console`;
                 aliasHtml += `<p class="text-sm text-gray-600">Alias: <strong class="font-mono bg-gray-100 p-1 rounded">${iam_federation.account_alias}</strong></p>
-                            <p class="text-sm text-gray-600 mt-2">URL de inicio de sesión:</p>
+                            <p class="text-sm text-gray-600 mt-2">Sign-in URL:</p>
                             <a href="${signInUrl}" target="_blank" class="text-blue-600 hover:underline font-mono text-sm break-all">${signInUrl}</a>`;
             } else {
-                aliasHtml += `<p class="text-sm text-gray-600">Esta cuenta no tiene un alias personalizado configurado.</p>`;
+                aliasHtml += `<p class="text-sm text-gray-600">This account does not have a custom alias configured.</p>`;
             }
             aliasHtml += `</div>`;
             
-            // --- Sección de AWS Identity Center (SSO) ---
             let identityCenterHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
                                         <h3 class="font-bold text-lg mb-4 text-[#204071]">AWS Identity Center (SSO)</h3>`;
 
@@ -752,17 +746,17 @@
                 const { instance_arn, assignments } = identity_center;
 
                 identityCenterHtml += `<div class="mb-6 space-y-2 text-sm">
-                                            <p><strong class="text-gray-600">ARN de la Instancia:</strong> <span class="font-mono bg-gray-100 p-1 rounded">${instance_arn}</span></p>
+                                            <p><strong class="text-gray-600">Instance ARN:</strong> <span class="font-mono bg-gray-100 p-1 rounded">${instance_arn}</span></p>
                                         </div>`;
 
                 if (assignments && assignments.length > 0) {
-                    identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Asignaciones de Permisos</h4>
+                    identityCenterHtml += `<h4 class="font-semibold text-md mb-2">Permission Assignments</h4>
                                             <div class="overflow-x-auto">
                                             <table id="sso-assignments-table" class="min-w-full divide-y divide-gray-200">
                                                 <thead class="bg-gray-50"><tr>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grupo</th>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Set de Permisos (Rol)</th>
-                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID de Cuenta de AWS</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Permission Set (Role)</th>
+                                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">AWS Account ID</th>
                                                 </tr></thead>
                                                 <tbody class="bg-white divide-y divide-gray-200">`;
                     assignments.forEach(a => {
@@ -776,10 +770,10 @@
                     });
                     identityCenterHtml += `</tbody></table></div>`;
                 } else {
-                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center está habilitado, pero no se encontraron asignaciones de permisos a grupos.</p>`;
+                    identityCenterHtml += `<p class="text-center text-gray-500 py-4">Identity Center is enabled, but no group permission assignments were found.</p>`;
                 }
             } else {
-                const message = identity_center.message || "No se pudo recuperar la información de Identity Center. Pueden faltar los permisos necesarios (sso-admin, identitystore) o el servicio no está configurado.";
+                const message = identity_center.message || "Could not retrieve Identity Center information. Necessary permissions (sso-admin, identitystore) may be missing or the service is not configured.";
                 identityCenterHtml += `<p class="text-center text-gray-500 py-4">${message}</p>`;
             }
 
@@ -787,6 +781,7 @@
             
             container.innerHTML = aliasHtml + identityCenterHtml;
         };
+
 
 
         const showSsoGroupMembers = async (rowElement, groupId, groupName) => {
@@ -2368,7 +2363,7 @@
         const createComputeSummaryCardsHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full">
-                    <div><p class="text-sm text-gray-500">Instancias EC2</p></div>
+                    <div><p class="text-sm text-gray-500">EC2 Instanaces</p></div>
                     <div class="flex justify-between items-end pt-4">
                         <p id="compute-total-ec2" class="text-3xl font-bold text-[#204071]">--</p>
                         <div class="bg-orange-100 p-3 rounded-full">
@@ -2379,7 +2374,7 @@
                     </div>
                 </div>
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full">
-                    <div><p class="text-sm text-gray-500">Funciones Lambda</p></div>
+                    <div><p class="text-sm text-gray-500">Lambda Functions</p></div>
                     <div class="flex justify-between items-end pt-4">
                         <p id="compute-total-lambda" class="text-3xl font-bold text-[#204071]">--</p>
                         <div class="bg-purple-100 p-3 rounded-full">
@@ -2494,27 +2489,37 @@
             return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}${tableContent}</div>`;
         };
 
-
-
         const renderLambdaFunctionsTable = (functions) => {
             if (!functions || functions.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Lambda functions were found.</p></div>';
+            
+            // ### CAMBIO 1: Se añade la cabecera para VPC ID ###
             let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Function Name</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Runtime</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Security Groups</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ARN</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+
             functions.forEach(f => {
+                const sgHtml = f.SecurityGroups && f.SecurityGroups.length > 0
+                    ? f.SecurityGroups.map(sg => `<span class="inline-block bg-gray-100 text-gray-800 text-xs font-mono font-medium mr-2 mb-1 px-2.5 py-0.5 rounded-full">${sg}</span>`).join('')
+                    : 'N/A';
+
                 table += `<tr class="hover:bg-gray-50">
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td>
                             <td class="px-4 py-4 text-sm font-medium text-gray-800 break-all">${f.FunctionName}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Runtime}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${f.VpcId || 'N/A'}</td>
+                            <td class="px-4 py-4 text-sm text-gray-600 break-words">${sgHtml}</td>
                             <td class="px-4 py-4 text-sm text-gray-600 break-all font-mono">${f.ARN}</td>
                         </tr>`;
             });
             table += '</tbody></table></div>';
             return table;
         };
+
 
         const renderEksClustersTable = (clusters) => {
             if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No EKS clusters were found.</p></div>';
@@ -2944,7 +2949,7 @@
                     }
 
                     if (subnetInstances.length === 0 && subnetLambdas.length === 0 && subnetRds.length === 0 && subnetAurora.length === 0) {
-                        diagramHtml += '<p class="text-center text-xs text-gray-400 py-4">Sin recursos</p>';
+                        diagramHtml += '<p class="text-center text-xs text-gray-400 py-4">No resources</p>';
                     }
 
                     diagramHtml += `</div></div>`; // Cierre de la subred
@@ -4291,7 +4296,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             document.getElementById('kms-total-keys').textContent = keys.length;
             document.getElementById('kms-customer-managed').textContent = keys.filter(k => k.KeyManager === 'CUSTOMER').length;
             document.getElementById('kms-aws-managed').textContent = keys.filter(k => k.KeyManager === 'AWS').length;
-            document.getElementById('kms-rotation-disabled').textContent = keys.filter(k => k.RotationEnabled === 'Desactivada').length;
+            document.getElementById('kms-rotation-disabled').textContent = keys.filter(k => k.RotationEnabled === 'Disabled').length;
         };
 
         const renderKmsKeysTable = (keys) => {
