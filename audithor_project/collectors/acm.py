@@ -28,11 +28,9 @@ def collect_acm_data_web(session):
                     except ClientError as e:
                         if "OptInRequired" in str(e) or "endpoint" in str(e):
                             continue
-                        print(f"Warning: Could not retrieve details for certificate {cert_arn} in {region}: {e}")
         except ClientError as e:
             if "OptInRequired" in str(e) or "endpoint" in str(e) or "SignatureDoesNotMatch" in str(e): 
                 continue
-            print(f"Notice: ACM service not available or no permissions in {region}: {e}")
 
     result_certificates.sort(key=lambda x: (x.get('Region', ''), x.get('DomainName', '')))
     

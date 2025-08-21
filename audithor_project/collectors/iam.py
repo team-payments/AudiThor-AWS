@@ -38,14 +38,12 @@ def collect_identity_center_data(session):
     """
     Recopila datos de AWS Identity Center con logs de depuración.
     """
-    print("\n--- [DEBUG] Iniciando collect_identity_center_data ---")
     try:
         all_regions = get_all_aws_regions(session)
         instance_arn = None
         identity_store_id = None
         found_region = None
 
-        print(f"[DEBUG] Buscando instancia de SSO en {len(all_regions)} regiones...")
         for region in all_regions:
             try:
                 regional_sso_client = session.client("sso-admin", region_name=region)
@@ -54,43 +52,32 @@ def collect_identity_center_data(session):
                     instance_arn = instances[0]['InstanceArn']
                     identity_store_id = instances[0]['IdentityStoreId']
                     found_region = region
-                    print(f"[DEBUG] Instancia de SSO encontrada en la región: {found_region}")
-                    print(f"[DEBUG]   -> ARN: {instance_arn}")
-                    print(f"[DEBUG]   -> IdentityStoreId: {identity_store_id}")
                     break 
             except ClientError as e:
-                # Ignoramos errores de regiones no activas, pero podríamos loguearlos si quisiéramos
-                # print(f"[DEBUG] Error de cliente en {region}: {e}")
+                
                 continue
         
         if not instance_arn:
-            print("[DEBUG] No se encontró ninguna instancia de SSO activa.")
             return {"status": "Not found", "message": "No active AWS Identity Center instances were found in any region."}
 
         # A partir de aquí, solo se ejecuta si se encontró una instancia
         sso_admin_client = session.client("sso-admin", region_name=found_region)
         identity_client = session.client("identitystore", region_name=found_region)
         
-        print("[DEBUG] Recopilando grupos de Identity Center...")
         group_map = {}
         paginator_groups = identity_client.get_paginator('list_groups')
         for page in paginator_groups.paginate(IdentityStoreId=identity_store_id):
             for group in page.get("Groups", []):
                 group_map[group['GroupId']] = group['DisplayName']
-        print(f"[DEBUG] Se encontraron {len(group_map)} grupos.")
-
-        print("[DEBUG] Recopilando Permission Sets...")
         ps_map = {}
         paginator_ps = sso_admin_client.get_paginator('list_permission_sets')
         for page in paginator_ps.paginate(InstanceArn=instance_arn):
             for ps_arn in page.get("PermissionSets", []):
                 details = sso_admin_client.describe_permission_set(InstanceArn=instance_arn, PermissionSetArn=ps_arn)
                 ps_map[ps_arn] = details.get("PermissionSet", {}).get("Name", "Unknown")
-        print(f"[DEBUG] Se encontraron {len(ps_map)} Permission Sets.")
         
         privileged_ps_names = ["AWSAdministratorAccess", "AdministratorAccess", "AWSPowerUserAccess", "PowerUserAccess"]
         
-        print("[DEBUG] Recopilando asignaciones de cuentas...")
         assignments = []
         paginator_accounts = sso_admin_client.get_paginator('list_accounts_for_provisioned_permission_set')
 
@@ -110,24 +97,19 @@ def collect_identity_center_data(session):
                                     "GroupName": group_map.get(group_id, "Unknown Group"),
                                     "IsPrivileged": ps_name in privileged_ps_names
                                 })
-        
-        print(f"[DEBUG] Se encontraron {len(assignments)} asignaciones en total.")
         final_result = {
             "status": "Found",
             "instance_arn": instance_arn,
             "identity_store_id": identity_store_id,
             "assignments": sorted(assignments, key=lambda x: (x['GroupName'], x['PermissionSetName']))
         }
-        print("[DEBUG] Devolviendo resultado exitoso.")
         return final_result
 
     except ClientError as e:
-        print(f"[DEBUG] ERROR de Cliente Boto3: {e}")
         if e.response['Error']['Code'] == 'AccessDeniedException':
              return {"status": "Error", "message": "Access denied. Permissions are required for 'sso-admin' and 'identitystore'."}
         return {"status": "Error", "message": f"Unexpected error while querying Identity Center: {str(e)}"}
     except Exception as e:
-        print(f"[DEBUG] ERROR General de Python: {e}")
         return {"status": "General Error", "message": f"An unexpected error occurred in the function: {str(e)}"}
 
 def detectar_privilegios(users, roles, groups, session):
