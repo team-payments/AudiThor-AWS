@@ -2454,6 +2454,7 @@
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public IP</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Security Groups</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operating System</th>' +
                         '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">ARN</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
@@ -2461,12 +2462,18 @@
             
             instances.forEach(i => {
                 const tagsStr = Object.entries(i.Tags).map(([k, v]) => `${k}:${v}`).join(', ') || '-';
+                
+                const sgHtml = i.SecurityGroups && i.SecurityGroups.length > 0
+                    ? i.SecurityGroups.map(sg => `<span class="inline-block bg-gray-100 text-gray-800 text-xs font-medium mr-2 mb-1 px-2.5 py-0.5 rounded-full">${sg}</span>`).join('')
+                    : '-';
+
                 tableContent += `<tr class="hover:bg-gray-50">
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${i.Region}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${i.InstanceId}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${i.InstanceType}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm">${createStatusBadge(i.State)}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${i.PublicIpAddress || '-'}</td>
+                            <td class="px-4 py-4 text-sm text-gray-600 break-words">${sgHtml}</td>
                             <td class="px-4 py-4 text-sm text-gray-600 break-words">${i.OperatingSystem}</td>
                             <td class="px-4 py-4 text-center">
                                 <button 
@@ -2486,6 +2493,8 @@
             
             return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}${tableContent}</div>`;
         };
+
+
 
         const renderLambdaFunctionsTable = (functions) => {
             if (!functions || functions.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Lambda functions were found.</p></div>';

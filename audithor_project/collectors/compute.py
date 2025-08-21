@@ -34,14 +34,15 @@ def collect_compute_data(session):
                                     os_info = ami_details["Images"][0].get("Name", "N/A")
                             except ClientError:
                                 os_info = "Information not available"
-
+                        security_groups = [sg['GroupName'] for sg in instance.get('SecurityGroups', [])]
                         result_ec2_instances.append({
                             "Region": region, "InstanceId": instance_id,
                             "InstanceType": instance.get("InstanceType"), "State": instance.get("State", {}).get("Name"),
                             "PublicIpAddress": instance.get("PublicIpAddress", "N/A"), "Tags": tags_dict,
                             "OperatingSystem": os_info,
                             "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}",
-                            "SubnetId": instance.get("SubnetId")
+                            "SubnetId": instance.get("SubnetId"),
+                            "SecurityGroups": security_groups
                         })
             
             lambda_paginator = lambda_client.get_paginator("list_functions")
