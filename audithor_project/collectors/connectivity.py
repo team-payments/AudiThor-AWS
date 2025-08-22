@@ -6,7 +6,32 @@ from .utils import get_all_aws_regions # Importación relativa
 
 def collect_connectivity_data(session):
     """
-    Recopila información sobre VPC Peering, Transit Gateway, VPNs y VPC Endpoints.
+    Collects data on AWS networking resources across all available regions.
+
+    This function scans each AWS region to gather information on key connectivity
+    components: active VPC Peering Connections, available Transit Gateway VPC 
+    attachments, available Site-to-Site VPN connections, and all VPC Endpoints.
+
+    Args:
+        session (boto3.Session): The Boto3 session object used for AWS 
+                                 authentication and to discover all regions.
+
+    Returns:
+        dict: A dictionary containing lists of networking resources, structured as:
+              {
+                  "peering_connections": [...],
+                  "tgw_attachments": [...],
+                  "vpn_connections": [...],
+                  "vpc_endpoints": [...]
+              }
+
+    Example:
+        >>> import boto3
+        >>>
+        >>> # This assumes 'get_all_aws_regions' is an available function
+        >>> aws_session = boto3.Session(profile_name='my-aws-profile')
+        >>> connectivity_info = collect_connectivity_data(aws_session)
+        >>> print(f"Found {len(connectivity_info['vpn_connections'])} active VPNs.")
     """
     regions = get_all_aws_regions(session)
     result = {
@@ -20,9 +45,10 @@ def collect_connectivity_data(session):
         try:
             ec2_client = session.client("ec2", region_name=region)
             
-            # 1. VPC Peering Connections (solo activas)
+            # --- 1. VPC Peering Connections (active only) ---
             peering_paginator = ec2_client.get_paginator('describe_vpc_peering_connections')
-            for page in peering_paginator.paginate(Filters=[{'Name': 'status-code', 'Values': ['active']}]):
+            filters = [{'Name': 'status-code', 'Values': ['active']}]
+            for page in peering_paginator.paginate(Filters=filters):
                 for pcx in page.get("VpcPeeringConnections", []):
                     result["peering_connections"].append({
                         "Region": region,
@@ -31,9 +57,10 @@ def collect_connectivity_data(session):
                         "AccepterVpc": pcx.get("AccepterVpcInfo", {})
                     })
 
-            # 2. Transit Gateway VPC Attachments (solo disponibles)
+            # --- 2. Transit Gateway VPC Attachments (available only) ---
             tgw_paginator = ec2_client.get_paginator('describe_transit_gateway_attachments')
-            for page in tgw_paginator.paginate(Filters=[{'Name': 'resource-type', 'Values': ['vpc']}, {'Name': 'state', 'Values': ['available']}]):
+            filters = [{'Name': 'resource-type', 'Values': ['vpc']}, {'Name': 'state', 'Values': ['available']}]
+            for page in tgw_paginator.paginate(Filters=filters):
                 for tgw_attachment in page.get("TransitGatewayAttachments", []):
                     result["tgw_attachments"].append({
                         "Region": region,
@@ -43,8 +70,9 @@ def collect_connectivity_data(session):
                         "VpcOwnerId": tgw_attachment.get("ResourceOwnerId")
                     })
 
-            # 3. Site-to-Site VPN Connections (solo disponibles)
-            vpns = ec2_client.describe_vpn_connections(Filters=[{'Name': 'state', 'Values': ['available']}])
+            # --- 3. Site-to-Site VPN Connections (available only) ---
+            filters = [{'Name': 'state', 'Values': ['available']}]
+            vpns = ec2_client.describe_vpn_connections(Filters=filters)
             for vpn in vpns.get("VpnConnections", []):
                 result["vpn_connections"].append({
                     "Region": region,
@@ -54,7 +82,7 @@ def collect_connectivity_data(session):
                     "State": vpn.get("State")
                 })
 
-            # 4. VPC Endpoints
+            # --- 4. VPC Endpoints ---
             endpoint_paginator = ec2_client.get_paginator('describe_vpc_endpoints')
             for page in endpoint_paginator.paginate():
                 for endpoint in page.get("VpcEndpoints", []):
@@ -68,9 +96,12 @@ def collect_connectivity_data(session):
                     })
 
         except ClientError as e:
-            if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
+            # Gracefully skip regions that are disabled or inaccessible
+            common_errors = ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']
+            if e.response['Error']['Code'] in common_errors:
                 continue
         except Exception:
+            # Catch any other unexpected error and continue to the next region
             continue
             
     return result
