@@ -102,8 +102,29 @@ def collect_cloudwatch_data(session):
 
 def get_log_group_destinations(session, log_group_arn):
     """
-    Inspects a CloudWatch Log Group and finds all its destinations, including
-    Subscription Filters and Metric Filters with their associated Alarms.
+    Inspects a CloudWatch Log Group to find all its downstream consumers.
+
+    This function identifies two types of destinations for a log group's data:
+    1. Subscription Filters: Direct data streams to services like Lambda, Kinesis, etc.
+    2. Metric Filters: Rules that create CloudWatch Metrics from log data, including
+       any CloudWatch Alarms configured to watch those metrics.
+
+    Args:
+        session (boto3.Session): The Boto3 session object for AWS credentials.
+        log_group_arn (str): The full ARN of the CloudWatch Log Group to inspect.
+
+    Returns:
+        dict: A dictionary containing two keys: 'subscriptions' (a list of data
+              stream destinations) and 'metric_filters' (a list of metric filters
+              and their associated alarms).
+
+    Example:
+        >>> import boto3
+        >>>
+        >>> aws_session = boto3.Session()
+        >>> arn = "arn:aws:logs:us-east-1:123456789012:log-group:my-app-logs:*"
+        >>> destinations = get_log_group_destinations(aws_session, arn)
+        >>> print(destinations['metric_filters'])
     """
     destinations = {
         "subscriptions": [],
@@ -115,7 +136,7 @@ def get_log_group_destinations(session, log_group_arn):
         logs_client = session.client("logs", region_name=log_region)
         cw_client = session.client("cloudwatch", region_name=log_region)
 
-        # 1. Get Subscription Filters (existing logic)
+        # --- 1. Get Subscription Filters (Data Streams) ---
         subs = logs_client.describe_subscription_filters(logGroupName=log_group_name)
         for sub in subs.get('subscriptionFilters', []):
             dest_arn = sub.get('destinationArn', '')
@@ -124,18 +145,24 @@ def get_log_group_destinations(session, log_group_arn):
             elif "kinesis" in dest_arn: service_type = "Kinesis"
             elif "firehose" in dest_arn: service_type = "Firehose"
             elif "opensearch" in dest_arn: service_type = "OpenSearch"
-            destinations["subscriptions"].append({"Type": service_type, "Target": dest_arn})
+            
+            destinations["subscriptions"].append({
+                "Type": service_type,
+                "Target": dest_arn
+            })
 
-        # 2. Get Metric Filters and their Alarms
+        # --- 2. Get Metric Filters and their associated Alarms ---
         metric_filters = logs_client.describe_metric_filters(logGroupName=log_group_name)
         for mf in metric_filters.get('metricFilters', []):
+            metric_transformation = mf.get('metricTransformations', [{}])[0]
             mf_data = {
                 "FilterName": mf.get('filterName'),
-                "MetricName": mf.get('metricTransformations', [{}])[0].get('metricName'),
-                "Namespace": mf.get('metricTransformations', [{}])[0].get('metricNamespace'),
+                "MetricName": metric_transformation.get('metricName'),
+                "Namespace": metric_transformation.get('metricNamespace'),
                 "Alarms": []
             }
-            # Check for alarms associated with this metric
+            
+            # If the filter defines a valid metric, check for alarms on it
             if mf_data["MetricName"] and mf_data["Namespace"]:
                 alarms = cw_client.describe_alarms_for_metric(
                     MetricName=mf_data["MetricName"],
@@ -147,7 +174,7 @@ def get_log_group_destinations(session, log_group_arn):
             destinations["metric_filters"].append(mf_data)
 
     except (ClientError, IndexError):
-        # If anything fails (permissions, parsing), return what we have
+        # If anything fails (e.g., permissions, parsing ARN), return whatever was collected.
         pass
         
     return destinations

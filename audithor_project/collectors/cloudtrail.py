@@ -192,11 +192,36 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
     return {"events": found_events}
 
 def run_trailguard_analysis(session, trails_list):
+    """
+    Analyzes CloudTrail configurations to map the data flow for each trail.
+
+    This function traces the path of CloudTrail logs from the trail to its
+    destinations (S3 and CloudWatch Logs). For CloudWatch Logs, it calls a
+    specialized helper function to find all downstream destinations, including
+    both subscription filters and metric filters.
+
+    Args:
+        session (boto3.Session): The Boto3 session object for AWS credentials.
+        trails_list (list): A de-duplicated list of trail detail dictionaries.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary represents the
+              data flow pipeline for a single CloudTrail trail.
+
+    Example:
+        >>> import boto3
+        >>>
+        >>> # Assume trails_list was previously generated
+        >>> trails = [{"Name": "org-trail", "HomeRegion": "us-east-1", "CloudWatchLogsLogGroupArn": "arn:aws:logs:..."}]
+        >>> aws_session = boto3.Session()
+        >>> flow = run_trailguard_analysis(aws_session, trails)
+        >>> print(flow)
+    """
     all_trails_flow = []
     for trail in trails_list:
         region = trail.get("HomeRegion")
         if not region:
-            continue
+            continue  # Skip if the trail lacks a home region
 
         flow_data = {
             "TrailName": trail.get("Name"),
@@ -206,12 +231,14 @@ def run_trailguard_analysis(session, trails_list):
             "CloudWatchDestination": None
         }
 
+        # --- 1. Analyze S3 Destination and its notifications ---
         if trail.get("S3BucketName"):
             bucket_name = trail["S3BucketName"]
             s3_dest = {"BucketName": bucket_name, "Notifications": []}
             try:
                 s3_client = session.client("s3", region_name=region)
                 notif_config = s3_client.get_bucket_notification_configuration(Bucket=bucket_name)
+                
                 for config in notif_config.get('LambdaFunctionConfigurations', []):
                     s3_dest["Notifications"].append({"Type": "Lambda", "Target": config.get('LambdaFunctionArn')})
                 for config in notif_config.get('QueueConfigurations', []):
@@ -219,21 +246,22 @@ def run_trailguard_analysis(session, trails_list):
                 for config in notif_config.get('TopicConfigurations', []):
                     s3_dest["Notifications"].append({"Type": "SNS", "Target": config.get('TopicArn')})
             except ClientError:
+                # Could not get notifications, but still record the bucket
                 pass
             flow_data["S3Destination"] = s3_dest
 
+        # --- 2. Analyze CloudWatch Logs Destination using a helper function ---
         if trail.get("CloudWatchLogsLogGroupArn"):
             log_group_arn = trail["CloudWatchLogsLogGroupArn"]
             log_group_name = log_group_arn.split(':')[6]
             
-            # --- LÓGICA MODIFICADA ---
-            # Llamamos a la nueva función centralizada para obtener TODOS los destinos
+            # Call the centralized function to get all destinations for the log group
             destinations = get_log_group_destinations(session, log_group_arn)
             
             cw_dest = {
                 "LogGroupName": log_group_name,
                 "Subscriptions": destinations.get("subscriptions", []),
-                "MetricFilters": destinations.get("metric_filters", []) # Añadimos los filtros de métricas
+                "MetricFilters": destinations.get("metric_filters", []) # Also include metric filters
             }
             flow_data["CloudWatchDestination"] = cw_dest
         
