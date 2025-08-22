@@ -187,3 +187,69 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
     
     return {"events": found_events}
 
+
+def run_trailguard_analysis(session, region):
+    """
+    Searches for suspicious activities in CloudTrail based on TrailGuard's rules.
+
+    Args:
+        session (boto3.Session): The Boto3 session for AWS credentials.
+        region (str): The specific AWS region to scan.
+
+    Returns:
+        dict: A dictionary where keys are the names of the TrailGuard rules
+              and values are lists of the events found for each rule.
+    """
+    client = session.client("cloudtrail", region_name=region)
+    end_time = datetime.now(pytz.utc)
+    start_time = end_time - timedelta(days=7)
+    
+    # Definimos las reglas de búsqueda inspiradas en TrailGuard
+    trailguard_rules = {
+        "IAM User/Role/Group Created": ["CreateUser", "CreateRole", "CreateGroup"],
+        "IAM User/Role/Group Deleted": ["DeleteUser", "DeleteRole", "DeleteGroup"],
+        "IAM Policy Changed": ["PutUserPolicy", "PutRolePolicy", "PutGroupPolicy", "AttachUserPolicy", "AttachRolePolicy", "AttachGroupPolicy", "DetachUserPolicy", "DetachRolePolicy", "DetachGroupPolicy"],
+        "CloudTrail Disabled or Tampered": ["StopLogging", "DeleteTrail", "UpdateTrail"],
+        "Security Group Tampered": ["AuthorizeSecurityGroupIngress", "AuthorizeSecurityGroupEgress", "RevokeSecurityGroupIngress", "RevokeSecurityGroupEgress"],
+        "Network ACL Tampered": ["CreateNetworkAclEntry", "ReplaceNetworkAclEntry", "DeleteNetworkAclEntry"],
+        "VPC Changes": ["CreateVpc", "DeleteVpc", "ModifyVpcAttribute"],
+        "Root Login": ["ConsoleLogin"], # Se filtrará por usuario "root" más adelante
+    }
+
+    findings = {}
+
+    for rule_name, event_names in trailguard_rules.items():
+        found_events_for_rule = []
+        for event_name in event_names:
+            try:
+                paginator = client.get_paginator('lookup_events')
+                page_iterator = paginator.paginate(
+                    LookupAttributes=[{'AttributeKey': 'EventName', 'AttributeValue': event_name}],
+                    StartTime=start_time,
+                    EndTime=end_time
+                )
+                for page in page_iterator:
+                    for event in page.get('Events', []):
+                        # Caso especial para el login de root
+                        if event_name == "ConsoleLogin":
+                            event_data = json.loads(event.get('CloudTrailEvent', '{}'))
+                            if event_data.get("userIdentity", {}).get("type") != "Root":
+                                continue # Ignoramos logins que no sean de root
+                        
+                        found_events_for_rule.append({
+                            "EventName": event.get("EventName"),
+                            "EventTime": str(event.get("EventTime")),
+                            "Username": event.get("Username", "N/A"),
+                            "SourceIPAddress": json.loads(event.get('CloudTrailEvent', '{}')).get("sourceIPAddress", "N/A"),
+                            "CloudTrailEvent": event.get('CloudTrailEvent', '{}') # Guardamos el evento completo para detalles
+                        })
+            except ClientError as e:
+                print(f"Skipping event {event_name} in {region} due to error: {e}")
+                continue
+        
+        if found_events_for_rule:
+            # Ordenamos los eventos por fecha, del más reciente al más antiguo
+            found_events_for_rule.sort(key=lambda x: x['EventTime'], reverse=True)
+            findings[rule_name] = found_events_for_rule
+            
+    return findings
