@@ -100,3 +100,54 @@ def collect_cloudwatch_data(session):
 
     return {"alarms": result_alarms, "topics": result_topics}
 
+def get_log_group_destinations(session, log_group_arn):
+    """
+    Inspects a CloudWatch Log Group and finds all its destinations, including
+    Subscription Filters and Metric Filters with their associated Alarms.
+    """
+    destinations = {
+        "subscriptions": [],
+        "metric_filters": []
+    }
+    try:
+        log_region = log_group_arn.split(':')[3]
+        log_group_name = log_group_arn.split(':')[6]
+        logs_client = session.client("logs", region_name=log_region)
+        cw_client = session.client("cloudwatch", region_name=log_region)
+
+        # 1. Get Subscription Filters (existing logic)
+        subs = logs_client.describe_subscription_filters(logGroupName=log_group_name)
+        for sub in subs.get('subscriptionFilters', []):
+            dest_arn = sub.get('destinationArn', '')
+            service_type = "Unknown"
+            if "lambda" in dest_arn: service_type = "Lambda"
+            elif "kinesis" in dest_arn: service_type = "Kinesis"
+            elif "firehose" in dest_arn: service_type = "Firehose"
+            elif "opensearch" in dest_arn: service_type = "OpenSearch"
+            destinations["subscriptions"].append({"Type": service_type, "Target": dest_arn})
+
+        # 2. Get Metric Filters and their Alarms
+        metric_filters = logs_client.describe_metric_filters(logGroupName=log_group_name)
+        for mf in metric_filters.get('metricFilters', []):
+            mf_data = {
+                "FilterName": mf.get('filterName'),
+                "MetricName": mf.get('metricTransformations', [{}])[0].get('metricName'),
+                "Namespace": mf.get('metricTransformations', [{}])[0].get('metricNamespace'),
+                "Alarms": []
+            }
+            # Check for alarms associated with this metric
+            if mf_data["MetricName"] and mf_data["Namespace"]:
+                alarms = cw_client.describe_alarms_for_metric(
+                    MetricName=mf_data["MetricName"],
+                    Namespace=mf_data["Namespace"]
+                )
+                for alarm in alarms.get('MetricAlarms', []):
+                    mf_data["Alarms"].append(alarm.get('AlarmName'))
+            
+            destinations["metric_filters"].append(mf_data)
+
+    except (ClientError, IndexError):
+        # If anything fails (permissions, parsing), return what we have
+        pass
+        
+    return destinations

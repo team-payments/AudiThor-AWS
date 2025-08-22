@@ -127,17 +127,6 @@ def run_waf_audit():
     except Exception as e:
         return jsonify({"error": f"Unexpected error while collecting WAF data {str(e)}"}), 500
 
-@app.route('/api/run-cloudtrail-audit', methods=['POST'])
-def run_cloudtrail_audit():
-    session, error = utils.get_session(request.get_json())
-    if error: return jsonify({"error": error}), 401
-    try:
-        cloudtrail_results = cloudtrail.collect_cloudtrail_data(session)
-        sts = session.client("sts")
-        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": cloudtrail_results })
-    except Exception as e:
-        return jsonify({"error": f"Unexpected error while collecting CloudTrail data.: {str(e)}"}), 500
-
 @app.route('/api/run-cloudtrail-lookup', methods=['POST'])
 def run_cloudtrail_lookup():
     session, error = utils.get_session(request.get_json())
@@ -431,6 +420,19 @@ def get_sso_group_members_endpoint():
         return jsonify({"members": members})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/run-cloudtrail-audit', methods=['POST'])
+def run_cloudtrail_audit():
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    try:
+        # Esta función ahora devuelve trails, events y trailguard_findings
+        cloudtrail_results = cloudtrail.collect_cloudtrail_data(session)
+        sts = session.client("sts")
+        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": cloudtrail_results })
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error while collecting CloudTrail data.: {str(e)}"}), 500
+
 
 # ==============================================================================
 # EJECUCIÓN SERVIDOR

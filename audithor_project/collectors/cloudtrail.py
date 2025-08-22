@@ -5,54 +5,57 @@ from botocore.exceptions import ClientError
 from datetime import datetime, timedelta
 import pytz
 from .utils import get_all_aws_regions # Importación relativa
+from .cloudwatch import get_log_group_destinations
 
 
 def collect_cloudtrail_data(session: boto3.Session):
     """
-    Collects AWS CloudTrail configurations and recent sensitive events.
+    Collects CloudTrail data, including trail configurations and recent events.
 
-    This function operates in two stages. First, it discovers all unique
-    CloudTrail trails across all regions and gathers their configuration details.
-    Second, it searches for a predefined list of sensitive API events
-    (e.g., ConsoleLogin, CreateUser) that occurred within the last 7 days.
+    This function performs three main tasks:
+    1. Describes all CloudTrail trails in the account, correctly handling
+       multi-region trails to avoid duplicates.
+    2. Searches for a specific list of security-sensitive API calls across all
+       regions from the last 7 days.
+    3. Runs a separate analysis function ('run_trailguard_analysis') on the
+       collected trail configurations to check for potential issues.
 
     Args:
-        session: A Boto3 session instance used to create AWS clients.
+        session (boto3.Session): The Boto3 session object for AWS authentication.
 
     Returns:
-        A dictionary with two keys:
-        - 'trails': A list of dictionaries, each detailing a CloudTrail configuration.
-        - 'events': A list of dictionaries, each representing a sensitive event,
-                    sorted from most to least recent.
+        dict: A dictionary containing 'trails', 'events', and 'trailguard_findings'.
 
     Example:
         >>> import boto3
+        >>>
+        >>> # Assumes helper functions are available
         >>> aws_session = boto3.Session()
-        >>> cloudtrail_data = collect_cloudtrail_data(aws_session)
+        >>> trail_data = collect_cloudtrail_data(aws_session)
+        >>> print(f"Found {len(trail_data['trails'])} CloudTrail trails.")
     """
     regions = get_all_aws_regions(session)
     result_trails = []
     result_events = []
     processed_trail_arns = set()
 
-    # Part 1: Collect details for all unique CloudTrail trails.
+    # --- 1. Collect Trail Configurations ---
     for region in regions:
         try:
             client = session.client("cloudtrail", region_name=region)
+            # describe_trails in any region can return multi-region trails
             for trail in client.describe_trails().get('trailList', []):
                 trail_arn = trail.get("TrailARN")
-                
-                # Use a set to ensure multi-region trails are processed only once.
                 if trail_arn not in processed_trail_arns:
                     try:
-                        trail_status = client.get_trail_status(Name=trail_arn)
+                        status = client.get_trail_status(Name=trail_arn)
                         result_trails.append({
                             "Name": trail.get("Name"),
                             "HomeRegion": trail.get("HomeRegion"),
                             "S3BucketName": trail.get("S3BucketName"),
                             "IsMultiRegionTrail": trail.get("IsMultiRegionTrail", False),
                             "IsOrganizationTrail": trail.get("IsOrganizationTrail", False),
-                            "IsLogging": trail_status.get("IsLogging", False),
+                            "IsLogging": status.get("IsLogging", False),
                             "KmsKeyId": trail.get("KmsKeyId"),
                             "LogFileValidationEnabled": trail.get("LogFileValidationEnabled", False),
                             "CloudWatchLogsLogGroupArn": trail.get("CloudWatchLogsLogGroupArn"),
@@ -60,14 +63,12 @@ def collect_cloudtrail_data(session: boto3.Session):
                         })
                         processed_trail_arns.add(trail_arn)
                     except ClientError:
-                        # Could not get trail status, but continue processing others.
-                        continue
+                        continue # Failed to get status, but continue processing other trails
         except ClientError:
-            # Could not connect to the region, so skip it.
-            continue
+            continue # Failed to describe trails in region, continue to next region
 
-    # Part 2: Look up recent, sensitive events across all regions.
-    eventos_a_buscar = [
+    # --- 2. Search for Notable Events (Last 7 Days) ---
+    events_to_search = [
         "ConsoleLogin", "CreateUser", "DeleteUser", "CreateTrail", "StopLogging",
         "UpdateTrail", "DeleteTrail", "CreateLoginProfile", "DeleteLoginProfile",
         "AuthorizeSecurityGroupIngress", "RevokeSecurityGroupIngress",
@@ -75,14 +76,13 @@ def collect_cloudtrail_data(session: boto3.Session):
         "DisableKey", "ScheduleKeyDeletion"
     ]
     
-    # Define the time window for the event search (last 7 days).
     end_time = datetime.now(pytz.utc)
     start_time = end_time - timedelta(days=7)
 
     for region in regions:
         try:
             client = session.client("cloudtrail", region_name=region)
-            for event_name in eventos_a_buscar:
+            for event_name in events_to_search:
                 paginator = client.get_paginator('lookup_events')
                 page_iterator = paginator.paginate(
                     LookupAttributes=[{'AttributeKey': 'EventName', 'AttributeValue': event_name}],
@@ -91,32 +91,37 @@ def collect_cloudtrail_data(session: boto3.Session):
                 )
                 for page in page_iterator:
                     for event in page.get('Events', []):
-                        # The 'CloudTrailEvent' field is a JSON string that needs parsing.
-                        cloudtrail_event_data = json.loads(event.get('CloudTrailEvent', '{}'))
+                        event_data = json.loads(event.get('CloudTrailEvent', '{}'))
                         result_events.append({
                             "EventName": event.get("EventName"),
                             "EventTime": str(event.get("EventTime")),
                             "Username": event.get("Username", "N/A"),
-                            "EventRegion": cloudtrail_event_data.get("awsRegion", region),
-                            "SourceIPAddress": cloudtrail_event_data.get("sourceIPAddress", "N/A"),
-                            "RequestParameters": cloudtrail_event_data.get("requestParameters", {})
+                            "EventRegion": event_data.get("awsRegion", region),
+                            "SourceIPAddress": event_data.get("sourceIPAddress", "N/A"),
+                            "RequestParameters": event_data.get("requestParameters", {})
                         })
         except ClientError:
-            # Could not look up events in this region, so skip it.
-            continue
+            continue # Failed to look up events in this region
 
-    # Sort all found events from most to least recent.
+    # Sort events from most recent to oldest
     result_events.sort(key=lambda x: x['EventTime'], reverse=True)
     
-    return {"trails": result_trails, "events": result_events}
-
+    # --- 3. Run Configuration Analysis ---
+    trailguard_findings = run_trailguard_analysis(session, result_trails)
+    
+    return {
+        "trails": result_trails,
+        "events": result_events,
+        "trailguard_findings": trailguard_findings
+    }
 
 def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
     """
     Searches AWS CloudTrail for specific events within a given time frame and region.
 
-    This function uses a paginator to efficiently retrieve all matching events, 
-    parses the relevant data from each event, and returns them in a structured format.
+    This function uses a paginator to efficiently retrieve all matching events,
+    parses the relevant data from each event, and returns them in a structured format,
+    sorted from most recent to oldest.
 
     Args:
         session (boto3.Session): The Boto3 session object for AWS credentials.
@@ -126,9 +131,9 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
         end_time (datetime): The end of the time window for the search.
 
     Returns:
-        dict: A dictionary containing a list of found CloudTrail events, sorted 
+        dict: A dictionary containing a list of found CloudTrail events, sorted
               by time in descending order. Returns {"events": []} if none are found.
-              
+
     Raises:
         Exception: If there is an API error when communicating with the CloudTrail service.
 
@@ -147,7 +152,6 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
         ...     start_time=start_timestamp,
         ...     end_time=end_timestamp
         ... )
-        >>> print(found_events)
     """
     found_events = []
     try:
@@ -187,69 +191,52 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
     
     return {"events": found_events}
 
+def run_trailguard_analysis(session, trails_list):
+    all_trails_flow = []
+    for trail in trails_list:
+        region = trail.get("HomeRegion")
+        if not region:
+            continue
 
-def run_trailguard_analysis(session, region):
-    """
-    Searches for suspicious activities in CloudTrail based on TrailGuard's rules.
+        flow_data = {
+            "TrailName": trail.get("Name"),
+            "TrailArn": trail.get("TrailARN"),
+            "Region": region,
+            "S3Destination": None,
+            "CloudWatchDestination": None
+        }
 
-    Args:
-        session (boto3.Session): The Boto3 session for AWS credentials.
-        region (str): The specific AWS region to scan.
-
-    Returns:
-        dict: A dictionary where keys are the names of the TrailGuard rules
-              and values are lists of the events found for each rule.
-    """
-    client = session.client("cloudtrail", region_name=region)
-    end_time = datetime.now(pytz.utc)
-    start_time = end_time - timedelta(days=7)
-    
-    # Definimos las reglas de búsqueda inspiradas en TrailGuard
-    trailguard_rules = {
-        "IAM User/Role/Group Created": ["CreateUser", "CreateRole", "CreateGroup"],
-        "IAM User/Role/Group Deleted": ["DeleteUser", "DeleteRole", "DeleteGroup"],
-        "IAM Policy Changed": ["PutUserPolicy", "PutRolePolicy", "PutGroupPolicy", "AttachUserPolicy", "AttachRolePolicy", "AttachGroupPolicy", "DetachUserPolicy", "DetachRolePolicy", "DetachGroupPolicy"],
-        "CloudTrail Disabled or Tampered": ["StopLogging", "DeleteTrail", "UpdateTrail"],
-        "Security Group Tampered": ["AuthorizeSecurityGroupIngress", "AuthorizeSecurityGroupEgress", "RevokeSecurityGroupIngress", "RevokeSecurityGroupEgress"],
-        "Network ACL Tampered": ["CreateNetworkAclEntry", "ReplaceNetworkAclEntry", "DeleteNetworkAclEntry"],
-        "VPC Changes": ["CreateVpc", "DeleteVpc", "ModifyVpcAttribute"],
-        "Root Login": ["ConsoleLogin"], # Se filtrará por usuario "root" más adelante
-    }
-
-    findings = {}
-
-    for rule_name, event_names in trailguard_rules.items():
-        found_events_for_rule = []
-        for event_name in event_names:
+        if trail.get("S3BucketName"):
+            bucket_name = trail["S3BucketName"]
+            s3_dest = {"BucketName": bucket_name, "Notifications": []}
             try:
-                paginator = client.get_paginator('lookup_events')
-                page_iterator = paginator.paginate(
-                    LookupAttributes=[{'AttributeKey': 'EventName', 'AttributeValue': event_name}],
-                    StartTime=start_time,
-                    EndTime=end_time
-                )
-                for page in page_iterator:
-                    for event in page.get('Events', []):
-                        # Caso especial para el login de root
-                        if event_name == "ConsoleLogin":
-                            event_data = json.loads(event.get('CloudTrailEvent', '{}'))
-                            if event_data.get("userIdentity", {}).get("type") != "Root":
-                                continue # Ignoramos logins que no sean de root
-                        
-                        found_events_for_rule.append({
-                            "EventName": event.get("EventName"),
-                            "EventTime": str(event.get("EventTime")),
-                            "Username": event.get("Username", "N/A"),
-                            "SourceIPAddress": json.loads(event.get('CloudTrailEvent', '{}')).get("sourceIPAddress", "N/A"),
-                            "CloudTrailEvent": event.get('CloudTrailEvent', '{}') # Guardamos el evento completo para detalles
-                        })
-            except ClientError as e:
-                print(f"Skipping event {event_name} in {region} due to error: {e}")
-                continue
-        
-        if found_events_for_rule:
-            # Ordenamos los eventos por fecha, del más reciente al más antiguo
-            found_events_for_rule.sort(key=lambda x: x['EventTime'], reverse=True)
-            findings[rule_name] = found_events_for_rule
+                s3_client = session.client("s3", region_name=region)
+                notif_config = s3_client.get_bucket_notification_configuration(Bucket=bucket_name)
+                for config in notif_config.get('LambdaFunctionConfigurations', []):
+                    s3_dest["Notifications"].append({"Type": "Lambda", "Target": config.get('LambdaFunctionArn')})
+                for config in notif_config.get('QueueConfigurations', []):
+                    s3_dest["Notifications"].append({"Type": "SQS", "Target": config.get('QueueArn')})
+                for config in notif_config.get('TopicConfigurations', []):
+                    s3_dest["Notifications"].append({"Type": "SNS", "Target": config.get('TopicArn')})
+            except ClientError:
+                pass
+            flow_data["S3Destination"] = s3_dest
+
+        if trail.get("CloudWatchLogsLogGroupArn"):
+            log_group_arn = trail["CloudWatchLogsLogGroupArn"]
+            log_group_name = log_group_arn.split(':')[6]
             
-    return findings
+            # --- LÓGICA MODIFICADA ---
+            # Llamamos a la nueva función centralizada para obtener TODOS los destinos
+            destinations = get_log_group_destinations(session, log_group_arn)
+            
+            cw_dest = {
+                "LogGroupName": log_group_name,
+                "Subscriptions": destinations.get("subscriptions", []),
+                "MetricFilters": destinations.get("metric_filters", []) # Añadimos los filtros de métricas
+            }
+            flow_data["CloudWatchDestination"] = cw_dest
+        
+        all_trails_flow.append(flow_data)
+            
+    return all_trails_flow
