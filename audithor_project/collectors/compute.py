@@ -6,9 +6,41 @@ from .utils import get_all_aws_regions # Importación relativa
 
 
 def collect_compute_data(session):
+    """
+    Gathers data on key AWS compute resources across all available regions.
 
+    This function scans every AWS region to collect detailed information about
+    EC2 instances, Lambda functions, EKS clusters, and ECS clusters. It compiles
+    the findings into a single structured dictionary.
+
+    Args:
+        session (boto3.Session): The Boto3 session object used for AWS 
+                                 authentication and to discover all regions.
+
+    Returns:
+        dict: A dictionary containing lists of collected resources, structured as:
+              {
+                  "ec2_instances": [...],
+                  "lambda_functions": [...],
+                  "eks_clusters": [...],
+                  "ecs_clusters": [...]
+              }
+
+    Example:
+        >>> import boto3
+        >>>
+        >>> # This assumes 'get_all_aws_regions' is an available function
+        >>> aws_session = boto3.Session(profile_name='my-aws-profile')
+        >>> all_compute_data = collect_compute_data(aws_session)
+        >>> print(f"Found {len(all_compute_data['ec2_instances'])} EC2 instances.")
+        >>> print(f"Found {len(all_compute_data['lambda_functions'])} Lambda functions.")
+    """
+    result_ec2_instances = []
+    result_lambda_functions = []
+    result_eks_clusters = []
+    result_ecs_clusters = []
+    
     regions = get_all_aws_regions(session)
-    result_ec2_instances, result_lambda_functions, result_eks_clusters, result_ecs_clusters = [], [], [], []
     account_id = session.client("sts").get_caller_identity()["Account"]
 
     for region in regions:
@@ -18,13 +50,17 @@ def collect_compute_data(session):
             eks_client = session.client("eks", region_name=region)
             ecs_client = session.client("ecs", region_name=region)
 
+            # --- 1. Collect EC2 Instance Data ---
             ec2_paginator = ec2_client.get_paginator('describe_instances')
-            for page in ec2_paginator.paginate(Filters=[{'Name': 'instance-state-name', 'Values': ['pending', 'running', 'shutting-down', 'stopping', 'stopped']}]):
+            instance_filters = [{'Name': 'instance-state-name', 'Values': ['pending', 'running', 'shutting-down', 'stopping', 'stopped']}]
+            
+            for page in ec2_paginator.paginate(Filters=instance_filters):
                 for reservation in page.get('Reservations', []):
                     for instance in reservation.get('Instances', []):
                         tags_dict = {tag['Key']: tag['Value'] for tag in instance.get('Tags', [])}
                         instance_id = instance.get("InstanceId")
                         
+                        # Attempt to get OS info from the AMI
                         os_info = "N/A"
                         image_id = instance.get("ImageId")
                         if image_id:
@@ -34,58 +70,72 @@ def collect_compute_data(session):
                                     os_info = ami_details["Images"][0].get("Name", "N/A")
                             except ClientError:
                                 os_info = "Information not available"
-                        security_groups = [sg['GroupName'] for sg in instance.get('SecurityGroups', [])]
+
                         result_ec2_instances.append({
-                            "Region": region, "InstanceId": instance_id,
-                            "InstanceType": instance.get("InstanceType"), "State": instance.get("State", {}).get("Name"),
-                            "PublicIpAddress": instance.get("PublicIpAddress", "N/A"), "Tags": tags_dict,
-                            "OperatingSystem": os_info,
-                            "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}",
+                            "Region": region,
+                            "InstanceId": instance_id,
+                            "InstanceType": instance.get("InstanceType"),
+                            "State": instance.get("State", {}).get("Name"),
+                            "PublicIpAddress": instance.get("PublicIpAddress", "N/A"),
                             "SubnetId": instance.get("SubnetId"),
-                            "SecurityGroups": security_groups
+                            "SecurityGroups": [sg['GroupName'] for sg in instance.get('SecurityGroups', [])],
+                            "OperatingSystem": os_info,
+                            "Tags": tags_dict,
+                            "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}"
                         })
-            
+
+            # --- 2. Collect Lambda Function Data ---
             lambda_paginator = lambda_client.get_paginator("list_functions")
             for page in lambda_paginator.paginate():
                 for function in page.get("Functions", []):
                     vpc_config = function.get("VpcConfig", {})
-                    security_groups = vpc_config.get("SecurityGroupIds", [])
-                    vpc_id = vpc_config.get("VpcId", "N/A")
                     result_lambda_functions.append({
-                        "Region": region, "FunctionName": function.get("FunctionName"),
-                        "Runtime": function.get("Runtime"), "MemorySize": function.get("MemorySize"),
-                        "Timeout": function.get("Timeout"), "LastModified": str(function.get("LastModified")),
-                        "ARN": function.get("FunctionArn"),
-                        "VpcConfig": function.get("VpcConfig", {}),
-                        "SecurityGroups": security_groups,
-                        "VpcId": vpc_id
+                        "Region": region,
+                        "FunctionName": function.get("FunctionName"),
+                        "Runtime": function.get("Runtime"),
+                        "MemorySize": function.get("MemorySize"),
+                        "Timeout": function.get("Timeout"),
+                        "LastModified": str(function.get("LastModified")),
+                        "VpcId": vpc_config.get("VpcId", "N/A"),
+                        "SecurityGroups": vpc_config.get("SecurityGroupIds", []),
+                        "ARN": function.get("FunctionArn")
                     })
 
+            # --- 3. Collect EKS Cluster Data ---
             eks_clusters = eks_client.list_clusters().get("clusters", [])
             for cluster_name in eks_clusters:
-                cluster_arn = f"arn:aws:eks:{region}:{account_id}:cluster/{cluster_name}"
                 result_eks_clusters.append({
-                    "Region": region, "ClusterName": cluster_name,
-                    "ARN": cluster_arn
+                    "Region": region,
+                    "ClusterName": cluster_name,
+                    "ARN": f"arn:aws:eks:{region}:{account_id}:cluster/{cluster_name}"
                 })
 
+            # --- 4. Collect ECS Cluster Data ---
             ecs_clusters_arns = ecs_client.list_clusters().get("clusterArns", [])
             if ecs_clusters_arns:
                 clusters_details = ecs_client.describe_clusters(clusters=ecs_clusters_arns).get("clusters", [])
                 for cluster in clusters_details:
+                    # Get a count of services for extra context
                     services = ecs_client.list_services(cluster=cluster.get("clusterName")).get("serviceArns", [])
                     result_ecs_clusters.append({
-                        "Region": region, "ClusterName": cluster.get("clusterName"),
-                        "Status": cluster.get("status"), "ServicesCount": len(services),
+                        "Region": region,
+                        "ClusterName": cluster.get("clusterName"),
+                        "Status": cluster.get("status"),
+                        "ServicesCount": len(services),
                         "ARN": cluster.get("clusterArn")
                     })
+
         except ClientError as e:
-            if e.response['Error']['Code'] not in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException']:
-                print(f"Error procesando la region {region}: {e}")
+            # Suppress common, expected errors for disabled regions but log others
+            common_errors = ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException']
+            if e.response['Error']['Code'] not in common_errors:
+                print(f"Error processing region {region}: {e}")
             continue
     
     return {
-        "ec2_instances": result_ec2_instances, "lambda_functions": result_lambda_functions,
-        "eks_clusters": result_eks_clusters, "ecs_clusters": result_ecs_clusters
+        "ec2_instances": result_ec2_instances,
+        "lambda_functions": result_lambda_functions,
+        "eks_clusters": result_eks_clusters,
+        "ecs_clusters": result_ecs_clusters
     }
 
