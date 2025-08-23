@@ -5,100 +5,108 @@ from botocore.exceptions import ClientError
 from .utils import get_all_aws_regions # Importación relativa
 
 
+PROTOCOLS = {'-1': 'ALL', '6': 'TCP', '17': 'UDP', '1': 'ICMP'}
+
+
 def collect_network_policies_data(session):
-    regions = get_all_aws_regions(session) # Se obtiene la lista completa de regiones aquí
-    result_vpcs = []
-    result_acls = []
-    result_sgs = []
-    result_subnets = [] # <-- AÑADIDO
+    """
+    Collects data on VPCs, NACLs, Security Groups, and Subnets from all AWS regions.
+
+    This function iterates through all available AWS regions, queries the EC2
+    endpoint for networking components, and aggregates them into lists.
+
+    Args:
+        session (boto3.Session): The boto3 session for creating AWS clients.
+
+    Returns:
+        dict: A dictionary containing lists of vpcs, acls, security_groups,
+              subnets, and all regions that were scanned.
+
+    Example:
+        >>> network_data = collect_network_policies_data(boto3.Session())
+        >>> print(network_data['vpcs'][0]['VpcId'])
+        'vpc-12345678'
+    """
+    regions = get_all_aws_regions(session)
+    result_vpcs, result_acls, result_sgs, result_subnets = [], [], [], []
 
     for region in regions:
         try:
             ec2_client = session.client("ec2", region_name=region)
-            
-            # Recopilar VPCs
-            vpcs = ec2_client.describe_vpcs().get("Vpcs", [])
-            for vpc in vpcs:
-                tags_dict = {tag['Key']: tag['Value'] for tag in vpc.get('Tags', [])}
-                result_vpcs.append({
-                    "Region": region, "VpcId": vpc.get("VpcId"), "CidrBlock": vpc.get("CidrBlock"),
-                    "IsDefault": vpc.get("IsDefault"), "Tags": tags_dict
-                })
 
-            # Recopilar Network ACLs
-            acls = ec2_client.describe_network_acls().get("NetworkAcls", [])
-            for acl in acls:
-                tags_dict = {tag['Key']: tag['Value'] for tag in acl.get('Tags', [])}
-                result_acls.append({
-                    "Region": region, "AclId": acl.get("NetworkAclId"), "VpcId": acl.get("VpcId"),
-                    "IsDefault": acl.get("IsDefault"), "Tags": tags_dict
-                })
+            # Collect VPCs
+            for vpc in ec2_client.describe_vpcs().get("Vpcs", []):
+                tags = {tag['Key']: tag['Value'] for tag in vpc.get('Tags', [])}
+                result_vpcs.append({"Region": region, "VpcId": vpc.get("VpcId"), "CidrBlock": vpc.get("CidrBlock"), "IsDefault": vpc.get("IsDefault"), "Tags": tags})
 
-            # Recopilar Security Groups
-            sgs = ec2_client.describe_security_groups().get("SecurityGroups", [])
-            for sg in sgs:
-                tags_dict = {tag['Key']: tag['Value'] for tag in sg.get('Tags', [])}
-                result_sgs.append({
-                    "Region": region, "GroupId": sg.get("GroupId"), "GroupName": sg.get("GroupName"),
-                    "VpcId": sg.get("VpcId"), "Description": sg.get("Description"), "Tags": tags_dict
-                })
-            # Recopilar Subredes
-            subnets = ec2_client.describe_subnets().get("Subnets", [])
-            for subnet in subnets:
-                tags_dict = {tag['Key']: tag['Value'] for tag in subnet.get('Tags', [])}
-                result_subnets.append({
-                    "Region": region,
-                    "SubnetId": subnet.get("SubnetId"),
-                    "VpcId": subnet.get("VpcId"),
-                    "CidrBlock": subnet.get("CidrBlock"),
-                    "AvailabilityZone": subnet.get("AvailabilityZone"),
-                    "Tags": tags_dict
-                })
+            # Collect Network ACLs
+            for acl in ec2_client.describe_network_acls().get("NetworkAcls", []):
+                tags = {tag['Key']: tag['Value'] for tag in acl.get('Tags', [])}
+                result_acls.append({"Region": region, "AclId": acl.get("NetworkAclId"), "VpcId": acl.get("VpcId"), "IsDefault": acl.get("IsDefault"), "Tags": tags})
+
+            # Collect Security Groups
+            for sg in ec2_client.describe_security_groups().get("SecurityGroups", []):
+                tags = {tag['Key']: tag['Value'] for tag in sg.get('Tags', [])}
+                result_sgs.append({"Region": region, "GroupId": sg.get("GroupId"), "GroupName": sg.get("GroupName"), "VpcId": sg.get("VpcId"), "Description": sg.get("Description"), "Tags": tags})
+
+            # Collect Subnets
+            for subnet in ec2_client.describe_subnets().get("Subnets", []):
+                tags = {tag['Key']: tag['Value'] for tag in subnet.get('Tags', [])}
+                result_subnets.append({"Region": region, "SubnetId": subnet.get("SubnetId"), "VpcId": subnet.get("VpcId"), "CidrBlock": subnet.get("CidrBlock"), "AvailabilityZone": subnet.get("AvailabilityZone"), "Tags": tags})
+
         except ClientError as e:
             if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
                 continue
         except Exception:
             continue
-            
-    # El return ahora incluye la lista de subredes
-    return { 
-        "vpcs": result_vpcs, 
-        "acls": result_acls, 
+
+    return {
+        "vpcs": result_vpcs,
+        "acls": result_acls,
         "security_groups": result_sgs,
-        "subnets": result_subnets, # <-- AÑADIDO
-        "all_regions": regions 
+        "subnets": result_subnets,
+        "all_regions": regions
     }
 
-PROTOCOLS = {'-1': 'ALL', '6': 'TCP', '17': 'UDP', '1': 'ICMP'}
 
 def _format_to_table(headers, rows, title):
-    """Función de utilidad para crear una tabla de texto."""
+    """
+    Utility function to create a formatted text table with borders.
+
+    Args:
+        headers (list): A list of strings for the table headers.
+        rows (list): A list of lists, where each inner list is a row.
+        title (str): The title to be displayed above the table.
+
+    Returns:
+        str: A formatted string representing the complete table.
+    """
     if not rows:
-        return f"{title}\nNo rules or entries found."
-    
-    # Calcular anchos de columna
+        return f"\n{title}\nNo rules or entries found."
+
     col_widths = {header: len(header) for header in headers}
     for row in rows:
         for i, cell in enumerate(row):
             col_widths[headers[i]] = max(col_widths[headers[i]], len(str(cell)))
-    
-    # Crear líneas de la tabla
+
     header_line = " | ".join(header.ljust(col_widths[header]) for header in headers)
     separator = "-+-".join("-" * col_widths[header] for header in headers)
     body_lines = "\n".join(" | ".join(str(cell).ljust(col_widths[headers[i]]) for i, cell in enumerate(row)) for row in rows)
-    
-    return f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+\n" \
-           f"| {title.center(len(header_line))} |\n" \
-           f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+\n" \
-           f"| {header_line} |\n" \
-           f"+={separator}=+\n" \
-           f"| " + body_lines.replace("\n", " |\n| ") + " |\n" \
-           f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+"
 
-def format_sg_details_table(sg_details):
+    return (f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+\n"
+            f"| {title.center(len(header_line))} |\n"
+            f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+\n"
+            f"| {header_line} |\n"
+            f"+={separator}=+\n"
+            f"| " + body_lines.replace("\n", " |\n| ") + " |\n"
+            f"+-{'-+-'.join('-' * col_widths[h] for h in headers)}-+")
+
+
+def _format_sg_details(sg_details):
+    """Internal helper to format Security Group rules into a table."""
     sg = sg_details['SecurityGroups'][0]
-    title = f"Security Group details: {sg['GroupId']} ({sg['GroupName']})"
-    headers = ['Dirección', 'Protocolo', 'Puerto', 'Origen/Destino', 'Descripción']
+    title = f"Security Group Details: {sg['GroupId']} ({sg['GroupName']})"
+    headers = ['Direction', 'Protocol', 'Port Range', 'Source/Destination', 'Description']
     rows = []
 
     for rule in sg.get('IpPermissions', []):
@@ -108,7 +116,7 @@ def format_sg_details_table(sg_details):
             rows.append(['Ingress', proto, port, ip_range.get('CidrIp'), ip_range.get('Description', '-')])
         for group_pair in rule.get('UserIdGroupPairs', []):
             rows.append(['Ingress', proto, port, group_pair.get('GroupId'), group_pair.get('Description', '-')])
-    
+
     for rule in sg.get('IpPermissionsEgress', []):
         proto = PROTOCOLS.get(str(rule.get('IpProtocol', '-1')), rule.get('IpProtocol', 'N/A'))
         port = f"{rule.get('FromPort', 'All')}-{rule.get('ToPort', 'All')}".replace('-1-All', 'All')
@@ -119,48 +127,43 @@ def format_sg_details_table(sg_details):
 
     return _format_to_table(headers, rows, title)
 
-def format_nacl_details_table(nacl_details):
+
+def _format_nacl_details(nacl_details):
+    """Internal helper to format Network ACL rules into a table."""
     nacl = nacl_details['NetworkAcls'][0]
-    title = f"Network ACL details: {nacl['NetworkAclId']}"
-    headers = ['# Regla', 'Dirección', 'Acción', 'Protocolo', 'Puerto', 'CIDR', 'Tags']
+    title = f"Network ACL Details: {nacl['NetworkAclId']}"
+    headers = ['Rule #', 'Direction', 'Action', 'Protocol', 'Port Range', 'CIDR']
     rows = []
-    
-    tags_str = ", ".join([f"{t['Key']}={t['Value']}" for t in nacl.get('Tags', [])]) or "-"
 
     for entry in sorted(nacl['Entries'], key=lambda x: x['RuleNumber']):
         direction = 'Egress' if entry.get('Egress') else 'Ingress'
         action = entry.get('RuleAction', 'N/A').upper()
         proto = PROTOCOLS.get(str(entry.get('Protocol', '-1')), entry.get('Protocol', 'N/A'))
-        port_range = entry.get('PortRange', {})
-        port = f"{port_range.get('From', 'All')}-{port_range.get('To', 'All')}".replace('-1-All', 'All')
+        port = f"{entry.get('PortRange', {}).get('From', 'All')}-{entry.get('PortRange', {}).get('To', 'All')}".replace('-1-All', 'All')
         cidr = entry.get('CidrBlock', '-')
-        rows.append([entry.get('RuleNumber'), direction, action, proto, port, cidr, tags_str])
-        
+        rows.append([entry.get('RuleNumber'), direction, action, proto, port, cidr])
+
     return _format_to_table(headers, rows, title)
 
-def _format_rules_as_table(headers, rows):
-    """Función de ayuda para formatear datos en una tabla de texto plano."""
-    # Encontrar el ancho máximo para cada columna
-    widths = [len(h) for h in headers]
-    for row in rows:
-        for i, cell in enumerate(row):
-            widths[i] = max(widths[i], len(str(cell)))
-    
-    # Crear la línea de cabecera
-    header_line = " | ".join(headers[i].ljust(widths[i]) for i in range(len(headers)))
-    separator = "-+-".join("-" * w for w in widths)
-    
-    # Crear las filas de datos
-    data_lines = []
-    for row in rows:
-        data_lines.append(" | ".join(str(row[i]).ljust(widths[i]) for i in range(len(row))))
-        
-    return "\n".join([header_line, separator] + data_lines)
 
 def get_network_details_table(session, resource_id, region):
     """
-    Gets the rules for a Security Group or Network ACL and returns them
-    as a formatted text table.
+    Gets rules for a Security Group or NACL and returns a formatted text table.
+
+    This function identifies the resource type by its ID prefix (sg- or acl-)
+    and fetches the corresponding details to generate a human-readable table.
+
+    Args:
+        session (boto3.Session): The boto3 session for creating AWS clients.
+        resource_id (str): The ID of the Security Group or Network ACL.
+        region (str): The AWS region where the resource exists.
+
+    Returns:
+        str: A formatted string table of the rules, or an error message.
+
+    Example:
+        >>> table = get_network_details_table(session, 'sg-12345', 'us-east-1')
+        >>> print(table)
     """
     resource_id = resource_id.strip()
 
@@ -169,53 +172,19 @@ def get_network_details_table(session, resource_id, region):
 
         if resource_id.startswith("sg-"):
             response = ec2_client.describe_security_groups(GroupIds=[resource_id])
-            sg = response['SecurityGroups'][0]
-            
-            headers = ["Direction", "Protocol", "Port Range", "Source/Dest", "Description"]
-            rows = []
-
-            for rule in sg.get('IpPermissions', []):
-                protocol = rule.get('IpProtocol', '-1')
-                port_range = f"{rule.get('FromPort', 'All')}-{rule.get('ToPort', 'All')}"
-                for ip_range in rule.get('IpRanges', []):
-                    rows.append(["Inbound", protocol, port_range, ip_range.get('CidrIp'), ip_range.get('Description', '-')])
-                for sg_source in rule.get('UserIdGroupPairs', []):
-                    rows.append(["Inbound", protocol, port_range, sg_source.get('GroupId'), sg_source.get('Description', '-')])
-
-            for rule in sg.get('IpPermissionsEgress', []):
-                protocol = rule.get('IpProtocol', '-1')
-                port_range = f"{rule.get('FromPort', 'All')}-{rule.get('ToPort', 'All')}"
-                for ip_range in rule.get('IpRanges', []):
-                    rows.append(["Outbound", protocol, port_range, ip_range.get('CidrIp'), ip_range.get('Description', '-')])
-                for sg_dest in rule.get('UserIdGroupPairs', []):
-                    rows.append(["Outbound", protocol, port_range, sg_dest.get('GroupId'), sg_dest.get('Description', '-')])
-            
-            title = f"--- Security Group Details: {sg.get('GroupName')} ({resource_id}) ---\n"
-            return title + _format_rules_as_table(headers, rows)
+            return _format_sg_details(response)
 
         elif resource_id.startswith("acl-"):
             response = ec2_client.describe_network_acls(NetworkAclIds=[resource_id])
-            nacl = response['NetworkAcls'][0]
-
-            headers = ["Direction", "Rule #", "Protocol", "Port Range", "Source/Dest", "Action"]
-            rows = []
-
-            for entry in sorted(nacl.get('Entries', []), key=lambda x: x['RuleNumber']):
-                direction = "Outbound" if entry.get('Egress') else "Inbound"
-                protocol = entry.get('Protocol', '-1')
-                port_range = f"{entry.get('PortRange', {}).get('From', 'All')}-{entry.get('PortRange', {}).get('To', 'All')}"
-                action = entry.get('RuleAction').capitalize()
-                source_dest = entry.get('CidrBlock')
-
-                rows.append([direction, entry.get('RuleNumber'), protocol, port_range, source_dest, action])
-            
-            title = f"--- Network ACL Details: {resource_id} ---\n"
-            return title + _format_rules_as_table(headers, rows)
+            return _format_nacl_details(response)
 
         else:
-            return "Error: The provided ID does not appear to be a Security Group (sg-...) or a Network ACL (acl-...)."
+            return "Error: ID must start with 'sg-' (Security Group) or 'acl-' (Network ACL)."
 
     except ClientError as e:
-        return f"Error connecting to AWS: {e}"
+        error_code = e.response.get("Error", {}).get("Code")
+        if "NotFound" in error_code:
+            return f"Error: Resource with ID '{resource_id}' not found in region '{region}'."
+        return f"An AWS error occurred: {e}"
     except Exception as e:
         return f"An unexpected error occurred: {e}"
