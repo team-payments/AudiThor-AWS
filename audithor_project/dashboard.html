@@ -2749,7 +2749,7 @@
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td>
                             <td class="px-4 py-4 text-sm font-medium text-gray-800 break-all">${f.FunctionName}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Runtime}</td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${f.VpcId || 'N/A'}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${f.VpcConfig?.VpcId || 'N/A'}</td>
                             <td class="px-4 py-4 text-sm text-gray-600 break-words">${sgHtml}</td>
                             <td class="px-4 py-4 text-sm text-gray-600 break-all font-mono">${f.ARN}</td>
                         </tr>`;

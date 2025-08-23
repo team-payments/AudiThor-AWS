@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 from .utils import get_all_aws_regions # Importación relativa
 
 
+
 def collect_compute_data(session):
     """
     Gathers data on key AWS compute resources across all available regions.
@@ -25,15 +26,6 @@ def collect_compute_data(session):
                   "eks_clusters": [...],
                   "ecs_clusters": [...]
               }
-
-    Example:
-        >>> import boto3
-        >>>
-        >>> # This assumes 'get_all_aws_regions' is an available function
-        >>> aws_session = boto3.Session(profile_name='my-aws-profile')
-        >>> all_compute_data = collect_compute_data(aws_session)
-        >>> print(f"Found {len(all_compute_data['ec2_instances'])} EC2 instances.")
-        >>> print(f"Found {len(all_compute_data['lambda_functions'])} Lambda functions.")
     """
     result_ec2_instances = []
     result_lambda_functions = []
@@ -84,7 +76,7 @@ def collect_compute_data(session):
                             "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}"
                         })
 
-            # --- 2. Collect Lambda Function Data ---
+            # --- 2. Collect Lambda Function Data (CORRECTED SECTION) ---
             lambda_paginator = lambda_client.get_paginator("list_functions")
             for page in lambda_paginator.paginate():
                 for function in page.get("Functions", []):
@@ -96,8 +88,14 @@ def collect_compute_data(session):
                         "MemorySize": function.get("MemorySize"),
                         "Timeout": function.get("Timeout"),
                         "LastModified": str(function.get("LastModified")),
-                        "VpcId": vpc_config.get("VpcId", "N/A"),
-                        "SecurityGroups": vpc_config.get("SecurityGroupIds", []),
+                        
+                        # Create the nested VpcConfig object the frontend expects
+                        "VpcConfig": {
+                            "VpcId": vpc_config.get("VpcId"),
+                            "SubnetIds": vpc_config.get("SubnetIds", []),
+                            "SecurityGroupIds": vpc_config.get("SecurityGroupIds", [])
+                        },
+                        
                         "ARN": function.get("FunctionArn")
                     })
 
@@ -138,4 +136,3 @@ def collect_compute_data(session):
         "eks_clusters": result_eks_clusters,
         "ecs_clusters": result_ecs_clusters
     }
-
