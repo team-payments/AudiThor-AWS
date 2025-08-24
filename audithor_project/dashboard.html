@@ -1457,6 +1457,87 @@
             return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}${tableHtml}</div>`;
         };
 
+        const openModalWithTlsDetails = (lbIndex, listenerIndex) => {
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+
+            const allLbs = Object.values(exposureApiData.results.details['ALB/NLB Public'] || {}).flat();
+            const lb = allLbs[lbIndex];
+            const listener = lb.listeners[listenerIndex];
+
+            if (!modal || !listener) return;
+
+            modalTitle.textContent = `TLS Details for ${lb.name}:${listener.port}`;
+            
+            const tlsVersionsHtml = listener.tlsVersions.map(v => {
+                const isOutdated = ['TLSv1.0', 'TLSv1.1', 'SSLv3'].includes(v);
+                return `<li class="${isOutdated ? 'text-red-600 font-bold' : 'text-green-700'}">${v}</li>`;
+            }).join('');
+
+            const ciphersHtml = listener.ciphers.map(c => `<li class="font-mono text-xs">${c}</li>`).join('');
+
+            modalContent.innerHTML = `
+                <div class="space-y-4 text-left text-sm">
+                    <div>
+                        <h4 class="font-semibold text-gray-800">TLS Versions Supported</h4>
+                        <ul class="list-disc list-inside pl-2 mt-1">${tlsVersionsHtml}</ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800">Cipher Suites Enabled</h4>
+                        <ul class="list-disc list-inside pl-2 mt-1 text-gray-600">${ciphersHtml}</ul>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        };
+
+        const renderPublicLoadBalancersTable = (loadBalancersByRegion) => {
+            const allLbs = Object.values(loadBalancersByRegion || {}).flat();
+            if (allLbs.length === 0) {
+                 return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No public Load Balancers were found.</p></div>';
+            }
+
+            let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Load Balancer Name</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Listener Port</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TLS Policy</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TLS Status</th>' +
+                            '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Details</th>' +
+                            '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+
+            allLbs.forEach((lb, lbIndex) => {
+                if (lb.listeners.length > 0) {
+                    lb.listeners.forEach((listener, listenerIndex) => {
+                        const statusBadge = listener.isOutdated
+                            ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Outdated</span>'
+                            : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Secure</span>';
+
+                        tableHtml += `<tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${lb.region}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${lb.name}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${listener.port} (${listener.protocol})</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${listener.policyName}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm">${statusBadge}</td>
+                                        <td class="px-4 py-4 text-center">
+                                            <button onclick="openModalWithTlsDetails(${lbIndex}, ${listenerIndex})" class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">View Details</button>
+                                        </td>
+                                    </tr>`;
+                    });
+                } else {
+                    tableHtml += `<tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${lb.region}</td>
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${lb.name}</td>
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 italic" colspan="4">No HTTPS/TLS listeners</td>
+                                </tr>`;
+                }
+            });
+
+            tableHtml += '</tbody></table></div>';
+            return tableHtml;
+        };
+        
         const renderOpenSecurityGroupsTable = (openSgs) => {
             if (!openSgs || openSgs.length === 0) {
                 return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No open security groups were found.</p></div>';
@@ -1498,52 +1579,23 @@
                 return renderOpenSecurityGroupsTable(flattenedData);
             }
 
-            let html = '<div class="space-y-6">';
+            // --- INICIO DE LA MODIFICACIÓN ---
             if (service === "ALB/NLB Public") {
-                 Object.entries(regions).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).forEach(([region, loadBalancers]) => {
-                    html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                <h4 class="font-semibold text-md text-[#204071] mb-3 pb-2 border-b">${region}</h4>
-                                <div class="space-y-4">`;
-                    loadBalancers.forEach(lb => {
-                        html += `<details class="group bg-gray-50 p-3 rounded-lg">
-                                    <summary class="font-semibold text-gray-800 cursor-pointer flex items-center">
-                                        <svg class="w-4 h-4 mr-2 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                        ${lb.name}
-                                    </summary>
-                                    <div class="mt-3 pl-6 border-l-2 border-gray-300 space-y-3">`;
-                        if (lb.listeners.length > 0) {
-                            lb.listeners.forEach(listener => {
-                                const tlsClass = listener.isOutdated ? 'text-red-600 font-bold' : 'text-green-700';
-                                const ciphersHtml = listener.ciphers.map(c => `<li class="font-mono text-xs">${c}</li>`).join('');
-                                html += `<div class="text-sm">
-                                            <p><strong>Port:</strong> ${listener.port} (${listener.protocol})</p>
-                                            <p><strong>TLS Policy:</strong> <span class="font-mono">${listener.policyName}</span></p>
-                                            <p><strong>Versions:</strong> <span class="${tlsClass}">${listener.tlsVersions.join(', ')}</span></p>
-                                            <details class="mt-1 text-xs">
-                                                <summary class="cursor-pointer text-gray-500">See ${listener.ciphers.length} ciphers</summary>
-                                                <ul class="list-disc list-inside pl-2 mt-1 text-gray-600">${ciphersHtml}</ul>
-                                            </details>
-                                        </div>`;
-                            });
-                        } else {
-                            html += `<p class="text-sm text-gray-500">This load balancer has no HTTPS/TLS listeners configured.</p>`;
-                        }
-                        html += `</div></details>`;
-                    });
-                    html += `</div></div>`;
-                });
-            } else {
-                Object.entries(regions).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).forEach(([region, items]) => {
-                    html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-2">${region}</h4><ul class="space-y-2 font-mono text-sm">`;
-                     items.forEach(item => { html += `<li class="text-gray-600 list-disc list-inside">${item}</li>`; });
-                    html += '</ul></div>';
-                });
+                // Pasamos 'regions' que es el objeto sin aplanar { region: [lbs] }
+                return renderPublicLoadBalancersTable(regions);
             }
+            // --- FIN DE LA MODIFICACIÓN ---
+
+            // La lógica para el resto de servicios (listas simples) se mantiene
+            let html = '<div class="space-y-6">';
+            Object.entries(regions).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).forEach(([region, items]) => {
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-2">${region}</h4><ul class="space-y-2 font-mono text-sm">`;
+                items.forEach(item => { html += `<li class="text-gray-600 list-disc list-inside">${item}</li>`; });
+                html += '</ul></div>';
+            });
             html += '</div>';
             return html;
         };
-
-
 
         const renderNetworkPortsTable = (ports) => {
             if (!ports || ports.length === 0) {
