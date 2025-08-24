@@ -1024,8 +1024,6 @@
             modal.classList.remove('hidden');
         };
 
-
-
         const updateSecurityHubDashboard = () => {
             log('Rendering Security Hub data (IAM)…', 'info');
             const allIamFindings = securityHubApiData.results.findings.iamFindings;
@@ -1832,13 +1830,16 @@
 
         
         // --- SECCIÓN DE ECR ---
-
+        
         const buildEcrView = () => {
             const container = document.getElementById('ecr-view');
             if (!container || !ecrApiData) return;
 
             const { repositories } = ecrApiData.results;
             const executionDate = ecrApiData.metadata.executionDate;
+
+            // Esta línea ahora lee directamente la lista 'ecrFindings' que viene del backend
+            const ecrSecurityHubFindings = securityHubApiData?.results?.findings?.ecrFindings || [];
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
@@ -1851,19 +1852,23 @@
                     <nav class="-mb-px flex flex-wrap space-x-6" id="ecr-tabs">
                         <a href="#" data-tab="ecr-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
                         <a href="#" data-tab="ecr-repos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Repositories (${repositories.length})</a>
+                        <a href="#" data-tab="ecr-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${ecrSecurityHubFindings.length})</a>
                     </nav>
                 </div>
                 <div id="ecr-tab-content-container">
                     <div id="ecr-summary-content" class="ecr-tab-content">${createEcrSummaryCardsHtml()}</div>
                     <div id="ecr-repos-content" class="ecr-tab-content hidden">${renderEcrRepositoriesTable(repositories)}</div>
+                    <div id="ecr-sh-content" class="ecr-tab-content hidden">${createEcrSecurityHubHtml()}</div>
                 </div>
             `;
 
             updateEcrSummaryCards(repositories);
-
+            renderSecurityHubFindings(ecrSecurityHubFindings, 'sh-ecr-findings-container', 'No Security Hub findings related to ECR were found.');
+            
             const tabsNav = container.querySelector('#ecr-tabs');
             if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.ecr-tab-content'));
         };
+
 
         const createEcrSummaryCardsHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -1950,6 +1955,17 @@
             tableHtml += '</tbody></table></div>';
             return tableHtml;
         };
+
+        const createEcrSecurityHubHtml = () => {
+            return `
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="font-bold text-lg mb-4 text-[#204071]">Active Security Findings (ECR)</h3>
+                    <div id="sh-ecr-findings-container" class="overflow-x-auto"></div>
+                </div>
+            `;
+        };
+
+
 
         
         // --- SECCIÓN DE CLOUDTRAIL ---

@@ -117,19 +117,29 @@ def get_and_filter_security_hub_findings(session, region_statuses):
     # Based on: https://docs.aws.amazon.com/securityhub/latest/userguide/inspector-controls.html
     inspector_control_ids = ["Inspector.1", "Inspector.2", "Inspector.3", "Inspector.4", "Inspector.5", "Inspector.6"]
     inspector_findings = [f for f in all_findings if f.get('Compliance', {}).get('SecurityControlId') in inspector_control_ids]
+    
+    # 1. AÑADIMOS EL FILTRO PARA ECR
+    ecr_findings = [f for f in all_findings if
+                    f.get('Compliance', {}).get('SecurityControlId', '').startswith('ECR.') or
+                    'AwsEcrRepository' in f.get('Resources', [{}])[0].get('Type', '')]
 
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
-    findings_lists = [iam_findings, exposure_findings, waf_findings, cloudtrail_findings, cloudwatch_findings, inspector_findings]
+    
+    # 2. AÑADIMOS LA NUEVA LISTA PARA QUE SE ORDENE
+    findings_lists = [iam_findings, exposure_findings, waf_findings, cloudtrail_findings, cloudwatch_findings, inspector_findings, ecr_findings]
+    
     for findings_list in findings_lists:
         findings_list.sort(key=lambda x: severity_order.get(x.get('Severity', {}).get('Label', 'INFORMATIONAL'), 99))
 
+    # 3. AÑADIMOS LA NUEVA LISTA AL DICCIONARIO DE RETORNO
     return {
         "iamFindings": iam_findings,
         "exposureFindings": exposure_findings,
         "wafFindings": waf_findings,
         "cloudtrailFindings": cloudtrail_findings,
         "cloudwatchFindings": cloudwatch_findings,
-        "inspectorFindings": inspector_findings
+        "inspectorFindings": inspector_findings,
+        "ecrFindings": ecr_findings
     }
 
 
