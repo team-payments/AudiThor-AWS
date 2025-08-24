@@ -200,11 +200,34 @@ def collect_exposure_data(session):
                         if inst.get("PublicIpAddress"):
                             exposed.append({"Id": inst['InstanceId'], "State": inst.get("State", {}).get("Name", "unknown"), "PublicIp": inst.get("PublicIpAddress")})
 
+            # --- INICIO DE LA MODIFICACIÓN ---
             elif service == "Security Groups Open":
                 client = current_session.client("ec2", region_name=region)
-                for sg in client.describe_security_groups()["SecurityGroups"]:
-                    if any(ip.get("CidrIp") == "0.0.0.0/0" for rule in sg.get("IpPermissions", []) for ip in rule.get("IpRanges", [])):
-                        exposed.append(f"{sg['GroupId']} ({sg['GroupName']})")
+                sgs = client.describe_security_groups().get("SecurityGroups", [])
+                for sg in sgs:
+                    for perm in sg.get("IpPermissions", []):
+                        if any(ip_range.get("CidrIp") == "0.0.0.0/0" for ip_range in perm.get("IpRanges", [])):
+                            protocol_map = {'-1': 'ALL', 'tcp': 'TCP', 'udp': 'UDP', 'icmp': 'ICMP'}
+                            protocol = protocol_map.get(str(perm.get("IpProtocol")).lower(), perm.get("IpProtocol"))
+                            
+                            from_port = perm.get("FromPort")
+                            to_port = perm.get("ToPort")
+                            
+                            port_range = "All"
+                            if from_port is not None and to_port is not None:
+                                if from_port == to_port:
+                                    port_range = str(from_port)
+                                else:
+                                    port_range = f"{from_port}-{to_port}"
+
+                            exposed.append({
+                                "GroupId": sg['GroupId'],
+                                "GroupName": sg['GroupName'],
+                                "Protocol": protocol,
+                                "PortRange": port_range,
+                                "Region": region
+                            })
+            # --- FIN DE LA MODIFICACIÓN ---
 
             elif service == "ALB/NLB Public":
                 client = current_session.client("elbv2", region_name=region)
