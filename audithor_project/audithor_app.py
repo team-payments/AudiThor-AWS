@@ -21,7 +21,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from collectors import (
     utils, iam, securityhub, exposure, guardduty, waf, cloudtrail,
     cloudwatch, inspector, kms, acm, compute, databases,
-    network_policies, connectivity, config_sh, playground
+    network_policies, connectivity, config_sh, playground, ecr
 )
 
 
@@ -432,6 +432,17 @@ def run_cloudtrail_audit():
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": cloudtrail_results })
     except Exception as e:
         return jsonify({"error": f"Unexpected error while collecting CloudTrail data.: {str(e)}"}), 500
+
+@app.route('/api/run-ecr-audit', methods=['POST'])
+def run_ecr_audit():
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    try:
+        ecr_results = ecr.collect_ecr_data(session)
+        sts = session.client("sts")
+        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": ecr_results })
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error while collecting ECR data: {str(e)}"}), 500
 
 
 # ==============================================================================

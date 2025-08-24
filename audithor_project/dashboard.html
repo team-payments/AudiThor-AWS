@@ -110,6 +110,14 @@
                         </a>
                     </div>
                     <div>
+                        <a href="#" data-view="ecr" class="main-nav-link flex items-center px-4 py-2.5 rounded-md hover:bg-[#1a335a]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-5 h-5 mr-3" viewBox="0 0 16 16">
+                                <path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5zm13-3H1v2h14zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                            </svg>
+                            <span>ECR</span>
+                        </a>
+                    </div>
+                    <div>
                         <a href="#" data-view="databases" class="main-nav-link flex items-center px-4 py-2.5 rounded-md hover:bg-[#1a335a]">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-database w-5 h-5 mr-3" viewBox="0 0 16 16">
                                 <path d="M4.318 2.687C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4c0-.374.356-.875 1.318-1.313M13 5.698V7c0 .374-.356.875-1.318 1.313C10.766 8.729 9.464 9 8 9s-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.711 6.427 7 8 7s3.022-.289 4.096-.777A5 5 0 0 0 13 5.698M14 4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16s3.022-.289 4.096-.777C13.125 14.755 14 14.007 14 13zm-1 4.698V10c0 .374-.356.875-1.318 1.313C10.766 11.729 9.464 12 8 12s-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10s3.022-.289 4.096-.777A5 5 0 0 0 13 8.698m0 3V13c0 .374-.356.875-1.318 1.313C10.766 14.729 9.464 15 8 15s-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13s3.022-.289 4.096-.777c.324-.147.633-.323.904-.525"/>
@@ -202,6 +210,7 @@
                 <main id="inspector-view" class="view hidden"></main>
                 <main id="acm-view" class="view hidden"></main>
                 <main id="compute-view" class="view hidden"></main>
+                <main id="ecr-view" class="view hidden"></main>
                 <main id="databases-view" class="view hidden"></main>
                 <main id="kms-view" class="view hidden"></main>
                 <main id="network-policies-view" class="view hidden"></main>
@@ -287,7 +296,7 @@
         // --- LÓGICA DE ANÁLISIS ---
         const runAnalysisFromInputs = async () => {
             // Resetear estado
-            iamApiData = null; securityHubApiData = null; exposureApiData = null; guarddutyApiData = null; wafApiData = null; cloudtrailApiData = null; cloudwatchApiData = null; inspectorApiData = null; acmApiData = null; computeApiData = null; databasesApiData = null; networkPoliciesApiData = null; connectivityApiData = null; playgroundApiData = null; allAvailableRegions = []; lastCloudtrailLookupResults = []; federationApiData = null; configSHApiData = null; configSHStatusApiData = null; kmsApiData = null;
+            iamApiData = null; securityHubApiData = null; exposureApiData = null; guarddutyApiData = null; wafApiData = null; cloudtrailApiData = null; cloudwatchApiData = null; inspectorApiData = null; acmApiData = null; computeApiData = null; databasesApiData = null; networkPoliciesApiData = null; connectivityApiData = null; playgroundApiData = null; allAvailableRegions = []; lastCloudtrailLookupResults = []; federationApiData = null; configSHApiData = null; configSHStatusApiData = null; kmsApiData = null; ecrApiData = null;
             document.querySelectorAll('.view').forEach(v => v.innerHTML = '');
             document.getElementById('iam-view').innerHTML = createInitialEmptyState();
             
@@ -324,6 +333,7 @@
                     inspector: fetch('http://127.0.0.1:5001/api/run-inspector-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     acm: fetch('http://127.0.0.1:5001/api/run-acm-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     compute: fetch('http://127.0.0.1:5001/api/run-compute-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                    ecr: fetch('http://127.0.0.1:5001/api/run-ecr-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     databases: fetch('http://127.0.0.1:5001/api/run-databases-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     network_policies: fetch('http://127.0.0.1:5001/api/run-network-policies-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                     federation: fetch('http://127.0.0.1:5001/api/run-federation-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
@@ -359,7 +369,8 @@
                 cloudwatchApiData = results.cloudwatch; 
                 inspectorApiData = results.inspector; 
                 acmApiData = results.acm; 
-                computeApiData = results.compute; 
+                computeApiData = results.compute;
+                ecrApiData = results.ecr;
                 databasesApiData = results.databases; 
                 networkPoliciesApiData = results.network_policies; 
                 federationApiData = results.federation; // <--- Aquí se guarda
@@ -408,6 +419,7 @@
                 buildInspectorView();
                 buildAcmView();
                 buildComputeView();
+                buildEcrView();
                 buildDatabasesView();
                 buildNetworkPoliciesView();
                 buildConfigSHView();
@@ -595,8 +607,6 @@
             container.innerHTML = contentHtml;
         };
 
-
-
         const createIamResumenHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-8">
                 <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full"><div><p class="text-sm text-gray-500">Total Users</p></div><div class="flex justify-between items-end pt-4"><p id="iam-total-users" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-blue-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 text-blue-600" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/></svg></div></div></div>
@@ -649,6 +659,7 @@
                 </div>
                 <div id="sh-iam-findings-container" class="overflow-x-auto"></div>
             </div>`;
+
         const updateIamDashboard = () => { 
             const { users, roles, groups, password_policy } = iamApiData.results;
             const { accountId, executionDate } = iamApiData.metadata;
@@ -1014,9 +1025,6 @@
         };
 
 
-        // --- FIN: NUEVAS FUNCIONES PARA LA MODAL ---
-
-
 
         const updateSecurityHubDashboard = () => {
             log('Rendering Security Hub data (IAM)…', 'info');
@@ -1107,7 +1115,6 @@
                 tableBody.appendChild(row);
             });
         };
-
 
         const renderGroupsTable = (groups) => { const tableBody = document.getElementById('groups-table-body'); tableBody.innerHTML = ''; if (!groups || groups.length === 0) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No groups were found.</td></tr>`; return; } groups.forEach(group => { const vipBadge = group.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : ''; const attachedPolicies = group.AttachedPolicies.join(', ') || '-'; const row = document.createElement('tr'); row.className = 'hover:bg-gray-50'; row.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#204071] flex items-center">${vipBadge}${group.GroupName}</td> <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(group.CreateDate).toLocaleDateString()}</td> <td class="px-6 py-4 text-sm text-gray-500 break-words">${attachedPolicies}</td>`; tableBody.appendChild(row); }); };
         
@@ -1824,6 +1831,126 @@
         const renderWafIpSetsTable = (ipSets) => { if (!ipSets || ipSets.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No IP Sets were found in the account.</p></div>'; let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Version</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"># Addresse</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; ipSets.sort((a,b) => a.Name.localeCompare(b.Name)).forEach(ipSet => { table += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${ipSet.Name}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.Scope}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.Region}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.IPAddressVersion}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${ipSet.AddressCount}</td> </tr>`; }); table += '</tbody></table></div>'; return table; };
 
         
+        // --- SECCIÓN DE ECR ---
+
+        const buildEcrView = () => {
+            const container = document.getElementById('ecr-view');
+            if (!container || !ecrApiData) return;
+
+            const { repositories } = ecrApiData.results;
+            const executionDate = ecrApiData.metadata.executionDate;
+
+            container.innerHTML = `
+                <header class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-[#204071]">Elastic Container Registry (ECR)</h2>
+                        <p class="text-sm text-gray-500">${executionDate}</p>
+                    </div>
+                </header>
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="-mb-px flex flex-wrap space-x-6" id="ecr-tabs">
+                        <a href="#" data-tab="ecr-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
+                        <a href="#" data-tab="ecr-repos-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Repositories (${repositories.length})</a>
+                    </nav>
+                </div>
+                <div id="ecr-tab-content-container">
+                    <div id="ecr-summary-content" class="ecr-tab-content">${createEcrSummaryCardsHtml()}</div>
+                    <div id="ecr-repos-content" class="ecr-tab-content hidden">${renderEcrRepositoriesTable(repositories)}</div>
+                </div>
+            `;
+
+            updateEcrSummaryCards(repositories);
+
+            const tabsNav = container.querySelector('#ecr-tabs');
+            if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.ecr-tab-content'));
+        };
+
+        const createEcrSummaryCardsHtml = () => `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
+                    <div><p class="text-sm text-gray-500">Total Repositories</p></div>
+                    <div class="flex justify-between items-end pt-4">
+                        <p id="ecr-total-repos" class="text-3xl font-bold text-[#204071]">--</p>
+                    </div>
+                </div>
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
+                    <div><p class="text-sm text-gray-500">Scan on Push Disabled</p></div>
+                    <div class="flex justify-between items-end pt-4">
+                        <p id="ecr-scan-disabled" class="text-3xl font-bold text-red-600">--</p>
+                    </div>
+                </div>
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
+                    <div><p class="text-sm text-gray-500">Mutable Tags</p></div>
+                    <div class="flex justify-between items-end pt-4">
+                        <p id="ecr-mutable-tags" class="text-3xl font-bold text-yellow-600">--</p>
+                    </div>
+                </div>
+                <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
+                    <div><p class="text-sm text-gray-500">Public Repositories</p></div>
+                    <div class="flex justify-between items-end pt-4">
+                        <p id="ecr-public-repos" class="text-3xl font-bold text-red-600">--</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const updateEcrSummaryCards = (repositories) => {
+            document.getElementById('ecr-total-repos').textContent = repositories.length;
+            document.getElementById('ecr-scan-disabled').textContent = repositories.filter(r => !r.ScanOnPush).length;
+            document.getElementById('ecr-mutable-tags').textContent = repositories.filter(r => r.ImageTagMutability === 'MUTABLE').length;
+            document.getElementById('ecr-public-repos').textContent = repositories.filter(r => r.IsPublic).length;
+        };
+
+        const openModalWithEcrPolicy = (repoIndex) => {
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+            const repo = ecrApiData.results.repositories[repoIndex];
+            if (!modal || !repo || !repo.Policy) return;
+
+            modalTitle.textContent = `Repository Policy for: ${repo.RepositoryName}`;
+            const formattedPolicy = JSON.stringify(repo.Policy, null, 2);
+            modalContent.innerHTML = `<div class="text-left"><pre class="bg-[#204071] text-white text-xs font-mono rounded-md p-3 overflow-x-auto"><code>${formattedPolicy}</code></pre></div>`;
+            modal.classList.remove('hidden');
+        };
+
+        const renderEcrRepositoriesTable = (repositories) => {
+            if (!repositories || repositories.length === 0) {
+                return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No ECR repositories were found.</p></div>';
+            }
+
+            let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Repository Name</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tag Immutability</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scan on Push</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Access</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Encryption</th>' +
+                            '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Policy</th>' +
+                            '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+
+            repositories.sort((a,b) => a.Region.localeCompare(b.Region) || a.RepositoryName.localeCompare(b.RepositoryName)).forEach((repo, index) => {
+                const immutabilityBadge = repo.ImageTagMutability === 'IMMUTABLE' ? createStatusBadge('IMMUTABLE') : createStatusBadge('MUTABLE');
+                const scanBadge = repo.ScanOnPush ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
+                const publicBadge = repo.IsPublic ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">YES</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">NO</span>';
+                const policyButton = repo.Policy ? `<button onclick="openModalWithEcrPolicy(${index})" class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">View Policy</button>` : '-';
+
+                tableHtml += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${repo.Region}</td>
+                        <td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${repo.RepositoryName}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${immutabilityBadge}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${scanBadge}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${publicBadge}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-mono text-gray-600">${repo.EncryptionType}</td>
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${policyButton}</td>
+                    </tr>
+                `;
+            });
+            tableHtml += '</tbody></table></div>';
+            return tableHtml;
+        };
+
         
         // --- SECCIÓN DE CLOUDTRAIL ---
         
