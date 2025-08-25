@@ -564,6 +564,43 @@ def check_kms_customer_key_rotation_disabled(audit_data):
             
     return failing_resources
 
+def check_ecr_tag_mutability(audit_data):
+    """
+    Checks for ECR repositories configured with mutable image tags.
+    """
+    failing_resources = []
+    # Safely get the list of repositories from the audit data
+    repositories = audit_data.get("ecr", {}).get("repositories", [])
+
+    for repo in repositories:
+        # Check if the image tag mutability is set to MUTABLE
+        if repo.get("ImageTagMutability") == "MUTABLE":
+            failing_resources.append({
+                "resource": repo.get("RepositoryName", "Unknown ID"),
+                "region": repo.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
+def check_ecr_scan_on_push_disabled(audit_data):
+    """
+    Checks for ECR repositories that do not have the 'scan on push' feature enabled.
+    """
+    failing_resources = []
+    # Safely get the list of repositories from the audit data
+    repositories = audit_data.get("ecr", {}).get("repositories", [])
+
+    for repo in repositories:
+        # The key 'ScanOnPush' will be False if the setting is disabled
+        if not repo.get("ScanOnPush"):
+            failing_resources.append({
+                "resource": repo.get("RepositoryName", "Unknown ID"),
+                "region": repo.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -847,5 +884,23 @@ RULES_TO_CHECK = [
         "description": "A customer-managed KMS key (CMK) has been detected without automatic key rotation enabled. Regularly rotating keys is a security best practice that limits the potential impact of a compromised key and reduces the amount of data protected by a single encryption key version.",
         "remediation": "Navigate to the KMS console, select the affected key, and go to the 'Key rotation' tab. Check the box to enable automatic key rotation. AWS will then automatically generate new key material every year.",
         "check_function": check_kms_customer_key_rotation_disabled
+    },
+    {
+        "rule_id": "ECR_001",
+        "section": "Vulnerability Management",
+        "name": "ECR repository with mutable image tags",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An ECR repository allows image tags to be overwritten. This practice goes against the principle of immutability and can lead to confusion in deployments, making it difficult to track which version of an image is running. In a worst-case scenario, a malicious image could be pushed with a production tag.",
+        "remediation": "Navigate to the ECR console, select the repository, and edit its settings to change 'Tag immutability' to 'Immutable'. This ensures that once an image tag is pushed, it cannot be modified.",
+        "check_function": check_ecr_tag_mutability
+    },
+    {
+        "rule_id": "ECR_002",
+        "section": "Vulnerability Management",
+        "name": "ECR repository with scan on push disabled",
+        "severity": SEVERITY["HIGH"],
+        "description": "An ECR repository does not automatically scan images for vulnerabilities upon being pushed. This is a critical security gap, as it allows potentially vulnerable container images to be stored and later deployed into production environments without a security check.",
+        "remediation": "Navigate to the ECR console, select the repository, and edit its settings. In the 'Image scanning' section, enable the 'Scan on push' configuration. This will trigger a vulnerability scan for every new image pushed to the repository.",
+        "check_function": check_ecr_scan_on_push_disabled
     }
 ]
