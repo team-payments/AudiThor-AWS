@@ -5207,6 +5207,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     inspector: inspectorApiData?.results || null,
                     acm: acmApiData?.results || null,
                     compute: computeApiData?.results || null,
+                    ecr: ecrApiData?.results || null,
                     databases: databasesApiData?.results || null,
                     networkPolicies: networkPoliciesApiData?.results || null,
                     configAndSecurityHubStatus: configSHStatusApiData?.results || null,
@@ -5278,6 +5279,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     inspectorApiData = results.inspector ? { metadata: metadata, results: results.inspector } : null;
                     acmApiData = results.acm ? { metadata: metadata, results: results.acm } : null;
                     computeApiData = results.compute ? { metadata: metadata, results: results.compute } : null;
+                    ecrApiData = results.ecr ? { metadata: metadata, results: results.ecr } : null;
                     databasesApiData = results.databases ? { metadata: metadata, results: results.databases } : null;
                     networkPoliciesApiData = results.networkPolicies ? { metadata: metadata, results: results.networkPolicies } : null;
                     configSHStatusApiData = results.configAndSecurityHubStatus ? { metadata: metadata, results: results.configAndSecurityHubStatus } : null;

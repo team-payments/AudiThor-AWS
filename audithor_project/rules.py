@@ -525,6 +525,22 @@ def check_ec2_publicly_exposed(audit_data):
             
     return failing_resources
 
+def check_cloudtrail_cloudwatch_destination_disabled(audit_data):
+    """
+    Checks if CloudTrail trails have a CloudWatch Logs log group destination enabled.
+    """
+    failing_resources = []
+    # Safely get the list of trails from the audit data
+    trails = audit_data.get("cloudtrail", {}).get("trails", [])
+
+    for trail in trails:
+        # If the 'CloudWatchLogsLogGroupArn' key is missing or empty, the destination is not configured
+        if not trail.get("CloudWatchLogsLogGroupArn"):
+            # Add the name of the non-compliant trail to the list of failing resources
+            failing_resources.append(trail.get("Name", trail.get("TrailARN")))
+            
+    return failing_resources
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -708,6 +724,15 @@ RULES_TO_CHECK = [
         "description": "A CloudTrail trail has been detected that does not have log file integrity validation enabled. This feature is crucial to ensure that logs have not been altered or deleted after being delivered to the S3 bucket. Without it, the reliability of the audit records cannot be guaranteed.",
         "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the 'Storage properties' section, ensure that the 'Enable log file integrity validation' option is checked.",
         "check_function": check_cloudtrail_log_file_validation_disabled
+    },
+    {
+        "rule_id": "CLOUDTRAIL_004",
+        "section": "Logging & Monitoring",
+        "name": "CloudTrail trail without CloudWatch Logs destination",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "A CloudTrail trail has been detected that does not have a CloudWatch Logs destination configured. This prevents the ability to create metric filters and alarms for real-time monitoring of critical API calls, such as root user logins, security group changes, or unauthorized API activity.",
+        "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the 'CloudWatch Logs' section, enable the option and either create a new log group or select an existing one to send the logs to.",
+        "check_function": check_cloudtrail_cloudwatch_destination_disabled
     },
     {
         "rule_id": "CONNECTIVITY_001",
