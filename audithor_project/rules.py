@@ -541,6 +541,30 @@ def check_cloudtrail_cloudwatch_destination_disabled(audit_data):
             
     return failing_resources
 
+
+def check_kms_customer_key_rotation_disabled(audit_data):
+    """
+    Checks for customer-managed KMS keys that do not have automatic rotation enabled.
+    """
+    failing_resources = []
+    # Safely navigate to the list of KMS keys
+    kms_keys = audit_data.get("kms", {}).get("keys", [])
+
+    for key in kms_keys:
+        # Check for two conditions: the key is customer-managed AND rotation is disabled
+        is_customer_managed = key.get("KeyManager") == "CUSTOMER"
+        is_rotation_disabled = key.get("RotationEnabled") == "Disabled"
+
+        if is_customer_managed and is_rotation_disabled:
+            # If both conditions are true, add the key to the list of failing resources
+            failing_resources.append({
+                "resource": key.get("Aliases") or key.get("KeyId", "Unknown ID"),
+                "region": key.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -814,5 +838,14 @@ RULES_TO_CHECK = [
         "description": "A certificate managed by AWS Certificate Manager (ACM) has been detected that has expired. Expired certificates cause trust errors in browsers and can disrupt service for applications that use them.",
         "remediation": "Navigate to the ACM console, locate the affected certificate by its domain name, and proceed to renew it. If the certificate is no longer in use, delete it to avoid alerts.",
         "check_function": check_acm_expired_certificates
+    },
+    {
+        "rule_id": "KMS_001",
+        "section": "Data Protection",
+        "name": "Customer Managed KMS Key with Rotation Disabled",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "A customer-managed KMS key (CMK) has been detected without automatic key rotation enabled. Regularly rotating keys is a security best practice that limits the potential impact of a compromised key and reduces the amount of data protected by a single encryption key version.",
+        "remediation": "Navigate to the KMS console, select the affected key, and go to the 'Key rotation' tab. Check the box to enable automatic key rotation. AWS will then automatically generate new key material every year.",
+        "check_function": check_kms_customer_key_rotation_disabled
     }
 ]
