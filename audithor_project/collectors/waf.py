@@ -53,6 +53,7 @@ def parse_resource_arn(arn):
         # If parsing fails for any reason, return the original ARN
         return arn
 
+
 def collect_waf_data(session):
     """
     Collects data on AWS WAFv2 Web ACLs and IP Sets from all scopes and regions.
@@ -60,7 +61,7 @@ def collect_waf_data(session):
     This function handles the dual-scope nature of WAFv2 by first querying for
     global resources (Scope='CLOUDFRONT') in us-east-1, and then iterating
     through all other regions to find regional resources (Scope='REGIONAL').
-    It gathers details for both Web ACLs and IP Sets.
+    It gathers details for Web ACLs (including logging configuration) and IP Sets.
 
     Args:
         session (boto3.Session): The Boto3 session object for AWS authentication.
@@ -69,14 +70,6 @@ def collect_waf_data(session):
         dict: A dictionary containing two keys:
               - 'acls': A list of all Web ACLs, global and regional.
               - 'ip_sets': A list of all IP Sets, global and regional.
-
-    Example:
-        >>> import boto3
-        >>>
-        >>> # Assumes helper functions are available
-        >>> aws_session = boto3.Session(profile_name='my-aws-profile')
-        >>> waf_inventory = collect_waf_data(aws_session)
-        >>> print(f"Found {len(waf_inventory['acls'])} total Web ACLs.")
     """
     all_acls = []
     all_ip_sets = []
@@ -86,40 +79,62 @@ def collect_waf_data(session):
     try:
         client_global = session.client("wafv2", region_name="us-east-1")
         response = client_global.list_web_acls(Scope="CLOUDFRONT")
-        for acl in response.get("WebACLs", []):
+        for acl_summary in response.get("WebACLs", []):
+            # --- MODIFICATION START: Get full ACL details ---
+            acl_details = client_global.get_web_acl(
+                Name=acl_summary["Name"],
+                Scope="CLOUDFRONT",
+                Id=acl_summary["Id"]
+            ).get("WebACL", {})
+            # --- MODIFICATION END ---
+
             resources_raw = client_global.list_resources_for_web_acl(
-                WebACLArn=acl["ARN"]
+                WebACLArn=acl_summary["ARN"]
             ).get("ResourceArns", [])
             
             all_acls.append({
-                "Name": acl["Name"],
-                "ARN": acl["ARN"],
+                "Name": acl_summary["Name"],
+                "ARN": acl_summary["ARN"],
+                "Id": acl_summary["Id"],
                 "Scope": "CLOUDFRONT",
                 "Region": "Global",
-                "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw]
+                "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw],
+                # --- MODIFICATION: Add logging info ---
+                "LoggingConfiguration": acl_details.get("LoggingConfiguration", {})
             })
     except ClientError:
-        pass # Ignore if WAF is not available or permissions are missing
+        pass
 
     # --- 2. Collect Regional Web ACLs ---
     for region in regions:
         try:
             client_regional = session.client("wafv2", region_name=region)
             response = client_regional.list_web_acls(Scope="REGIONAL")
-            for acl in response.get("WebACLs", []):
+            for acl_summary in response.get("WebACLs", []):
+                # --- MODIFICATION START: Get full ACL details ---
+                acl_details = client_regional.get_web_acl(
+                    Name=acl_summary["Name"],
+                    Scope="REGIONAL",
+                    Id=acl_summary["Id"]
+                ).get("WebACL", {})
+                # --- MODIFICATION END ---
+
                 resources_raw = client_regional.list_resources_for_web_acl(
-                    WebACLArn=acl["ARN"]
+                    WebACLArn=acl_summary["ARN"]
                 ).get("ResourceArns", [])
 
                 all_acls.append({
-                    "Name": acl["Name"],
-                    "ARN": acl["ARN"],
+                    "Name": acl_summary["Name"],
+                    "ARN": acl_summary["ARN"],
+                    "Id": acl_summary["Id"],
                     "Scope": "REGIONAL",
                     "Region": region,
-                    "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw]
+                    "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw],
+                    # --- MODIFICATION: Add logging info ---
+                    "LoggingConfiguration": acl_details.get("LoggingConfiguration", {})
                 })
         except ClientError:
-            pass # Continue to the next region on error
+            pass
 
     # --- 3. Collect CloudFront (Global) IP Sets ---
     try:
