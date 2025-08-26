@@ -601,6 +601,46 @@ def check_ecr_scan_on_push_disabled(audit_data):
     return failing_resources
 
 
+def check_waf_sampled_requests_disabled(audit_data):
+    """
+    Checks for WAF Web ACLs that do not have Sampled Requests enabled.
+    """
+    failing_resources = []
+    # Safely get the list of Web ACLs
+    acls = audit_data.get("waf", {}).get("acls", [])
+
+    for acl in acls:
+        # The setting is inside the VisibilityConfig dictionary
+        vc_config = acl.get("VisibilityConfig", {})
+        if not vc_config.get("SampledRequestsEnabled"):
+            failing_resources.append({
+                "resource": acl.get("Name", "Unknown ID"),
+                "region": acl.get("Region", "Unknown Region")
+            })
+
+    return failing_resources
+
+def check_waf_logging_destination_disabled(audit_data):
+    """
+    Checks for WAF Web ACLs that do not have a full logging destination configured.
+    """
+    failing_resources = []
+    # Safely get the list of Web ACLs from the audit data
+    acls = audit_data.get("waf", {}).get("acls", [])
+
+    for acl in acls:
+        # Get the logging configuration, defaulting to an empty dictionary
+        logging_config = acl.get("LoggingConfiguration", {})
+        
+        # A disabled logging destination will have no 'LogDestinationConfigs' or it will be an empty list
+        if not logging_config.get("LogDestinationConfigs"):
+            failing_resources.append({
+                "resource": acl.get("Name", "Unknown ID"),
+                "region": acl.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -902,5 +942,23 @@ RULES_TO_CHECK = [
         "description": "An ECR repository does not automatically scan images for vulnerabilities upon being pushed. This is a critical security gap, as it allows potentially vulnerable container images to be stored and later deployed into production environments without a security check.",
         "remediation": "Navigate to the ECR console, select the repository, and edit its settings. In the 'Image scanning' section, enable the 'Scan on push' configuration. This will trigger a vulnerability scan for every new image pushed to the repository.",
         "check_function": check_ecr_scan_on_push_disabled
+    },
+    {
+    "rule_id": "WAF_001",
+    "section": "Logging & Monitoring",
+    "name": "WAF with disabled Sampled Requests",
+    "severity": SEVERITY["LOW"],
+    "description": "A Web ACL does not have 'Sampled Requests' enabled. While not as critical as full logging, this feature provides free, real-time visibility into the traffic that matches the rules, which is very useful for debugging and operational monitoring.",
+    "remediation": "Navigate to the WAF console, select the affected Web ACL, go to the 'Visibility and metrics' tab, and enable the 'Sampled requests' option.",
+    "check_function": check_waf_sampled_requests_disabled
+    },
+    {
+        "rule_id": "WAF_002",
+        "section": "Logging & Monitoring",
+        "name": "WAF Web ACL with Full Logging Disabled",
+        "severity": SEVERITY["HIGH"],
+        "description": "A Web ACL does not have a logging destination configured. This is a critical security gap as it prevents the collection of detailed traffic logs necessary for incident investigation, forensic analysis, and compliance auditing. Without these logs, it is nearly impossible to analyze an attack or troubleshoot false positives.",
+        "remediation": "Navigate to the WAF console, select the affected Web ACL, go to the 'Logging and metrics' tab, and enable logging. You will need to configure an Amazon Kinesis Data Firehose as the destination to store the logs, which can then be sent to S3, CloudWatch, or other analysis tools.",
+        "check_function": check_waf_logging_destination_disabled
     }
 ]
