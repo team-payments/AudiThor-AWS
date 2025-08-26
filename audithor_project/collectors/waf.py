@@ -2,6 +2,7 @@
 import json
 import boto3
 from botocore.exceptions import ClientError
+from datetime import datetime, timedelta
 from .utils import get_all_aws_regions # Importación relativa
 
 
@@ -20,55 +21,42 @@ def parse_resource_arn(arn):
     Returns:
         str: The simplified resource name/ID, or the original ARN string if
              parsing fails due to an unexpected format.
-
-    Example:
-        >>> ec2_arn = "arn:aws:ec2:us-east-1:123456789012:instance/i-01a2b3c4d5e6f7g8h"
-        >>> print(parse_resource_arn(ec2_arn))
-        i-01a2b3c4d5e6f7g8h
-
-        >>> lb_arn = "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-lb/50dc6c495c0c9188"
-        >>> print(parse_resource_arn(lb_arn))
-        loadbalancer/app/my-lb
     """
     try:
         parts = arn.split(':')
         resource_part = parts[5]
-
-        # Special handling for Load Balancer ARNs to include type and name
         if 'loadbalancer' in resource_part:
             lb_parts = resource_part.split('/')
             if len(lb_parts) > 2:
                 return f"{lb_parts[0]}/{lb_parts[1]}/{lb_parts[2]}"
-        
-        # Special handling for API Gateway REST API ARNs
         if 'restapis' in resource_part:
             api_parts = resource_part.split('/')
             if len(api_parts) > 2:
                 return f"{api_parts[1]}/{api_parts[2]}"
-        
-        # Default case: return the last part of the resource identifier
         return resource_part.split('/')[-1]
-
     except Exception:
-        # If parsing fails for any reason, return the original ARN
         return arn
 
 
 def collect_waf_data(session):
     """
-    Collects data on AWS WAFv2 Web ACLs and IP Sets from all scopes and regions.
+    Collects data on AWS WAFv2 Web ACLs and IP Sets, including CloudWatch metrics for top rules.
 
     This function handles the dual-scope nature of WAFv2 by first querying for
     global resources (Scope='CLOUDFRONT') in us-east-1, and then iterating
-    through all other regions to find regional resources (Scope='REGIONAL').
-    It gathers details for Web ACLs (including logging and visibility configuration) and IP Sets.
+    through all other regions for regional resources (Scope='REGIONAL').
+    It gathers details for Web ACLs (logging, visibility) and IP Sets.
+    
+    For each Web ACL, it also queries CloudWatch for the 'BlockedRequests' metric
+    over the last 3 days to identify the most triggered rules.
 
     Args:
         session (boto3.Session): The Boto3 session object for AWS authentication.
 
     Returns:
         dict: A dictionary containing two keys:
-              - 'acls': A list of all Web ACLs, global and regional.
+              - 'acls': A list of all Web ACLs, each including a 'TopRules' key 
+                        with metric data if available.
               - 'ip_sets': A list of all IP Sets, global and regional.
     """
     all_acls = []
@@ -90,6 +78,40 @@ def collect_waf_data(session):
                 WebACLArn=acl_summary["ARN"]
             ).get("ResourceArns", [])
             
+            # --- NEW: Collect CloudWatch metrics for the ACL ---
+            top_rules = []
+            try:
+                cloudwatch_client = session.client('cloudwatch', region_name="us-east-1")
+                metric_response = cloudwatch_client.get_metric_data(
+                    MetricDataQueries=[{
+                        'Id': 'blocked_requests_by_rule',
+                        'MetricStat': {
+                            'Metric': {
+                                'Namespace': 'AWS/WAFV2',
+                                'MetricName': 'BlockedRequests',
+                                'Dimensions': [
+                                    {'Name': 'WebACL', 'Value': acl_summary["Name"]},
+                                    {'Name': 'Rule', 'Value': 'ALL'}
+                                ]
+                            },
+                            'Period': 2592000,  # 3 days in seconds
+                            'Stat': 'Sum',
+                        },
+                        'ReturnData': True,
+                    }],
+                    StartTime=datetime.utcnow() - timedelta(days=30),
+                    EndTime=datetime.utcnow()
+                )
+                if metric_response.get('MetricDataResults'):
+                    for result in metric_response['MetricDataResults']:
+                        rule_name = result['Label']
+                        total_blocked = sum(result['Values'])
+                        if total_blocked > 0:
+                            top_rules.append({"RuleName": rule_name, "BlockedRequests": int(total_blocked)})
+            except ClientError:
+                pass # Fails silently if metrics are not available
+            # --- END of new metric collection ---
+
             all_acls.append({
                 "Name": acl_summary["Name"],
                 "ARN": acl_summary["ARN"],
@@ -98,7 +120,8 @@ def collect_waf_data(session):
                 "Region": "Global",
                 "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw],
                 "LoggingConfiguration": acl_details.get("LoggingConfiguration", {}),
-                "VisibilityConfig": acl_details.get("VisibilityConfig", {}) # <-- ADD THIS LINE
+                "VisibilityConfig": acl_details.get("VisibilityConfig", {}),
+                "TopRules": sorted(top_rules, key=lambda x: x['BlockedRequests'], reverse=True)
             })
     except ClientError:
         pass
@@ -119,6 +142,40 @@ def collect_waf_data(session):
                     WebACLArn=acl_summary["ARN"]
                 ).get("ResourceArns", [])
 
+                # --- NEW: Collect CloudWatch metrics for the ACL ---
+                top_rules = []
+                try:
+                    cloudwatch_client = session.client('cloudwatch', region_name=region)
+                    metric_response = cloudwatch_client.get_metric_data(
+                        MetricDataQueries=[{
+                            'Id': 'blocked_requests_by_rule',
+                            'MetricStat': {
+                                'Metric': {
+                                    'Namespace': 'AWS/WAFV2',
+                                    'MetricName': 'BlockedRequests',
+                                    'Dimensions': [
+                                        {'Name': 'WebACL', 'Value': acl_summary["Name"]},
+                                        {'Name': 'Rule', 'Value': 'ALL'}
+                                    ]
+                                },
+                                'Period': 259200, # 3 days in seconds
+                                'Stat': 'Sum',
+                            },
+                            'ReturnData': True,
+                        }],
+                        StartTime=datetime.utcnow() - timedelta(days=3),
+                        EndTime=datetime.utcnow()
+                    )
+                    if metric_response.get('MetricDataResults'):
+                        for result in metric_response['MetricDataResults']:
+                            rule_name = result['Label']
+                            total_blocked = sum(result['Values'])
+                            if total_blocked > 0:
+                                top_rules.append({"RuleName": rule_name, "BlockedRequests": int(total_blocked)})
+                except ClientError:
+                    pass # Fails silently if metrics are not available
+                # --- END of new metric collection ---
+
                 all_acls.append({
                     "Name": acl_summary["Name"],
                     "ARN": acl_summary["ARN"],
@@ -127,12 +184,13 @@ def collect_waf_data(session):
                     "Region": region,
                     "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw],
                     "LoggingConfiguration": acl_details.get("LoggingConfiguration", {}),
-                    "VisibilityConfig": acl_details.get("VisibilityConfig", {}) # <-- ADD THIS LINE
+                    "VisibilityConfig": acl_details.get("VisibilityConfig", {}),
+                    "TopRules": sorted(top_rules, key=lambda x: x['BlockedRequests'], reverse=True)
                 })
         except ClientError:
             pass
 
-    # --- IP Set collection remains the same... ---
+    # --- 3. Collect CloudFront (Global) IP Sets ---
     try:
         client_global = session.client("wafv2", region_name="us-east-1")
         response = client_global.list_ip_sets(Scope="CLOUDFRONT")
@@ -154,6 +212,7 @@ def collect_waf_data(session):
     except ClientError:
         pass
 
+    # --- 4. Collect Regional IP Sets ---
     for region in regions:
         try:
             client_regional = session.client("wafv2", region_name=region)
