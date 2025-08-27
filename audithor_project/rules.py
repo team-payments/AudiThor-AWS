@@ -967,13 +967,13 @@ RULES_TO_CHECK = [
         "check_function": check_ecr_scan_on_push_disabled
     },
     {
-    "rule_id": "WAF_001",
-    "section": "Logging & Monitoring",
-    "name": "WAF with disabled Sampled Requests",
-    "severity": SEVERITY["LOW"],
-    "description": "A Web ACL does not have 'Sampled Requests' enabled. While not as critical as full logging, this feature provides free, real-time visibility into the traffic that matches the rules, which is very useful for debugging and operational monitoring.",
-    "remediation": "Navigate to the WAF console, select the affected Web ACL, go to the 'Visibility and metrics' tab, and enable the 'Sampled requests' option.",
-    "check_function": check_waf_sampled_requests_disabled
+        "rule_id": "WAF_001",
+        "section": "Logging & Monitoring",
+        "name": "WAF with disabled Sampled Requests",
+        "severity": SEVERITY["LOW"],
+        "description": "A Web ACL does not have 'Sampled Requests' enabled. While not as critical as full logging, this feature provides free, real-time visibility into the traffic that matches the rules, which is very useful for debugging and operational monitoring.",
+        "remediation": "Navigate to the WAF console, select the affected Web ACL, go to the 'Visibility and metrics' tab, and enable the 'Sampled requests' option.",
+        "check_function": check_waf_sampled_requests_disabled
     },
     {
         "rule_id": "WAF_002",
