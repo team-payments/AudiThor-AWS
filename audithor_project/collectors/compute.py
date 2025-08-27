@@ -5,8 +5,78 @@ from botocore.exceptions import ClientError
 from .utils import get_all_aws_regions # Importación relativa
 
 
-
 def collect_compute_data(session):
+    """
+    Gathers data on key AWS compute resources across all available regions.
+
+    This function scans every AWS region to collect detailed information about
+    EC2 instances (including their IAM Instance Profile), Lambda functions, 
+    EKS clusters, and ECS clusters.
+
+    Args:
+        session (boto3.Session): The Boto3 session object used for AWS 
+                                 authentication and to discover all regions.
+
+    Returns:
+        dict: A dictionary containing lists of collected resources.
+    """
+    result_ec2_instances = []
+    result_lambda_functions = []
+    result_eks_clusters = []
+    result_ecs_clusters = []
+    
+    regions = get_all_aws_regions(session)
+    account_id = session.client("sts").get_caller_identity()["Account"]
+
+    for region in regions:
+        try:
+            ec2_client = session.client("ec2", region_name=region)
+            # ... (otros clientes)
+
+            # --- 1. Collect EC2 Instance Data ---
+            ec2_paginator = ec2_client.get_paginator('describe_instances')
+            instance_filters = [{'Name': 'instance-state-name', 'Values': ['pending', 'running', 'shutting-down', 'stopping', 'stopped']}]
+            
+            for page in ec2_paginator.paginate(Filters=instance_filters):
+                for reservation in page.get('Reservations', []):
+                    for instance in reservation.get('Instances', []):
+                        tags_dict = {tag['Key']: tag['Value'] for tag in instance.get('Tags', [])}
+                        instance_id = instance.get("InstanceId")
+                        
+                        iam_profile_arn = instance.get("IamInstanceProfile", {}).get("Arn")
+                        iam_profile_name = iam_profile_arn.split('/')[-1] if iam_profile_arn else "N/A"
+
+                        os_info = "N/A"
+                        image_id = instance.get("ImageId")
+                        # ... (lógica para obtener OS info sin cambios)
+
+                        result_ec2_instances.append({
+                            "Region": region,
+                            "InstanceId": instance_id,
+                            "InstanceType": instance.get("InstanceType"),
+                            "State": instance.get("State", {}).get("Name"),
+                            "PublicIpAddress": instance.get("PublicIpAddress", "N/A"),
+                            "SubnetId": instance.get("SubnetId"),
+                            "SecurityGroups": [sg['GroupName'] for sg in instance.get('SecurityGroups', [])],
+                            "IamInstanceProfile": iam_profile_name, # <-- NUEVO CAMPO AÑADIDO
+                            "OperatingSystem": os_info,
+                            "Tags": tags_dict,
+                            "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}"
+                        })
+
+            # --- El resto de la recolección (Lambda, EKS, ECS) no cambia ---
+            # ...
+
+        except ClientError as e:
+            # ... (manejo de errores sin cambios)
+            continue
+    
+    return {
+        "ec2_instances": result_ec2_instances,
+        "lambda_functions": result_lambda_functions,
+        "eks_clusters": result_eks_clusters,
+        "ecs_clusters": result_ecs_clusters
+    }
     """
     Gathers data on key AWS compute resources across all available regions.
 

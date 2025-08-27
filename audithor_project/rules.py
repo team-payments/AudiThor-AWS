@@ -641,6 +641,29 @@ def check_waf_logging_destination_disabled(audit_data):
             
     return failing_resources
 
+def check_ec2_instance_missing_iam_role(audit_data):
+    """
+    Checks for running EC2 instances that do not have an IAM role associated.
+    """
+    failing_resources = []
+    # Navegamos de forma segura hasta la lista de instancias EC2
+    ec2_instances = audit_data.get("compute", {}).get("ec2_instances", [])
+
+    for instance in ec2_instances:
+        # Condición 1: La instancia debe estar en ejecución
+        is_running = instance.get("State") == "running"
+        
+        # Condición 2: El perfil de IAM no debe estar asignado
+        has_no_role = not instance.get("IamInstanceProfile") or instance.get("IamInstanceProfile") == "N/A"
+
+        if is_running and has_no_role:
+            failing_resources.append({
+                "resource": instance.get("InstanceId", "ID Desconocido"),
+                "region": instance.get("Region", "Región Desconocida")
+            })
+            
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -960,5 +983,14 @@ RULES_TO_CHECK = [
         "description": "A Web ACL does not have a logging destination configured. This is a critical security gap as it prevents the collection of detailed traffic logs necessary for incident investigation, forensic analysis, and compliance auditing. Without these logs, it is nearly impossible to analyze an attack or troubleshoot false positives.",
         "remediation": "Navigate to the WAF console, select the affected Web ACL, go to the 'Logging and metrics' tab, and enable logging. You will need to configure an Amazon Kinesis Data Firehose as the destination to store the logs, which can then be sent to S3, CloudWatch, or other analysis tools.",
         "check_function": check_waf_logging_destination_disabled
+    },
+    {
+        "rule_id": "COMPUTE_001",
+        "section": "Identity & Access",
+        "name": "Running EC2 instance has no IAM role associated",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An active EC2 instance has been detected without an associated IAM role. This directly implies that it lacks the necessary permissions to interact with other AWS services. For example, it cannot send logs to CloudWatch, which prevents security tools installed on the instance (like a FIM such as OSSEC) from forwarding their critical alerts. This creates a major gap in security visibility and centralized monitoring.",
+        "remediation": "Create an IAM role with the minimum necessary permissions for the instance's function (e.g., 'CloudWatchAgentServerPolicy' for logging). Then, navigate to the EC2 console, select the instance, and under 'Actions' -> 'Security' -> 'Modify IAM role', attach the newly created role.",
+        "check_function": check_ec2_instance_missing_iam_role
     }
 ]
