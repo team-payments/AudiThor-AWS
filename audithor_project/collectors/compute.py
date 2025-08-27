@@ -17,7 +17,7 @@ def collect_compute_data(session):
     Gathers data on key AWS compute resources across all available regions.
 
     This function scans every AWS region to collect detailed information about
-    EC2 instances (including their IAM Instance Profile and permissions check), 
+    EC2 instances (including their VPC ID and IAM Instance Profile), 
     Lambda functions (including their tags), EKS clusters, and ECS clusters.
 
     Args:
@@ -52,7 +52,6 @@ def collect_compute_data(session):
                         tags_dict = {tag['Key']: tag['Value'] for tag in instance.get('Tags', [])}
                         instance_id = instance.get("InstanceId")
                         
-                        # --- MODIFICACIÓN: Obtener el perfil de instancia de IAM ---
                         iam_profile_arn = instance.get("IamInstanceProfile", {}).get("Arn")
                         iam_profile_name = iam_profile_arn.split('/')[-1] if iam_profile_arn else "N/A"
                         
@@ -69,12 +68,13 @@ def collect_compute_data(session):
                         result_ec2_instances.append({
                             "Region": region,
                             "InstanceId": instance_id,
+                            "VpcId": instance.get("VpcId"), # <-- NUEVO CAMPO AÑADIDO
                             "InstanceType": instance.get("InstanceType"),
                             "State": instance.get("State", {}).get("Name"),
                             "PublicIpAddress": instance.get("PublicIpAddress", "N/A"),
                             "SubnetId": instance.get("SubnetId"),
                             "SecurityGroups": [sg['GroupName'] for sg in instance.get('SecurityGroups', [])],
-                            "IamInstanceProfile": iam_profile_name, # <-- CAMPO AÑADIDO
+                            "IamInstanceProfile": iam_profile_name,
                             "OperatingSystem": os_info,
                             "Tags": tags_dict,
                             "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}"
@@ -86,13 +86,12 @@ def collect_compute_data(session):
                 for function in page.get("Functions", []):
                     function_arn = function.get("FunctionArn")
                     
-                    # --- MODIFICACIÓN: Obtener los tags de la función Lambda ---
                     tags_dict = {}
                     try:
                         tags_response = lambda_client.list_tags(Resource=function_arn)
                         tags_dict = tags_response.get("Tags", {})
                     except ClientError:
-                        pass # Falla silenciosamente si no se pueden obtener los tags
+                        pass
                     
                     vpc_config = function.get("VpcConfig", {})
                     result_lambda_functions.append({
@@ -107,11 +106,11 @@ def collect_compute_data(session):
                             "SubnetIds": vpc_config.get("SubnetIds", []),
                             "SecurityGroupIds": vpc_config.get("SecurityGroupIds", [])
                         },
-                        "Tags": tags_dict, # <-- CAMPO AÑADIDO
+                        "Tags": tags_dict,
                         "ARN": function_arn
                     })
 
-            # --- 3. Collect EKS Cluster Data (sin cambios) ---
+            # --- 3. Collect EKS Cluster Data ---
             eks_clusters = eks_client.list_clusters().get("clusters", [])
             for cluster_name in eks_clusters:
                 result_eks_clusters.append({
@@ -120,7 +119,7 @@ def collect_compute_data(session):
                     "ARN": f"arn:aws:eks:{region}:{account_id}:cluster/{cluster_name}"
                 })
 
-            # --- 4. Collect ECS Cluster Data (sin cambios) ---
+            # --- 4. Collect ECS Cluster Data ---
             ecs_clusters_arns = ecs_client.list_clusters().get("clusterArns", [])
             if ecs_clusters_arns:
                 clusters_details = ecs_client.describe_clusters(clusters=ecs_clusters_arns).get("clusters", [])
@@ -146,4 +145,3 @@ def collect_compute_data(session):
         "eks_clusters": result_eks_clusters,
         "ecs_clusters": result_ecs_clusters
     }
-
