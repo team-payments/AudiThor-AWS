@@ -1,7 +1,7 @@
 # ==============================================================================
 # audithor_app.py - FICHERO PRINCIPAL (REFACTORIZADO)
 # ==============================================================================
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 import threading
 import webbrowser
@@ -64,9 +64,9 @@ CORS(app)
 # ENDPOINTS API (ADAPTADOS)
 # ==============================================================================
 
-@app.route('/dashboard.html')
-def serve_dashboard():
-    return send_from_directory('.', 'dashboard.html')
+@app.route('/')
+def dashboard():
+    return render_template('dashboard.html')
 
 @app.route('/api/run-iam-audit', methods=['POST'])
 def run_iam_audit():
@@ -450,7 +450,7 @@ def run_ecr_audit():
 # ==============================================================================
 if __name__ == '__main__':
     port = 5001
-    url = f"http://127.0.0.1:{port}/dashboard.html"
+    url = f"http://127.0.0.1:{port}/"
     def open_browser():
         webbrowser.open_new(url)
     threading.Timer(1, open_browser).start()
