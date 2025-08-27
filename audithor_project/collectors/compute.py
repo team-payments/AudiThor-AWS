@@ -18,7 +18,7 @@ def collect_compute_data(session):
 
     This function scans every AWS region to collect detailed information about
     EC2 instances (including their VPC ID and IAM Instance Profile), 
-    Lambda functions (including their tags), EKS clusters, and ECS clusters.
+    Lambda functions (including their tags and execution role), EKS clusters, and ECS clusters.
 
     Args:
         session (boto3.Session): The Boto3 session object used for AWS 
@@ -68,7 +68,7 @@ def collect_compute_data(session):
                         result_ec2_instances.append({
                             "Region": region,
                             "InstanceId": instance_id,
-                            "VpcId": instance.get("VpcId"), # <-- NUEVO CAMPO AÑADIDO
+                            "VpcId": instance.get("VpcId"),
                             "InstanceType": instance.get("InstanceType"),
                             "State": instance.get("State", {}).get("Name"),
                             "PublicIpAddress": instance.get("PublicIpAddress", "N/A"),
@@ -97,6 +97,7 @@ def collect_compute_data(session):
                     result_lambda_functions.append({
                         "Region": region,
                         "FunctionName": function.get("FunctionName"),
+                        "Role": function.get("Role"), # <-- CAMPO AÑADIDO
                         "Runtime": function.get("Runtime"),
                         "MemorySize": function.get("MemorySize"),
                         "Timeout": function.get("Timeout"),

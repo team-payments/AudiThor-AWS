@@ -664,6 +664,56 @@ def check_ec2_instance_missing_iam_role(audit_data):
             
     return failing_resources
 
+def check_lambda_missing_any_tag(audit_data):
+    """
+    Checks if any Lambda function has no tags assigned at all.
+    """
+    failing_resources = []
+    lambdas = audit_data.get("compute", {}).get("lambda_functions", [])
+    for func in lambdas:
+        # The 'Tags' key will be an empty dictionary if no tags are assigned
+        if not func.get("Tags"):
+            failing_resources.append({
+                "resource": func.get("FunctionName"),
+                "region": func.get("Region")
+            })
+    return failing_resources
+
+def check_lambda_using_privileged_role(audit_data):
+    """
+    Checks for Lambda functions that are using an IAM role identified as privileged.
+    """
+    failing_resources = []
+    
+    # 1. Obtener la lista de todos los roles y filtrar solo los privilegiados
+    all_roles = audit_data.get("iam", {}).get("roles", [])
+    privileged_role_names = {
+        role['RoleName'] for role in all_roles if role.get('IsPrivileged')
+    }
+
+    # Si no hay roles privilegiados, no hay nada que comprobar
+    if not privileged_role_names:
+        return []
+
+    # 2. Obtener la lista de funciones Lambda
+    lambdas = audit_data.get("compute", {}).get("lambda_functions", [])
+    
+    # 3. Comprobar cada Lambda
+    for func in lambdas:
+        role_arn = func.get("Role")
+        if role_arn:
+            # Extraemos el nombre del rol del ARN (es la última parte)
+            role_name = role_arn.split('/')[-1]
+            
+            # Si el nombre del rol está en nuestra lista de privilegiados, es un hallazgo
+            if role_name in privileged_role_names:
+                failing_resources.append({
+                    "resource": func.get("FunctionName"),
+                    "region": func.get("Region")
+                })
+                
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -992,5 +1042,23 @@ RULES_TO_CHECK = [
         "description": "An active EC2 instance has been detected without an associated IAM role. This directly implies that it lacks the necessary permissions to interact with other AWS services. For example, it cannot send logs to CloudWatch, which prevents security tools installed on the instance (like a FIM such as OSSEC) from forwarding their critical alerts. This creates a major gap in security visibility and centralized monitoring.",
         "remediation": "Create an IAM role with the minimum necessary permissions for the instance's function (e.g., 'CloudWatchAgentServerPolicy' for logging). Then, navigate to the EC2 console, select the instance, and under 'Actions' -> 'Security' -> 'Modify IAM role', attach the newly created role.",
         "check_function": check_ec2_instance_missing_iam_role
+    },
+    {
+        "rule_id": "LAMBDA_PCI_223B_001",
+        "section": "PCI DSS 2.2.3.b",
+        "name": "Lambda function without any tags",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "One or more Lambda functions do not have any tags assigned. Tagging is essential for governance, cost management, and identifying resources. For compliance, it's the first step to classify functions based on their role and the data they handle.",
+        "remediation": "Assign meaningful tags to every Lambda function. At a minimum, consider tags such as 'Project', 'Owner', 'Environment', and a data classification tag like 'Sensitivity' (e.g., PCI, High, Medium, Low).",
+        "check_function": check_lambda_missing_any_tag
+    },
+    {
+        "rule_id": "LAMBDA_PCI_223B_002",
+        "section": "PCI DSS 2.2.3.b",
+        "name": "Lambda function uses a privileged IAM role",
+        "severity": SEVERITY["HIGH"],
+        "description": "A Lambda function is using an IAM role that has been identified as privileged (e.g., AdministratorAccess). This grants excessive permissions to the function. If the Lambda code has a vulnerability, it could be exploited by an attacker to gain extensive control over your AWS account.",
+        "remediation": "Create a new, dedicated IAM role for the Lambda function following the principle of least privilege. Grant only the specific permissions the function needs to perform its task. Avoid using broad, administrative policies for Lambda execution roles.",
+        "check_function": check_lambda_using_privileged_role
     }
 ]
