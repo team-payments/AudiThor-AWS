@@ -5,13 +5,20 @@ from botocore.exceptions import ClientError
 from .utils import get_all_aws_regions # Importación relativa
 
 
+# collectors/compute.py
+import json
+import boto3
+from botocore.exceptions import ClientError
+from .utils import get_all_aws_regions # Importación relativa
+from . import iam # Se importa para la comprobación de permisos de roles
+
 def collect_compute_data(session):
     """
     Gathers data on key AWS compute resources across all available regions.
 
     This function scans every AWS region to collect detailed information about
-    EC2 instances (including their IAM Instance Profile), Lambda functions, 
-    EKS clusters, and ECS clusters.
+    EC2 instances (including their IAM Instance Profile and permissions check), 
+    Lambda functions (including their tags), EKS clusters, and ECS clusters.
 
     Args:
         session (boto3.Session): The Boto3 session object used for AWS 
@@ -19,83 +26,6 @@ def collect_compute_data(session):
 
     Returns:
         dict: A dictionary containing lists of collected resources.
-    """
-    result_ec2_instances = []
-    result_lambda_functions = []
-    result_eks_clusters = []
-    result_ecs_clusters = []
-    
-    regions = get_all_aws_regions(session)
-    account_id = session.client("sts").get_caller_identity()["Account"]
-
-    for region in regions:
-        try:
-            ec2_client = session.client("ec2", region_name=region)
-            # ... (otros clientes)
-
-            # --- 1. Collect EC2 Instance Data ---
-            ec2_paginator = ec2_client.get_paginator('describe_instances')
-            instance_filters = [{'Name': 'instance-state-name', 'Values': ['pending', 'running', 'shutting-down', 'stopping', 'stopped']}]
-            
-            for page in ec2_paginator.paginate(Filters=instance_filters):
-                for reservation in page.get('Reservations', []):
-                    for instance in reservation.get('Instances', []):
-                        tags_dict = {tag['Key']: tag['Value'] for tag in instance.get('Tags', [])}
-                        instance_id = instance.get("InstanceId")
-                        
-                        iam_profile_arn = instance.get("IamInstanceProfile", {}).get("Arn")
-                        iam_profile_name = iam_profile_arn.split('/')[-1] if iam_profile_arn else "N/A"
-
-                        os_info = "N/A"
-                        image_id = instance.get("ImageId")
-                        # ... (lógica para obtener OS info sin cambios)
-
-                        result_ec2_instances.append({
-                            "Region": region,
-                            "InstanceId": instance_id,
-                            "InstanceType": instance.get("InstanceType"),
-                            "State": instance.get("State", {}).get("Name"),
-                            "PublicIpAddress": instance.get("PublicIpAddress", "N/A"),
-                            "SubnetId": instance.get("SubnetId"),
-                            "SecurityGroups": [sg['GroupName'] for sg in instance.get('SecurityGroups', [])],
-                            "IamInstanceProfile": iam_profile_name, # <-- NUEVO CAMPO AÑADIDO
-                            "OperatingSystem": os_info,
-                            "Tags": tags_dict,
-                            "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}"
-                        })
-
-            # --- El resto de la recolección (Lambda, EKS, ECS) no cambia ---
-            # ...
-
-        except ClientError as e:
-            # ... (manejo de errores sin cambios)
-            continue
-    
-    return {
-        "ec2_instances": result_ec2_instances,
-        "lambda_functions": result_lambda_functions,
-        "eks_clusters": result_eks_clusters,
-        "ecs_clusters": result_ecs_clusters
-    }
-    """
-    Gathers data on key AWS compute resources across all available regions.
-
-    This function scans every AWS region to collect detailed information about
-    EC2 instances, Lambda functions, EKS clusters, and ECS clusters. It compiles
-    the findings into a single structured dictionary.
-
-    Args:
-        session (boto3.Session): The Boto3 session object used for AWS 
-                                 authentication and to discover all regions.
-
-    Returns:
-        dict: A dictionary containing lists of collected resources, structured as:
-              {
-                  "ec2_instances": [...],
-                  "lambda_functions": [...],
-                  "eks_clusters": [...],
-                  "ecs_clusters": [...]
-              }
     """
     result_ec2_instances = []
     result_lambda_functions = []
@@ -122,7 +52,10 @@ def collect_compute_data(session):
                         tags_dict = {tag['Key']: tag['Value'] for tag in instance.get('Tags', [])}
                         instance_id = instance.get("InstanceId")
                         
-                        # Attempt to get OS info from the AMI
+                        # --- MODIFICACIÓN: Obtener el perfil de instancia de IAM ---
+                        iam_profile_arn = instance.get("IamInstanceProfile", {}).get("Arn")
+                        iam_profile_name = iam_profile_arn.split('/')[-1] if iam_profile_arn else "N/A"
+                        
                         os_info = "N/A"
                         image_id = instance.get("ImageId")
                         if image_id:
@@ -141,15 +74,26 @@ def collect_compute_data(session):
                             "PublicIpAddress": instance.get("PublicIpAddress", "N/A"),
                             "SubnetId": instance.get("SubnetId"),
                             "SecurityGroups": [sg['GroupName'] for sg in instance.get('SecurityGroups', [])],
+                            "IamInstanceProfile": iam_profile_name, # <-- CAMPO AÑADIDO
                             "OperatingSystem": os_info,
                             "Tags": tags_dict,
                             "ARN": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}"
                         })
 
-            # --- 2. Collect Lambda Function Data (CORRECTED SECTION) ---
+            # --- 2. Collect Lambda Function Data ---
             lambda_paginator = lambda_client.get_paginator("list_functions")
             for page in lambda_paginator.paginate():
                 for function in page.get("Functions", []):
+                    function_arn = function.get("FunctionArn")
+                    
+                    # --- MODIFICACIÓN: Obtener los tags de la función Lambda ---
+                    tags_dict = {}
+                    try:
+                        tags_response = lambda_client.list_tags(Resource=function_arn)
+                        tags_dict = tags_response.get("Tags", {})
+                    except ClientError:
+                        pass # Falla silenciosamente si no se pueden obtener los tags
+                    
                     vpc_config = function.get("VpcConfig", {})
                     result_lambda_functions.append({
                         "Region": region,
@@ -158,18 +102,16 @@ def collect_compute_data(session):
                         "MemorySize": function.get("MemorySize"),
                         "Timeout": function.get("Timeout"),
                         "LastModified": str(function.get("LastModified")),
-                        
-                        # Create the nested VpcConfig object the frontend expects
                         "VpcConfig": {
                             "VpcId": vpc_config.get("VpcId"),
                             "SubnetIds": vpc_config.get("SubnetIds", []),
                             "SecurityGroupIds": vpc_config.get("SecurityGroupIds", [])
                         },
-                        
-                        "ARN": function.get("FunctionArn")
+                        "Tags": tags_dict, # <-- CAMPO AÑADIDO
+                        "ARN": function_arn
                     })
 
-            # --- 3. Collect EKS Cluster Data ---
+            # --- 3. Collect EKS Cluster Data (sin cambios) ---
             eks_clusters = eks_client.list_clusters().get("clusters", [])
             for cluster_name in eks_clusters:
                 result_eks_clusters.append({
@@ -178,12 +120,11 @@ def collect_compute_data(session):
                     "ARN": f"arn:aws:eks:{region}:{account_id}:cluster/{cluster_name}"
                 })
 
-            # --- 4. Collect ECS Cluster Data ---
+            # --- 4. Collect ECS Cluster Data (sin cambios) ---
             ecs_clusters_arns = ecs_client.list_clusters().get("clusterArns", [])
             if ecs_clusters_arns:
                 clusters_details = ecs_client.describe_clusters(clusters=ecs_clusters_arns).get("clusters", [])
                 for cluster in clusters_details:
-                    # Get a count of services for extra context
                     services = ecs_client.list_services(cluster=cluster.get("clusterName")).get("serviceArns", [])
                     result_ecs_clusters.append({
                         "Region": region,
@@ -194,7 +135,6 @@ def collect_compute_data(session):
                     })
 
         except ClientError as e:
-            # Suppress common, expected errors for disabled regions but log others
             common_errors = ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException']
             if e.response['Error']['Code'] not in common_errors:
                 print(f"Error processing region {region}: {e}")
@@ -206,3 +146,4 @@ def collect_compute_data(session):
         "eks_clusters": result_eks_clusters,
         "ecs_clusters": result_ecs_clusters
     }
+

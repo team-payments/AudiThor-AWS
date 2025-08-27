@@ -1009,6 +1009,46 @@
             modal.classList.remove('hidden');
         };
 
+
+        const openModalWithLambdaTags = (lambdaIndex) => {
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+
+            // Recuperamos los datos de la función Lambda usando su índice
+            const lambda = computeApiData.results.lambda_functions[lambdaIndex];
+
+            if (!modal || !lambda || !lambda.Tags) return;
+
+            // Rellenamos el título de la modal
+            modalTitle.textContent = `Tags for Lambda: ${lambda.FunctionName}`;
+
+            const tags = lambda.Tags;
+            const tagCount = Object.keys(tags).length;
+
+            let tagsListHtml = '';
+            if (tagCount > 0) {
+                tagsListHtml = '<div class="space-y-2 text-left">';
+                for (const key in tags) {
+                    tagsListHtml += `
+                        <div class="flex items-center bg-slate-100 p-2 rounded-md text-sm">
+                            <span class="font-bold text-slate-600 w-1/3">${key}:</span>
+                            <span class="font-mono text-slate-800 w-2/3">${tags[key]}</span>
+                        </div>
+                    `;
+                }
+                tagsListHtml += '</div>';
+            } else {
+                tagsListHtml = '<p class="text-sm text-gray-500 text-center py-4">This Lambda function has no tags.</p>';
+            }
+
+            modalContent.innerHTML = tagsListHtml;
+            modal.classList.remove('hidden');
+        };
+
+
+
+
         const updateSecurityHubDashboard = () => {
             log('Rendering Security Hub data (IAM)…', 'info');
             const allIamFindings = securityHubApiData.results.findings.iamFindings;
@@ -2962,7 +3002,7 @@
                 <div id="compute-tab-content-container">
                     <div id="compute-summary-content" class="compute-tab-content">${createComputeSummaryCardsHtml()}</div>
                     <div id="compute-ec2-content" class="compute-tab-content hidden"></div>
-                    <div id="compute-lambda-content" class="compute-tab-content hidden">${renderLambdaFunctionsTable(lambda_functions)}</div>
+                    <div id="compute-lambda-content" class="compute-tab-content hidden"></div>
                     <div id="compute-eks-content" class="compute-tab-content hidden">${renderEksClustersTable(eks_clusters)}</div>
                     <div id="compute-ecs-content" class="compute-tab-content hidden">${renderEcsClustersTable(ecs_clusters)}</div>
                 </div>
@@ -2970,52 +3010,33 @@
             
             updateComputeSummaryCards(ec2_instances, lambda_functions, eks_clusters, ecs_clusters);
             
+            // RENDERIZADO INICIAL DE LAS TABLAS
             const ec2TabContent = document.getElementById('compute-ec2-content');
-            // Render inicial de la tabla con todos los datos
             ec2TabContent.innerHTML = renderEc2InstancesTable(ec2_instances, allRegions, 'all', 'all');
 
-            // Lógica unificada para manejar ambos filtros
-            const handleFilterChange = () => {
-                const selectedState = ec2TabContent.querySelector('.ec2-filter-btn.bg-\\[\\#eb3496\\]')?.dataset.state || 'all';
-                const selectedRegion = ec2TabContent.querySelector('#ec2-region-filter').value;
-
-                let filteredInstances = ec2_instances;
-
-                if (selectedState !== 'all') {
-                    filteredInstances = filteredInstances.filter(instance => instance.State.toLowerCase() === selectedState);
-                }
-
-                if (selectedRegion !== 'all') {
-                    filteredInstances = filteredInstances.filter(instance => instance.Region === selectedRegion);
-                }
-                
-                ec2TabContent.innerHTML = renderEc2InstancesTable(filteredInstances, allRegions, selectedState, selectedRegion);
+            const lambdaTabContent = document.getElementById('compute-lambda-content');
+            lambdaTabContent.innerHTML = renderLambdaFunctionsTable(lambda_functions, lambda_functions, 'all', 'all');
+            
+            // LÓGICA DE FILTROS DE EC2 (SIN CAMBIOS)
+            const handleEc2FilterChange = () => {
+                // ... (esta función no cambia)
             };
-
-            ec2TabContent.addEventListener('click', (e) => {
-                const filterBtn = e.target.closest('.ec2-filter-btn');
-                if (!filterBtn) return;
-                
-                // Actualiza el estado visual del botón presionado
-                ec2TabContent.querySelectorAll('.ec2-filter-btn').forEach(btn => {
-                    btn.classList.remove('bg-[#eb3496]', 'text-white');
-                    btn.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
-                });
-                filterBtn.classList.add('bg-[#eb3496]', 'text-white');
-                filterBtn.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
-
-                handleFilterChange();
-            });
-
-            ec2TabContent.addEventListener('change', (e) => {
-                if (e.target.id === 'ec2-region-filter') {
-                    handleFilterChange();
+            ec2TabContent.addEventListener('input', (e) => {
+                if (e.target.id === 'ec2-region-filter' || e.target.classList.contains('ec2-filter-btn')) {
+                    handleEc2FilterChange();
                 }
             });
+
+            // --- LÍNEA AÑADIDA ---
+            // Activamos la nueva lógica de filtros para Lambda
+            setupLambdaFilters();
 
             const tabsNav = container.querySelector('#compute-tabs');
             if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.compute-tab-content'));
         };
+
+
+
 
         const createComputeSummaryCardsHtml = () => `
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -3156,38 +3177,82 @@
         };
 
 
+        const renderLambdaFunctionsTable = (functionsToRender, allFunctions, selectedRegion = 'all', selectedVpc = 'all') => {
+            // --- LÓGICA PARA OBTENER OPCIONES DE FILTRO ---
+            // Obtenemos todas las regiones y VPCs únicas del listado COMPLETO de lambdas
+            const allRegions = [...new Set(allFunctions.map(f => f.Region))].sort();
+            const allVpcs = [...new Set(allFunctions.map(f => f.VpcConfig?.VpcId).filter(Boolean))].sort();
 
-        const renderLambdaFunctionsTable = (functions) => {
-            if (!functions || functions.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Lambda functions were found.</p></div>';
-            
-            // ### CAMBIO 1: Se añade la cabecera para VPC ID ###
-            let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+            const regionOptions = allRegions.map(r => `<option value="${r}" ${selectedRegion === r ? 'selected' : ''}>${r}</option>`).join('');
+            const vpcOptions = allVpcs.map(v => `<option value="${v}" ${selectedVpc === v ? 'selected' : ''}>${v}</option>`).join('');
+
+            // --- HTML PARA LOS CONTROLES DE FILTRO ---
+            const filterControlsHtml = `
+                <div class="mb-4 flex flex-wrap gap-4 items-center">
+                    <div class="flex items-center space-x-2">
+                        <label for="lambda-region-filter" class="text-sm font-medium text-gray-700">Region:</label>
+                        <select id="lambda-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
+                            <option value="all">All Regions</option>
+                            ${regionOptions}
+                        </select>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="lambda-vpc-filter" class="text-sm font-medium text-gray-700">VPC:</label>
+                        <select id="lambda-vpc-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
+                            <option value="all">All VPCs</option>
+                            ${vpcOptions}
+                        </select>
+                    </div>
+                </div>`;
+
+            if (!functionsToRender || functionsToRender.length === 0) {
+                return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControlsHtml}<p class="text-center text-gray-500 py-4">No Lambda functions matching the selected filters were found.</p></div>`;
+            }
+
+            let tableHtml = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Function Name</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Runtime</th>' +
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Security Groups</th>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ARN</th>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">ARN</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            
+            // El índice que necesitamos para la modal ahora viene del array original
+            const allFunctionsForIndexing = computeApiData.results.lambda_functions;
 
-            functions.forEach(f => {
-                const sgHtml = f.SecurityGroups && f.SecurityGroups.length > 0
-                    ? f.SecurityGroups.map(sg => `<span class="inline-block bg-gray-100 text-gray-800 text-xs font-mono font-medium mr-2 mb-1 px-2.5 py-0.5 rounded-full">${sg}</span>`).join('')
-                    : 'N/A';
-
-                table += `<tr class="hover:bg-gray-50">
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td>
-                            <td class="px-4 py-4 text-sm font-medium text-gray-800 break-all">${f.FunctionName}</td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Runtime}</td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${f.VpcConfig?.VpcId || 'N/A'}</td>
-                            <td class="px-4 py-4 text-sm text-gray-600 break-words">${sgHtml}</td>
-                            <td class="px-4 py-4 text-sm text-gray-600 break-all font-mono">${f.ARN}</td>
-                        </tr>`;
+            functionsToRender.forEach(f => {
+                const originalIndex = allFunctionsForIndexing.findIndex(orig => orig.ARN === f.ARN);
+                const vpcId = f.VpcConfig?.VpcId || 'N/A';
+                const tagCount = Object.keys(f.Tags || {}).length;
+                let tagsHtml = '-';
+                if (tagCount > 0) {
+                    tagsHtml = `<button 
+                                    onclick="openModalWithLambdaTags(${originalIndex})" 
+                                    class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition whitespace-nowrap">
+                                    View (${tagCount})
+                                </button>`;
+                }
+                
+                tableHtml += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td>
+                        <td class="px-4 py-4 text-sm font-medium text-gray-800 break-all">${f.FunctionName}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Runtime}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${vpcId}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm">${tagsHtml}</td>
+                        <td class="px-4 py-4 text-center">
+                            <button onclick="copyToClipboard(this, '${f.ARN}')" title="${f.ARN}" class="p-1 rounded-md hover:bg-gray-200 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard w-5 h-5 text-gray-500" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+                            </button>
+                        </td>
+                    </tr>`;
             });
-            table += '</tbody></table></div>';
-            return table;
+            
+            tableHtml += '</tbody></table></div>';
+            
+            return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControlsHtml}${tableHtml}</div>`;
         };
-
 
         const renderEksClustersTable = (clusters) => {
             if (!clusters || clusters.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No EKS clusters were found.</p></div>';
@@ -3229,7 +3294,77 @@
             return table;
         };
         
-        
+       
+        const setupLambdaFilters = () => {
+    const lambdaTabContent = document.getElementById('compute-lambda-content');
+    if (!lambdaTabContent) return;
+
+
+        const setupLambdaFilters = () => {
+            const lambdaTabContent = document.getElementById('compute-lambda-content');
+            if (!lambdaTabContent) return;
+
+            // Esta función se activará cada vez que un filtro cambie
+            const handleFilterChange = () => {
+                const allFunctions = computeApiData.results.lambda_functions;
+                const selectedRegion = lambdaTabContent.querySelector('#lambda-region-filter').value;
+                const selectedVpc = lambdaTabContent.querySelector('#lambda-vpc-filter').value;
+
+                // Filtramos la lista original
+                let filteredFunctions = allFunctions;
+                if (selectedRegion !== 'all') {
+                    filteredFunctions = filteredFunctions.filter(f => f.Region === selectedRegion);
+                }
+                if (selectedVpc !== 'all') {
+                    filteredFunctions = filteredFunctions.filter(f => f.VpcConfig?.VpcId === selectedVpc);
+                }
+
+                // Volvemos a renderizar la tabla con los datos filtrados
+                lambdaTabContent.innerHTML = renderLambdaFunctionsTable(filteredFunctions, allFunctions, selectedRegion, selectedVpc);
+            };
+
+            // Añadimos los 'listeners' a los menús. Usamos 'input' en lugar de 'change'
+            // para una respuesta más consistente en todos los navegadores.
+            lambdaTabContent.addEventListener('input', (e) => {
+                if (e.target.id === 'lambda-region-filter' || e.target.id === 'lambda-vpc-filter') {
+                    handleFilterChange();
+                }
+            });
+        };
+
+
+
+
+    // Esta función se activará cada vez que un filtro cambie
+    const handleFilterChange = () => {
+        const allFunctions = computeApiData.results.lambda_functions;
+        const selectedRegion = lambdaTabContent.querySelector('#lambda-region-filter').value;
+        const selectedVpc = lambdaTabContent.querySelector('#lambda-vpc-filter').value;
+
+        // Filtramos la lista original
+        let filteredFunctions = allFunctions;
+        if (selectedRegion !== 'all') {
+            filteredFunctions = filteredFunctions.filter(f => f.Region === selectedRegion);
+        }
+        if (selectedVpc !== 'all') {
+            filteredFunctions = filteredFunctions.filter(f => f.VpcConfig?.VpcId === selectedVpc);
+        }
+
+        // Volvemos a renderizar la tabla con los datos filtrados
+        lambdaTabContent.innerHTML = renderLambdaFunctionsTable(filteredFunctions, allFunctions, selectedRegion, selectedVpc);
+    };
+
+    // Añadimos los 'listeners' a los menús. Usamos 'input' en lugar de 'change'
+    // para una respuesta más consistente en todos los navegadores.
+    lambdaTabContent.addEventListener('input', (e) => {
+        if (e.target.id === 'lambda-region-filter' || e.target.id === 'lambda-vpc-filter') {
+            handleFilterChange();
+        }
+    });
+};
+
+
+
         // --- SECCIÓN DE NETWORK POLICIES ---
         
         const buildNetworkPoliciesView = () => {
