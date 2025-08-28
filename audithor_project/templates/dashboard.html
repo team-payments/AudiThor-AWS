@@ -180,48 +180,65 @@
     <script src="{{ url_for('static', filename='js/constants.js') }}"></script>
 
 
-    <script>
+    <script type="module">
+
+    // 2. Importa las funciones que necesitas desde utils.js
+        import { 
+            log, 
+            copyToClipboard, 
+            handleTabClick, 
+            createStatusBadge, 
+            createAlarmStateBadge, 
+            setupModalControls, 
+            setupPagination, 
+            renderSecurityHubFindings 
+        } from '/static/js/utils.js';
+
 
 
 
         // --- ESTADO GLOBAL ---
-        let iamApiData = null, securityHubApiData = null, exposureApiData = null, guarddutyApiData = null, wafApiData = null, cloudtrailApiData = null, cloudwatchApiData = null, inspectorApiData = null, acmApiData = null, computeApiData = null, networkPoliciesApiData = null, playgroundApiData = null, allAvailableRegions = [], lastCloudtrailLookupResults = [], federationApiData = null, configSHApiData = null, configSHStatusApiData = null, databaseApiData = null, documentdbApiData = null, connectivityApiData = null, identityCenterApiData = null, lastHealthyStatusFindings = [], accessAnalyzerApiData = null, ecrApiData = null;        
-        
+// Al ser un módulo, las variables 'let' no son globales. Las asignamos a 'window'
+// para que sean accesibles desde cualquier fichero (como los futuros módulos de vistas).
+        window.iamApiData = null;
+        window.securityHubApiData = null;
+        window.exposureApiData = null;
+        window.guarddutyApiData = null;
+        window.wafApiData = null;
+        window.cloudtrailApiData = null;
+        window.cloudwatchApiData = null;
+        window.inspectorApiData = null;
+        window.acmApiData = null;
+        window.computeApiData = null;
+        window.networkPoliciesApiData = null;
+        window.playgroundApiData = null;
+        window.allAvailableRegions = [];
+        window.lastCloudtrailLookupResults = [];
+        window.federationApiData = null;
+        window.configSHApiData = null;
+        window.configSHStatusApiData = null;
+        window.databaseApiData = null;
+        window.documentdbApiData = null;
+        window.connectivityApiData = null;
+        window.identityCenterApiData = null;
+        window.lastHealthyStatusFindings = [];
+        window.accessAnalyzerApiData = null;
+        window.ecrApiData = null;        
     
 
         // --- SELECTORES ---
         let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
 
-        // --- LÓGICA DE LOGS ---
-        const log = (message, type = 'info') => { if (!logContainer) return; const timestamp = new Date().toLocaleTimeString(); const typeClass = `log-${type}`, typeText = type.toUpperCase(); const entry = document.createElement('p'); entry.className = 'log-entry'; entry.innerHTML = `<span class="font-bold ${typeClass}">[${timestamp} - ${typeText}]</span> ${message}`; logContainer.prepend(entry); };
 
-        // --- LÓGICA DE COPIADO (AÑADIR AQUÍ) ---
-        const copyToClipboard = (element, textToCopy) => {
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                const originalContent = element.innerHTML;
-                element.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg w-4 h-4 text-green-500" viewBox="0 0 16 16">
-                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
-                    </svg>
-                    <span class="text-green-500 text-xs font-bold">Copied</span>`;
-                setTimeout(() => {
-                    element.innerHTML = originalContent;
-                }, 1500); // Vuelve al estado original después de 1.5 segundos
-            }).catch(err => {
-                console.error('Error al copiar el ARN: ', err);
-                log('Error copying ARN.', 'error');
-            });
-        };
         
         
         // --- LÓGICA DE NAVEGACIÓN ---
         const handleMainNavClick = (e) => { e.preventDefault(); const link = e.target.closest('.main-nav-link'); if (!link) return; const targetViewId = `${link.dataset.view}-view`; views.forEach(v => v.classList.add('hidden')); document.getElementById(targetViewId).classList.remove('hidden'); mainNavLinks.forEach(l => { l.classList.remove('bg-[#eb3496]'); l.classList.add('hover:bg-[#1a335a]'); }); link.classList.add('bg-[#eb3496]'); link.classList.remove('hover:bg-[#1a335a]'); };
-        const handleTabClick = (navElement, contentSelector) => (e) => { e.preventDefault(); const link = e.target.closest('a.tab-link'); if (!link) return; navElement.querySelectorAll('a.tab-link').forEach(l => { l.classList.remove('border-[#eb3496]', 'text-[#eb3496]', 'font-semibold'); l.classList.add('border-transparent', 'text-gray-500'); }); link.classList.add('border-[#eb3496]', 'text-[#eb3496]', 'font-semibold'); link.classList.remove('border-transparent', 'text-gray-500'); document.querySelectorAll(contentSelector).forEach(c => c.classList.add('hidden')); const contentElement = document.getElementById(link.dataset.tab); if (contentElement) contentElement.classList.remove('hidden'); };
 
         // --- LÓGICA DE ANÁLISIS ---
         const runAnalysisFromInputs = async () => {
             // Resetear estado
-            iamApiData = null; securityHubApiData = null; exposureApiData = null; guarddutyApiData = null; wafApiData = null; cloudtrailApiData = null; cloudwatchApiData = null; inspectorApiData = null; acmApiData = null; computeApiData = null; databasesApiData = null; networkPoliciesApiData = null; connectivityApiData = null; playgroundApiData = null; allAvailableRegions = []; lastCloudtrailLookupResults = []; federationApiData = null; configSHApiData = null; configSHStatusApiData = null; kmsApiData = null; ecrApiData = null;
+            window.iamApiData = null; window.securityHubApiData = null; window.exposureApiData = null; window.guarddutyApiData = null; window.wafApiData = null; window.cloudtrailApiData = null; window.cloudwatchApiData = null; window.inspectorApiData = null; window.acmApiData = null; window.computeApiData = null; window.databasesApiData = null; window.networkPoliciesApiData = null; window.connectivityApiData = null; window.playgroundApiData = null; window.allAvailableRegions = []; window.lastCloudtrailLookupResults = []; window.federationApiData = null; window.configSHApiData = null; window.configSHStatusApiData = null; window.kmsApiData = null; window.ecrApiData = null;
             document.querySelectorAll('.view').forEach(v => v.innerHTML = '');
             document.getElementById('iam-view').innerHTML = createInitialEmptyState();
             
@@ -284,30 +301,30 @@
                 const resolvedPromises = await Promise.all(promises);
                 const results = Object.fromEntries(resolvedPromises);
 
-                iamApiData = results.iam; 
-                accessAnalyzerApiData = results.accessAnalyzer; 
-                securityHubApiData = results.securityhub; 
-                exposureApiData = results.exposure; 
-                guarddutyApiData = results.guardduty; 
-                wafApiData = results.waf; 
-                cloudtrailApiData = results.cloudtrail; 
-                cloudwatchApiData = results.cloudwatch; 
-                inspectorApiData = results.inspector; 
-                acmApiData = results.acm; 
-                computeApiData = results.compute;
-                ecrApiData = results.ecr;
-                databasesApiData = results.databases; 
-                networkPoliciesApiData = results.network_policies; 
-                federationApiData = results.federation; // <--- Aquí se guarda
-                configSHStatusApiData = results.config_sh_status; 
-                kmsApiData = results.kms; 
-                connectivityApiData = results.connectivity;
+                window.iamApiData = results.iam; 
+                window.accessAnalyzerApiData = results.accessAnalyzer; 
+                window.securityHubApiData = results.securityhub; 
+                window.exposureApiData = results.exposure; 
+                window.guarddutyApiData = results.guardduty; 
+                window.wafApiData = results.waf; 
+                window.cloudtrailApiData = results.cloudtrail; 
+                window.cloudwatchApiData = results.cloudwatch; 
+                window.inspectorApiData = results.inspector; 
+                window.acmApiData = results.acm; 
+                window.computeApiData = results.compute;
+                window.ecrApiData = results.ecr;
+                window.databasesApiData = results.databases; 
+                window.networkPoliciesApiData = results.network_policies; 
+                window.federationApiData = results.federation; // <--- Aquí se guarda
+                window.configSHStatusApiData = results.config_sh_status; 
+                window.kmsApiData = results.kms; 
+                window.connectivityApiData = results.connectivity;
                 
-                if (!iamApiData || !networkPoliciesApiData) { 
+                if (!window.iamApiData || !window.networkPoliciesApiData) { 
                     throw new Error("One or more critical API calls failed. Cannot continue."); 
                 }
                 
-                allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
+                window.allAvailableRegions = window.networkPoliciesApiData?.results?.all_regions || [];
                 log('All data has been received.', 'success');
                 
                 buildAndRenderAllViews();
@@ -358,9 +375,7 @@
           
         const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><h3 class="mt-2 text-lg font-medium text-[#204071]">Welcome to AudiThor</h3><p class="mt-1 text-sm text-gray-500">Enter your credentials and click "Scan Account"</p></div>`;
 
-        const createStatusBadge = (statusText) => { if (!statusText) { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>`; } const lowerStatus = statusText.toLowerCase(); if (lowerStatus === 'Enabled' || lowerStatus === 'enabled' || lowerStatus === 'running' || lowerStatus === 'active') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${statusText}</span>`; } if (lowerStatus === 'Disabled' || lowerStatus === 'suspendido' || lowerStatus.includes('error') || lowerStatus === 'not_available' || lowerStatus === 'stopped' || lowerStatus === 'terminated' || lowerStatus === 'shutting-down' || lowerStatus === 'failed') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${statusText}</span>`; } if (lowerStatus === 'pending' || lowerStatus === 'enabling' || lowerStatus === 'stopping') { return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${statusText}</span>`; } return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${statusText}</span>`; };
-
-        const createAlarmStateBadge = (state) => { if (state === 'ALARM') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${state}</span>`; if (state === 'OK') return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${state}</span>`; return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">${state}</span>`; };
+        
 
         
         // --- SECCIÓN DE IAM ---
@@ -369,7 +384,7 @@
             const container = document.getElementById('iam-view');
             if (!container) return;
 
-            const accessAnalyzerFindingsCount = accessAnalyzerApiData?.results?.findings?.length || 0;
+            const accessAnalyzerFindingsCount = window.accessAnalyzerApiData?.results?.findings?.length || 0;
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
@@ -408,10 +423,10 @@
             const getDetailsBtn = document.getElementById('iam-get-details-btn');
             if (getDetailsBtn) getDetailsBtn.addEventListener('click', getIamPermissionDetails);
 
-            if (iamApiData) updateIamDashboard();
-            if (securityHubApiData) updateSecurityHubDashboard();
+            if (window.iamApiData) updateIamDashboard();
+            if (window.securityHubApiData) updateSecurityHubDashboard();
             // --- INICIO DE LA MODIFICACIÓN ---
-            if (accessAnalyzerApiData) {
+            if (window.accessAnalyzerApiData) {
                 renderAccessAnalyzerContent(); // Llamamos a la función que renderizará el contenido.
             }
             // --- FIN DE LA MODIFICACIÓN ---
@@ -449,9 +464,9 @@
 
         const renderAccessAnalyzerContent = () => {
             const container = document.getElementById('access-analyzer-content');
-            if (!container || !accessAnalyzerApiData) return;
+            if (!container || !window.accessAnalyzerApiData) return;
 
-            const { findings, summary } = accessAnalyzerApiData.results;
+            const { findings, summary } = window.accessAnalyzerApiData.results;
 
             let contentHtml = renderAccessAnalyzerStatusTable(summary);
 
@@ -475,8 +490,8 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">`;
 
-            const scannedAccountId = iamApiData?.metadata?.accountId;
-            const rolesFromScan = iamApiData?.results?.roles;
+            const scannedAccountId = window.iamApiData?.metadata?.accountId;
+            const rolesFromScan = window.iamApiData?.results?.roles;
 
             findings.forEach(f => {
                 const publicBadge = f.IsPublic 
@@ -586,8 +601,8 @@
             </div>`;
 
         const updateIamDashboard = () => { 
-            const { users, roles, groups, password_policy } = iamApiData.results;
-            const { accountId, executionDate } = iamApiData.metadata;
+            const { users, roles, groups, password_policy } = window.iamApiData.results;
+            const { accountId, executionDate } = window.iamApiData.metadata;
             const scanInfo = `Results for Account ${accountId} - ${executionDate}`;
             const infoElement = document.querySelector('#iam-view .scan-info');
             if (infoElement) infoElement.textContent = scanInfo;
@@ -603,7 +618,7 @@
                 const passedChecks = checks.filter(Boolean).length;
                 passwordPolicyCompliance = Math.round((passedChecks / checks.length) * 100);
             }
-            const criticalHighIamFindings = securityHubApiData.results.findings.iamFindings.filter(f => f.Severity?.Label === 'CRITICAL' || f.Severity?.Label === 'HIGH').length;
+            const criticalHighIamFindings = window.securityHubApiData.results.findings.iamFindings.filter(f => f.Severity?.Label === 'CRITICAL' || f.Severity?.Label === 'HIGH').length;
             document.getElementById('iam-total-users').textContent = totalUsers;
             document.getElementById('iam-privileged-users').textContent = privilegedUsersCount;
             document.getElementById('iam-privileged-groups').textContent = privilegedGroupsCount;
@@ -709,12 +724,12 @@
 
         const renderFederationView = () => {
             const container = document.getElementById('federation-content');
-            if (!container || !federationApiData || !federationApiData.results) {
+            if (!container || !window.federationApiData || !window.federationApiData.results) {
                 if(container) container.innerHTML = '<p class="text-center text-gray-500 py-4">Federation data is not available. Run a scan or check for API errors.</p>';
                 return;
             }
 
-            const { iam_federation = {}, identity_center = {} } = federationApiData.results;
+            const { iam_federation = {}, identity_center = {} } = window.federationApiData.results;
 
             let aliasHtml = `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
                                 <h3 class="font-bold text-lg mb-2 text-[#204071]">Account Alias</h3>`;
@@ -833,28 +848,13 @@
             }
         };
 
-        const setupModalControls = () => {
-            const modal = document.getElementById('details-modal');
-            const closeBtn = document.getElementById('modal-close-btn');
-            if (modal && closeBtn) {
-                // Cerrar al hacer clic en el botón de cerrar
-                closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-                // Cerrar al hacer clic fuera del contenido de la modal (en el fondo oscuro)
-                modal.addEventListener('click', (e) => {
-                    if (e.target.id === 'details-modal') {
-                        modal.classList.add('hidden');
-                    }
-                });
-            }
-        };
-
         const openModalWithAccessKeyDetails = (userIndex) => {
             const modal = document.getElementById('details-modal');
             const modalTitle = document.getElementById('modal-title');
             const modalContent = document.getElementById('modal-content');
 
             // Recuperamos los datos del usuario usando su índice en el array original
-            const user = iamApiData.results.users[userIndex];
+            const user = window.iamApiData.results.users[userIndex];
 
             if (!modal || !user || !user.AccessKeys || user.AccessKeys.length === 0) return;
 
@@ -891,7 +891,7 @@
             const modalContent = document.getElementById('modal-content');
 
             // Recuperamos los datos del usuario usando su índice
-            const user = iamApiData.results.users[userIndex];
+            const user = window.iamApiData.results.users[userIndex];
 
             if (!modal || !user || !user.Groups || user.Groups.length === 0) return;
 
@@ -916,7 +916,7 @@
             const modalContent = document.getElementById('modal-content');
 
             // Recuperamos los datos de la instancia usando su índice en el array original
-            const instance = computeApiData.results.ec2_instances[instanceIndex];
+            const instance = window.computeApiData.results.ec2_instances[instanceIndex];
 
             if (!modal || !instance || !instance.Tags) return;
 
@@ -956,7 +956,7 @@
             const modalContent = document.getElementById('modal-content');
 
             // Recuperamos los datos de la función Lambda usando su índice
-            const lambda = computeApiData.results.lambda_functions[lambdaIndex];
+            const lambda = window.computeApiData.results.lambda_functions[lambdaIndex];
 
             if (!modal || !lambda || !lambda.Tags) return;
 
@@ -991,7 +991,7 @@
 
         const updateSecurityHubDashboard = () => {
             log('Rendering Security Hub data (IAM)…', 'info');
-            const allIamFindings = securityHubApiData.results.findings.iamFindings;
+            const allIamFindings = window.securityHubApiData.results.findings.iamFindings;
             const filterControlsContainer = document.getElementById('iam-sh-filter-controls');
 
             // Función para renderizar la tabla con los findings filtrados
@@ -1127,13 +1127,13 @@
             }
             // --- END: NEW LOGIC ---
 
-            if (!iamApiData || !iamApiData.results) {
+            if (!window.iamApiData || !window.iamApiData.results) {
                 resultsContainer.innerHTML = `<p class="text-red-600 font-medium">No IAM data loaded. Please run an analysis first.</p>`;
                 log('Attempted permission search without IAM data.', 'error');
                 return;
             }
 
-            const { users, groups, roles } = iamApiData.results;
+            const { users, groups, roles } = window.iamApiData.results;
             let foundPrincipal = null;
             let principalType = '';
 
@@ -1220,16 +1220,16 @@
 
         const buildExposureView = () => {
             const container = document.getElementById('exposure-view');
-            if (!exposureApiData) return;
+            if (!window.exposureApiData) return;
 
             const allExposureServices = [
                 "S3 Public Buckets", "EC2 Public Instances", "Security Groups Open", 
                 "ALB/NLB Public", "Lambda URLs", "API Gateway Public", "Assumable Roles"
             ];
 
-            const details = exposureApiData.results.details;
-            const networkPorts = exposureApiData.results.network_ports || [];
-            const securityHubFindings = securityHubApiData.results.findings.exposureFindings;
+            const details = window.exposureApiData.results.details;
+            const networkPorts = window.exposureApiData.results.network_ports || [];
+            const securityHubFindings = window.securityHubApiData.results.findings.exposureFindings;
 
             let tabsHtml = `<a href="#" data-tab="exposure-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>`;
             
@@ -1256,22 +1256,22 @@
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
-                    <div><h2 class="text-2xl font-bold text-[#204071]">Internet Exposure</h2><p class="text-sm text-gray-500">${exposureApiData.metadata.executionDate}</p></div>
+                    <div><h2 class="text-2xl font-bold text-[#204071]">Internet Exposure</h2><p class="text-sm text-gray-500">${window.exposureApiData.metadata.executionDate}</p></div>
                 </header>
                 <div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6">${tabsHtml}</nav></div>
                 <div>${contentHtml}</div>`;
 
-            updateExposureSummaryCards(exposureApiData.results.summary, securityHubFindings);
+            updateExposureSummaryCards(window.exposureApiData.results.summary, securityHubFindings);
             
             allExposureServices.forEach(service => {
                 const safeId = service.replace(/\s+/g, '-').replace(/\//g, '-');
                 const serviceContainer = container.querySelector(`#exposure-${safeId}-content`);
 
                 if (service === 'EC2 Public Instances') {
-                    const allInstancesWithIndex = (computeApiData?.results?.ec2_instances || [])
+                    const allInstancesWithIndex = (window.computeApiData?.results?.ec2_instances || [])
                         .map((instance, originalIndex) => ({ instance, originalIndex }))
                         .filter(({ instance }) => instance.PublicIpAddress && instance.PublicIpAddress !== 'N/A');
-                    serviceContainer.innerHTML = renderPublicEc2InstancesTable(allInstancesWithIndex, allAvailableRegions, 'all', 'all');
+                    serviceContainer.innerHTML = renderPublicEc2InstancesTable(allInstancesWithIndex, window.allAvailableRegions, 'all', 'all');
                 } else {
                     serviceContainer.innerHTML = renderExposureDetails(service, details[service] || {});
                 }
@@ -1285,7 +1285,7 @@
             const handleFilterChange = () => {
                 const selectedState = ec2TabContent.querySelector('.public-ec2-filter-btn.bg-\\[\\#eb3496\\]')?.dataset.state || 'all';
                 const selectedRegion = ec2TabContent.querySelector('#public-ec2-region-filter').value;
-                const allInstancesWithIndex = (computeApiData?.results?.ec2_instances || []).map((instance, originalIndex) => ({ instance, originalIndex }));
+                const allInstancesWithIndex = (window.computeApiData?.results?.ec2_instances || []).map((instance, originalIndex) => ({ instance, originalIndex }));
 
                 let filteredInstances = allInstancesWithIndex
                     .filter(({ instance }) => instance.PublicIpAddress && instance.PublicIpAddress !== 'N/A');
@@ -1297,7 +1297,7 @@
                     filteredInstances = filteredInstances.filter(({ instance }) => instance.Region === selectedRegion);
                 }
                 
-                ec2TabContent.innerHTML = renderPublicEc2InstancesTable(filteredInstances, allAvailableRegions, selectedState, selectedRegion);
+                ec2TabContent.innerHTML = renderPublicEc2InstancesTable(filteredInstances, window.allAvailableRegions, selectedState, selectedRegion);
             };
             
             ec2TabContent.addEventListener('click', (e) => {
@@ -1432,7 +1432,7 @@
             const modalTitle = document.getElementById('modal-title');
             const modalContent = document.getElementById('modal-content');
 
-            const allLbs = Object.values(exposureApiData.results.details['ALB/NLB Public'] || {}).flat();
+            const allLbs = Object.values(window.exposureApiData.results.details['ALB/NLB Public'] || {}).flat();
             const lb = allLbs[lbIndex];
             const listener = lb.listeners[listenerIndex];
 
@@ -1608,15 +1608,15 @@
        
         const buildGuarddutyView = () => {
             const container = document.getElementById('guardduty-view');
-            if (!guarddutyApiData) return;
-            const { status, findings } = guarddutyApiData.results;
+            if (!window.guarddutyApiData) return;
+            const { status, findings } = window.guarddutyApiData.results;
 
             // --- INICIO DE LA MODIFICACIÓN: Se añade el HTML para los filtros y un contenedor para la tabla ---
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">GuardDuty Status & Findings</h2>
-                        <p class="text-sm text-gray-500">${guarddutyApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.guarddutyApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
@@ -1682,7 +1682,7 @@
         const renderGuarddutyFindingsTable = (findings) => { if (!findings || findings.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No active GuardDuty findings were found.</p></div>'; const severityClasses = { 'CRITICAL': 'bg-red-600 text-white', 'HIGH': 'bg-orange-500 text-white', 'MEDIUM': 'bg-yellow-400 text-black', 'LOW': 'bg-blue-500 text-white', 'INFORMATIONAL': 'bg-gray-400 text-white' }; let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>' + '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>' + '</tr></thead><tbody class="bg-white divide-y divide-gray-200">'; findings.forEach(f => { const severity = f.SeverityLabel || 'N/A'; const severityClass = severityClasses[severity] || 'bg-gray-200 text-gray-800'; tableHtml += `<tr class="hover:bg-gray-50"> <td class="px-4 py-4 whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityClass}">${severity} (${f.SeverityScore})</span></td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.Region}</td> <td class="px-4 py-4 text-sm text-gray-800 break-words">${f.Title}</td> <td class="px-4 py-4 text-sm text-gray-600 break-words">${f.Resource}</td> <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${f.LastSeen}</td> </tr>`; }); tableHtml += '</tbody></table></div>'; return tableHtml; };
 
         const setupGuarddutyFindingsFilter = () => {
-            const allFindings = guarddutyApiData.results.findings;
+            const allFindings = window.guarddutyApiData.results.findings;
             const filterControlsContainer = document.getElementById('gd-filter-controls');
             const tableContainer = document.getElementById('gd-findings-table-container');
 
@@ -1726,16 +1726,16 @@
         
         const buildWafView = () => {
             const container = document.getElementById('waf-view');
-            if (!wafApiData || !securityHubApiData) return;
+            if (!window.wafApiData || !window.securityHubApiData) return;
             
-            const { acls, ip_sets } = wafApiData.results;
-            const wafFindings = securityHubApiData.results.findings.wafFindings;
+            const { acls, ip_sets } = window.wafApiData.results;
+            const wafFindings = window.securityHubApiData.results.findings.wafFindings;
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">WAF & Shield</h2>
-                        <p class="text-sm text-gray-500">${wafApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.wafApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
@@ -1922,13 +1922,13 @@
         
         const buildEcrView = () => {
             const container = document.getElementById('ecr-view');
-            if (!container || !ecrApiData) return;
+            if (!container || !window.ecrApiData) return;
 
-            const { repositories } = ecrApiData.results;
-            const executionDate = ecrApiData.metadata.executionDate;
+            const { repositories } = window.ecrApiData.results;
+            const executionDate = window.ecrApiData.metadata.executionDate;
 
             // Esta línea ahora lee directamente la lista 'ecrFindings' que viene del backend
-            const ecrSecurityHubFindings = securityHubApiData?.results?.findings?.ecrFindings || [];
+            const ecrSecurityHubFindings = window.securityHubApiData?.results?.findings?.ecrFindings || [];
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
@@ -1999,7 +1999,7 @@
             const modal = document.getElementById('details-modal');
             const modalTitle = document.getElementById('modal-title');
             const modalContent = document.getElementById('modal-content');
-            const repo = ecrApiData.results.repositories[repoIndex];
+            const repo = window.ecrApiData.results.repositories[repoIndex];
             if (!modal || !repo || !repo.Policy) return;
 
             modalTitle.textContent = `Repository Policy for: ${repo.RepositoryName}`;
@@ -2060,13 +2060,13 @@
         // --- SECCIÓN DE CLOUDTRAIL ---
         
         const buildCloudtrailView = () => {
-            const container = document.getElementById('cloudtrail-view'); if (!cloudtrailApiData || !securityHubApiData) return;
-            const { trails, events, trailguard_findings } = cloudtrailApiData.results;
-            const cloudtrailFindings = securityHubApiData.results.findings.cloudtrailFindings;
-            const allRegions = allAvailableRegions;
+            const container = document.getElementById('cloudtrail-view'); if (!window.cloudtrailApiData || !window.securityHubApiData) return;
+            const { trails, events, trailguard_findings } = window.cloudtrailApiData.results;
+            const cloudtrailFindings = window.securityHubApiData.results.findings.cloudtrailFindings;
+            const allRegions = window.allAvailableRegions;
 
             // --- LÍNEAS MODIFICADAS AQUÍ ---
-            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">CloudTrail Analysis</h2><p class="text-sm text-gray-500">${cloudtrailApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudtrail-tabs"><a href="#" data-tab="ct-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="ct-trails-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Trails (${trails.length})</a><a href="#" data-tab="ct-events-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Events (${events.length})</a><a href="#" data-tab="ct-trailguard-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">TrailGuard</a><a href="#" data-tab="ct-lookup-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Log Finder</a><a href="#" data-tab="ct-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudtrailFindings.length})</a></nav></div><div id="cloudtrail-tab-content-container"><div id="ct-summary-content" class="cloudtrail-tab-content">${createCloudtrailSummaryCardsHtml()}</div><div id="ct-trails-content" class="cloudtrail-tab-content hidden">${renderCloudtrailTrailsView(trails)}</div><div id="ct-events-content" class="cloudtrail-tab-content hidden">${renderCloudtrailEventsTable(events)}</div><div id="ct-trailguard-content" class="cloudtrail-tab-content hidden"></div><div id="ct-lookup-content" class="cloudtrail-tab-content hidden"></div><div id="ct-sh-content" class="cloudtrail-tab-content hidden">${createCloudtrailSecurityHubHtml()}</div></div>`;
+            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">CloudTrail Analysis</h2><p class="text-sm text-gray-500">${window.cloudtrailApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudtrail-tabs"><a href="#" data-tab="ct-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="ct-trails-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Trails (${trails.length})</a><a href="#" data-tab="ct-events-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Events (${events.length})</a><a href="#" data-tab="ct-trailguard-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">TrailGuard</a><a href="#" data-tab="ct-lookup-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Log Finder</a><a href="#" data-tab="ct-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudtrailFindings.length})</a></nav></div><div id="cloudtrail-tab-content-container"><div id="ct-summary-content" class="cloudtrail-tab-content">${createCloudtrailSummaryCardsHtml()}</div><div id="ct-trails-content" class="cloudtrail-tab-content hidden">${renderCloudtrailTrailsView(trails)}</div><div id="ct-events-content" class="cloudtrail-tab-content hidden">${renderCloudtrailEventsTable(events)}</div><div id="ct-trailguard-content" class="cloudtrail-tab-content hidden"></div><div id="ct-lookup-content" class="cloudtrail-tab-content hidden"></div><div id="ct-sh-content" class="cloudtrail-tab-content hidden">${createCloudtrailSecurityHubHtml()}</div></div>`;
             
             updateCloudtrailSummaryCards(trails, events); 
             renderSecurityHubFindings(cloudtrailFindings, 'sh-cloudtrail-findings-container', 'No Security Hub findings for CloudTrail were found.');
@@ -2295,13 +2295,13 @@
                 
                 // --- CAMBIOS CLAVE AQUÍ ---
                 // 1. Guardamos los resultados en la variable global que creamos.
-                lastCloudtrailLookupResults = data.results.events; 
+                window.lastCloudtrailLookupResults = data.results.events; 
                 
                 // 2. Actualizamos el log para usar la nueva variable.
-                log(`Search complete. Found ${lastCloudtrailLookupResults.length} events.`, 'success');
+                log(`Search complete. Found ${window.lastCloudtrailLookupResults.length} events.`, 'success');
                 
                 // 3. Llamamos a la función de renderizado con los resultados guardados.
-                resultsContainer.innerHTML = renderCloudtrailLookupResult(lastCloudtrailLookupResults);
+                resultsContainer.innerHTML = renderCloudtrailLookupResult(window.lastCloudtrailLookupResults);
 
             } catch(e) {
                 log(`Error in log search: ${e.message}`, 'error');
@@ -2355,10 +2355,10 @@
             
         const showCloudtrailEventDetails = (eventId) => {
 
-            if (!lastCloudtrailLookupResults) return;
+            if (!window.lastCloudtrailLookupResults) return;
 
             // Encontrar el evento completo usando el eventId
-            const eventData = lastCloudtrailLookupResults.find(e => e.EventId === eventId);
+            const eventData = window.lastCloudtrailLookupResults.find(e => e.EventId === eventId);
             if (!eventData) {
                 log(`No details were found for event ${eventId}`, 'error');
                 return;
@@ -2399,9 +2399,9 @@
         
         // --- SECCIÓN DE CLOUDWATCH & SNS ---
         const buildCloudwatchView = () => {
-            const container = document.getElementById('cloudwatch-view'); if (!cloudwatchApiData || !securityHubApiData) return;
-            const { alarms, topics } = cloudwatchApiData.results; const cloudwatchFindings = securityHubApiData.results.findings.cloudwatchFindings;
-            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">Cloudwatch & SNS</h2><p class="text-sm text-gray-500">${cloudwatchApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudwatch-tabs"><a href="#" data-tab="cw-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="cw-alarms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Alarms (${alarms.length})</a><a href="#" data-tab="cw-topics-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Topics SNS (${topics.length})</a><a href="#" data-tab="cw-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudwatchFindings.length})</a></nav></div><div id="cloudwatch-tab-content-container"><div id="cw-summary-content" class="cloudwatch-tab-content">${createCloudwatchSummaryCardsHtml()}</div><div id="cw-alarms-content" class="cloudwatch-tab-content hidden">${renderCloudwatchAlarmsTable(alarms)}</div><div id="cw-topics-content" class="cloudwatch-tab-content hidden">${renderCloudwatchTopicsTable(topics)}</div><div id="cw-sh-content" class="cloudwatch-tab-content hidden">${createCloudwatchSecurityHubHtml()}</div></div>`;
+            const container = document.getElementById('cloudwatch-view'); if (!window.cloudwatchApiData || !window.securityHubApiData) return;
+            const { alarms, topics } = window.cloudwatchApiData.results; const cloudwatchFindings = window.securityHubApiData.results.findings.cloudwatchFindings;
+            container.innerHTML = `<header class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-[#204071]">Cloudwatch & SNS</h2><p class="text-sm text-gray-500">${window.cloudwatchApiData.metadata.executionDate}</p></div></header><div class="border-b border-gray-200 mb-6"><nav class="-mb-px flex flex-wrap space-x-6" id="cloudwatch-tabs"><a href="#" data-tab="cw-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a><a href="#" data-tab="cw-alarms-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Alarms (${alarms.length})</a><a href="#" data-tab="cw-topics-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Topics SNS (${topics.length})</a><a href="#" data-tab="cw-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudwatchFindings.length})</a></nav></div><div id="cloudwatch-tab-content-container"><div id="cw-summary-content" class="cloudwatch-tab-content">${createCloudwatchSummaryCardsHtml()}</div><div id="cw-alarms-content" class="cloudwatch-tab-content hidden">${renderCloudwatchAlarmsTable(alarms)}</div><div id="cw-topics-content" class="cloudwatch-tab-content hidden">${renderCloudwatchTopicsTable(topics)}</div><div id="cw-sh-content" class="cloudwatch-tab-content hidden">${createCloudwatchSecurityHubHtml()}</div></div>`;
             updateCloudwatchSummaryCards(alarms, topics, cloudwatchFindings); renderSecurityHubFindings(cloudwatchFindings, 'sh-cloudwatch-findings-container', 'No CloudWatch alarms were found.');
             const tabsNav = container.querySelector('#cloudwatch-tabs'); if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.cloudwatch-tab-content'));
         };
@@ -2476,7 +2476,7 @@
             if (!isHidden && detailsRow.querySelector('pre').textContent === '') {
                 log(`Showing details for the alarm index ${index}`, 'info');
                 // Busca los datos completos de la alarma en el objeto global
-                const alarmData = cloudwatchApiData.results.alarms[index];
+                const alarmData = window.cloudwatchApiData.results.alarms[index];
                 // Formatea el JSON para que se vea bien
                 const formattedJson = JSON.stringify(alarmData, null, 2);
                 // Inserta el JSON en la etiqueta <pre>
@@ -2491,19 +2491,19 @@
         
         const buildInspectorView = () => {
             const container = document.getElementById('inspector-view');
-            if (!inspectorApiData) return;
+            if (!window.inspectorApiData) return;
 
-            const hasFindings = inspectorApiData.results.findings && inspectorApiData.results.findings.length > 0;
-            const scanStatus = inspectorApiData.results.scan_status;
+            const hasFindings = window.inspectorApiData.results.findings && window.inspectorApiData.results.findings.length > 0;
+            const scanStatus = window.inspectorApiData.results.scan_status;
 
             if (hasFindings) {
-                renderFullInspectorView(inspectorApiData.results.findings, securityHubApiData ? securityHubApiData.results.findings.inspectorFindings : []);
+                renderFullInspectorView(window.inspectorApiData.results.findings, window.securityHubApiData ? window.securityHubApiData.results.findings.inspectorFindings : []);
             } else {
                 container.innerHTML = `
                     <header class="flex justify-between items-center mb-6">
                         <div>
                             <h2 class="text-2xl font-bold text-[#204071]">Inspector</h2>
-                            <p class="text-sm text-gray-500">${inspectorApiData.metadata.executionDate}</p>
+                            <p class="text-sm text-gray-500">${window.inspectorApiData.metadata.executionDate}</p>
                         </div>
                     </header>
                     <div class="border-b border-gray-200 mb-6">
@@ -2562,11 +2562,11 @@
                 const findingsData = await response.json();
                 if (!response.ok) throw new Error(findingsData.error || 'Server error');
 
-                inspectorApiData.results.findings = findingsData.results.findings || [];
+                window.inspectorApiData.results.findings = findingsData.results.findings || [];
                 
-                const inspectorFindingsSH = securityHubApiData ? securityHubApiData.results.findings.inspectorFindings : [];
+                const inspectorFindingsSH = window.securityHubApiData ? window.securityHubApiData.results.findings.inspectorFindings : [];
 
-                renderFullInspectorView(inspectorApiData.results.findings, inspectorFindingsSH);
+                renderFullInspectorView(window.inspectorApiData.results.findings, inspectorFindingsSH);
 
                 log('Resultados del análisis profundo de Inspector renderizados.', 'success');
 
@@ -2706,7 +2706,7 @@
         };
 
         const setupInspectorFindingsFilter = () => {
-            const allFindings = inspectorApiData.results.findings;
+            const allFindings = window.inspectorApiData.results.findings;
             const filterControlsContainer = document.getElementById('inspector-filter-controls');
             const tbodyContainer = document.getElementById('inspector-findings-tbody');
             const paginationContainer = document.getElementById('inspector-pagination-controls');
@@ -2743,13 +2743,13 @@
 
         const renderFullInspectorView = (findings, inspectorFindingsSH) => {
             const container = document.getElementById('inspector-view');
-            const scanStatus = inspectorApiData.results.scan_status;
+            const scanStatus = window.inspectorApiData.results.scan_status;
 
             container.innerHTML = `
                  <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Inspector</h2>
-                        <p class="text-sm text-gray-500">${inspectorApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.inspectorApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div id="inspector-summary-container">${createInspectorSummaryCardsHtml()}</div>
@@ -2811,16 +2811,16 @@
         // --- SECCIÓN DE ACM ---
         const buildAcmView = () => {
             const container = document.getElementById('acm-view');
-            if (!acmApiData || !securityHubApiData) return;
+            if (!window.acmApiData || !window.securityHubApiData) return;
 
-            const { certificates } = acmApiData.results;
-            const acmSecurityHubFindings = securityHubApiData.results.findings.cloudwatchFindings.filter(f => f.Title.includes('Certificate') || f.Title.includes('SSL') || f.Title.includes('TLS'));
+            const { certificates } = window.acmApiData.results;
+            const acmSecurityHubFindings = window.securityHubApiData.results.findings.cloudwatchFindings.filter(f => f.Title.includes('Certificate') || f.Title.includes('SSL') || f.Title.includes('TLS'));
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">AWS Certificate Manager (ACM)</h2>
-                        <p class="text-sm text-gray-500">${acmApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.acmApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
@@ -2918,16 +2918,16 @@
         
         const buildComputeView = () => {
             const container = document.getElementById('compute-view');
-            if (!computeApiData) return;
+            if (!window.computeApiData) return;
 
-            const { ec2_instances, lambda_functions, eks_clusters, ecs_clusters } = computeApiData.results;
-            const allRegions = allAvailableRegions;
+            const { ec2_instances, lambda_functions, eks_clusters, ecs_clusters } = window.computeApiData.results;
+            const allRegions = window.allAvailableRegions;
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Compute Resources</h2>
-                        <p class="text-sm text-gray-500">${computeApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.computeApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
@@ -2958,7 +2958,7 @@
 
             // --- INICIO DE LA LÓGICA DE FILTROS CORREGIDA ---
             const handleEc2FilterChange = () => {
-                const allInstances = computeApiData.results.ec2_instances;
+                const allInstances = window.computeApiData.results.ec2_instances;
                 const selectedState = ec2TabContent.querySelector('.ec2-filter-btn.bg-\\[\\#eb3496\\]')?.dataset.state || 'all';
                 const selectedRegion = ec2TabContent.querySelector('#ec2-region-filter').value;
 
@@ -3099,7 +3099,7 @@
 
             instances.forEach((i) => {
                 // Buscamos el índice original para que la función openModalWithEc2Tags siga funcionando
-                const originalIndex = computeApiData.results.ec2_instances.findIndex(orig => orig.ARN === i.ARN);
+                const originalIndex = window.computeApiData.results.ec2_instances.findIndex(orig => orig.ARN === i.ARN);
                 const tagCount = Object.keys(i.Tags).length;
                 let tagsHtml = '-';
                 if (tagCount > 0) {
@@ -3174,8 +3174,8 @@
                         '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
                         '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
             
-            const allFunctionsForIndexing = computeApiData.results.lambda_functions;
-            const allIamRoles = iamApiData.results.roles;
+            const allFunctionsForIndexing = window.computeApiData.results.lambda_functions;
+            const allIamRoles = window.iamApiData.results.roles;
 
             functionsToRender.forEach(f => {
                 const originalIndex = allFunctionsForIndexing.findIndex(orig => orig.ARN === f.ARN);
@@ -3273,7 +3273,7 @@
 
             // Esta función se activará cada vez que un filtro cambie
             const handleFilterChange = () => {
-                const allFunctions = computeApiData.results.lambda_functions;
+                const allFunctions = window.computeApiData.results.lambda_functions;
                 const selectedRegion = lambdaTabContent.querySelector('#lambda-region-filter').value;
                 const selectedVpc = lambdaTabContent.querySelector('#lambda-vpc-filter').value;
 
@@ -3304,7 +3304,7 @@
 
     // Esta función se activará cada vez que un filtro cambie
     const handleFilterChange = () => {
-        const allFunctions = computeApiData.results.lambda_functions;
+        const allFunctions = window.computeApiData.results.lambda_functions;
         const selectedRegion = lambdaTabContent.querySelector('#lambda-region-filter').value;
         const selectedVpc = lambdaTabContent.querySelector('#lambda-vpc-filter').value;
 
@@ -3336,14 +3336,14 @@
         
         const buildNetworkPoliciesView = () => {
             const container = document.getElementById('network-policies-view');
-            if (!networkPoliciesApiData || !computeApiData || !databasesApiData) {
+            if (!window.networkPoliciesApiData || !window.computeApiData || !window.databasesApiData) {
                 container.innerHTML = '<p class="text-center text-gray-500">Datos de Network Policies, Compute o Databases no disponibles.</p>';
                 return;
             }
 
-            const { vpcs, acls, security_groups, subnets, all_regions } = networkPoliciesApiData.results;
-            const { ec2_instances, lambda_functions } = computeApiData.results;
-            const { rds_instances, aurora_clusters } = databasesApiData.results;
+            const { vpcs, acls, security_groups, subnets, all_regions } = window.networkPoliciesApiData.results;
+            const { ec2_instances, lambda_functions } = window.computeApiData.results;
+            const { rds_instances, aurora_clusters } = window.databasesApiData.results;
 
             const activeRegions = [...new Set(vpcs.map(v => v.Region))].sort();
             const regionOptionsHtml = activeRegions.map(r => `<option value="${r}">${r}</option>`).join('');
@@ -3352,7 +3352,7 @@
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Network Security Policies</h2>
-                        <p class="text-sm text-gray-500">${networkPoliciesApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.networkPoliciesApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
@@ -3833,15 +3833,15 @@
 
         const buildConnectivityView = () => {
             const container = document.getElementById('connectivity-view');
-            if (!container || !connectivityApiData) return;
+            if (!container || !window.connectivityApiData) return;
 
-            const { peering_connections, tgw_attachments, vpn_connections, vpc_endpoints } = connectivityApiData.results;
+            const { peering_connections, tgw_attachments, vpn_connections, vpc_endpoints } = window.connectivityApiData.results;
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Network Connectivity</h2>
-                        <p class="text-sm text-gray-500">${connectivityApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.connectivityApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
@@ -3953,11 +3953,11 @@
 
         const buildConfigSHView = () => {
             const container = document.getElementById('config-sh-view');
-            const executionDate = (configSHApiData || configSHStatusApiData)?.metadata?.executionDate || 'Analysis not executed.';
+            const executionDate = (window.configSHApiData || window.configSHStatusApiData)?.metadata?.executionDate || 'Analysis not executed.';
 
             // Si tenemos los datos del análisis profundo, mostramos todo
-            if (configSHApiData) {
-                const { service_status, findings, compliance_summary } = configSHApiData.results;
+            if (window.configSHApiData) {
+                const { service_status, findings, compliance_summary } = window.configSHApiData.results;
                 container.innerHTML = `
                     <header class="flex justify-between items-center mb-6">
                         <div>
@@ -3989,8 +3989,8 @@
                 if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.config-sh-tab-content'));
 
             // Si NO tenemos el análisis profundo, pero SÍ el de estado, mostramos la vista inicial
-            } else if (configSHStatusApiData) {
-                const { service_status } = configSHStatusApiData.results;
+            } else if (window.configSHStatusApiData) {
+                const { service_status } = window.configSHStatusApiData.results;
                 container.innerHTML = `
                     <header class="flex justify-between items-center mb-6">
                         <div>
@@ -4060,10 +4060,10 @@
                     body: JSON.stringify(payload)
                 });
                 
-                configSHApiData = await response.json(); // Guardamos en la variable global
+                window.configSHApiData = await response.json(); // Guardamos en la variable global
                 
                 if (!response.ok) {
-                    throw new Error(configSHApiData.error || 'Unknown server error.');
+                    throw new Error(window.configSHApiData.error || 'Unknown server error.');
                 }
                 
                 log('Deep analysis of Config & Security Hub completed.', 'success');
@@ -4285,7 +4285,7 @@
             const targetIdentifier = getStandardIdentifier(standardArn);
 
             // Filtra todos los findings para encontrar los que coincidan con el estándar y el estado
-            const relevantFindings = configSHApiData.results.findings.filter(f => {
+            const relevantFindings = window.configSHApiData.results.findings.filter(f => {
                 const findingIdentifier = getStandardIdentifier(f.ProductFields?.StandardsArn);
                 return findingIdentifier === targetIdentifier && f.Compliance?.Status === status;
             });
@@ -4488,53 +4488,6 @@
             ulContainer.innerHTML = pageHtml;
         };
 
-        const setupPagination = (paginationContainer, ulContainer, items, renderPageFunction) => {
-            const rowsPerPage = 50; // Mostraremos 50 resultados por página
-            if (items.length <= rowsPerPage) {
-                renderPageFunction(ulContainer, items, 1, rowsPerPage);
-                return; // No se necesita paginación si hay pocos items
-            }
-
-            const pageCount = Math.ceil(items.length / rowsPerPage);
-            let currentPage = 1;
-
-            const updatePaginationButtons = () => {
-                paginationContainer.innerHTML = '';
-                
-                // Botón "Anterior"
-                const prevButton = document.createElement('button');
-                prevButton.innerText = '« Prev';
-                prevButton.disabled = currentPage === 1;
-                prevButton.className = 'px-3 py-1 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50';
-                prevButton.addEventListener('click', () => {
-                    currentPage--;
-                    renderPageFunction(ulContainer, items, currentPage, rowsPerPage);
-                    updatePaginationButtons();
-                });
-                paginationContainer.appendChild(prevButton);
-
-                // Indicador de página
-                const pageIndicator = document.createElement('span');
-                pageIndicator.innerText = `Pág ${currentPage} of ${pageCount}`;
-                pageIndicator.className = 'px-3 py-1 text-sm text-gray-600';
-                paginationContainer.appendChild(pageIndicator);
-                
-                // Botón "Siguiente"
-                const nextButton = document.createElement('button');
-                nextButton.innerText = 'Next »';
-                nextButton.disabled = currentPage === pageCount;
-                nextButton.className = 'px-3 py-1 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50';
-                nextButton.addEventListener('click', () => {
-                    currentPage++;
-                    renderPageFunction(ulContainer, items, currentPage, rowsPerPage);
-                    updatePaginationButtons();
-                });
-                paginationContainer.appendChild(nextButton);
-            };
-
-            renderPageFunction(ulContainer, items, currentPage, rowsPerPage);
-            updatePaginationButtons();
-        };
 
 
 
@@ -4600,11 +4553,11 @@
             const runSslScanBtn = document.getElementById('pg-run-sslscan-btn');
             if (runSslScanBtn) runSslScanBtn.addEventListener('click', runSslScan);
 
-            if (playgroundApiData?.results) {
+            if (window.playgroundApiData?.results) {
                 renderPlaygroundResults();
             }
-            if (playgroundApiData?.sslscan) {
-                renderSslScanResults(playgroundApiData.sslscan);
+            if (window.playgroundApiData?.sslscan) {
+                renderSslScanResults(window.playgroundApiData.sslscan);
             }
         };
 
@@ -4644,10 +4597,10 @@
                     body: JSON.stringify(payload)
                 });
                 
-                playgroundApiData = await response.json();
+                window.playgroundApiData = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(playgroundApiData.error || 'Unknown server error.');
+                    throw new Error(window.playgroundApiData.error || 'Unknown server error.');
                 }
 
                 log('Route analysis completed', 'success');
@@ -4664,9 +4617,9 @@
         };
         
         const renderPlaygroundResults = () => {
-            if (!playgroundApiData) return;
+            if (!window.playgroundApiData) return;
             const container = document.getElementById('playground-results-container');
-            const { status, reason, tables, detail_tables } = playgroundApiData.results;
+            const { status, reason, tables, detail_tables } = window.playgroundApiData.results;
 
             let resultHtml = '';
             if (status === 'REACHABLE') {
@@ -4769,8 +4722,8 @@
                 if (!response.ok && data.error) {
                     throw new Error(data.error);
                 }
-                if (!playgroundApiData) playgroundApiData = {};
-                playgroundApiData.sslscan = data.results;
+                if (!window.playgroundApiData) window.playgroundApiData = {};
+                window.playgroundApiData.sslscan = data.results;
                 renderSslScanResults(data.results);
                 log(`sslscan completed for: ${target}.`, 'success');
             } catch (e) {
@@ -4908,7 +4861,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                 alert('Please enter your Gemini API Key.');
                 return;
             }
-            if (lastHealthyStatusFindings.length === 0) {
+            if (window.lastHealthyStatusFindings.length === 0) {
                 alert('There are no findings to generate a report. Please run an analysis first.');
                 return;
             }
@@ -4922,11 +4875,11 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 
             // --- INICIO DE LA LÓGICA DE FILTRADO ---
             const selectedRegion = document.getElementById('gemini-region-filter').value;
-            let findingsForReport = lastHealthyStatusFindings;
+            let findingsForReport = window.lastHealthyStatusFindings;
 
             if (selectedRegion !== 'all') {
                 log(`Filtering findings for the region: ${selectedRegion}`, 'info');
-                findingsForReport = lastHealthyStatusFindings.map(finding => {
+                findingsForReport = window.lastHealthyStatusFindings.map(finding => {
                     // Mantenemos solo los recursos de la región seleccionada (o los globales)
                     const affectedInRegion = finding.affected_resources.filter(res => res.region === selectedRegion || res.region === 'Global');
                     
@@ -4981,10 +4934,10 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         
         const buildKmsView = () => {
             const container = document.getElementById('kms-view');
-            if (!container || !kmsApiData) return;
+            if (!container || !window.kmsApiData) return;
 
-            const { keys } = kmsApiData.results;
-            const executionDate = kmsApiData.metadata.executionDate;
+            const { keys } = window.kmsApiData.results;
+            const executionDate = window.kmsApiData.metadata.executionDate;
 
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
@@ -5076,7 +5029,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             const modalContent = document.getElementById('modal-content');
 
             // Recuperamos los datos de la clave usando su índice
-            const key = kmsApiData.results.keys[keyIndex];
+            const key = window.kmsApiData.results.keys[keyIndex];
 
             if (!modal || !key || !key.Policy) return;
 
@@ -5102,8 +5055,8 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             const modalContent = document.getElementById('modal-content');
 
             // Recuperamos los datos de la función Lambda y de los roles de IAM
-            const lambda = computeApiData.results.lambda_functions[lambdaIndex];
-            const allRoles = iamApiData.results.roles;
+            const lambda = window.computeApiData.results.lambda_functions[lambdaIndex];
+            const allRoles = window.iamApiData.results.roles;
 
             if (!modal || !lambda) return;
 
@@ -5185,24 +5138,18 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             return tableHtml;
         };
 
-
-        // --- RENDERIZADO GENÉRICO DE SECURITY HUB ---
-       
-        const renderSecurityHubFindings = (findings, containerId, emptyMessage) => { const container = document.getElementById(containerId); if (!container) return; if (!findings || findings.length === 0) { container.innerHTML = `<p class="text-center text-gray-500 py-4">${emptyMessage}</p>`; return; } const severityClasses = { 'CRITICAL': 'bg-red-600 text-white', 'HIGH': 'bg-orange-500 text-white', 'MEDIUM': 'bg-yellow-400 text-black', 'LOW': 'bg-blue-500 text-white', 'INFORMATIONAL': 'bg-gray-400 text-white' }; let tableHtml = '<table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Severity</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Resource Type</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">'; findings.forEach(f => { const severity = f.Severity?.Label || 'N/A'; const severityClass = severityClasses[severity] || 'bg-gray-200 text-gray-800'; const region = f.Region || 'N/A'; const title = f.Title || 'Sin título'; const resourceType = f.Resources?.[0]?.Type || 'N/A'; tableHtml += `<tr class="hover:bg-gray-50"><td class="px-4 py-2 whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${severityClass}">${severity}</span></td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${region}</td><td class="px-4 py-2 text-sm text-gray-800 break-words">${title}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${resourceType}</td></tr>`; }); tableHtml += '</tbody></table>'; container.innerHTML = tableHtml; };
-    
-     
         // --- SECCIÓN DE DATABASES ---
 
         const buildDatabasesView = () => {
             const container = document.getElementById('databases-view');
-            if (!container || !databasesApiData) return;
+            if (!container || !window.databasesApiData) return;
 
-        const { rds_instances = [], aurora_clusters = [], dynamodb_tables = [], documentdb_clusters = [] } = databasesApiData.results || {};
+        const { rds_instances = [], aurora_clusters = [], dynamodb_tables = [], documentdb_clusters = [] } = window.databasesApiData.results || {};
             container.innerHTML = `
                 <header class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-[#204071]">Databases</h2>
-                        <p class="text-sm text-gray-500">${databasesApiData.metadata.executionDate}</p>
+                        <p class="text-sm text-gray-500">${window.databasesApiData.metadata.executionDate}</p>
                     </div>
                 </header>
                 <div class="border-b border-gray-200 mb-6">
@@ -5431,19 +5378,19 @@ A continuación te proporciono los hallazgos en formato JSON:`;
 // --- LÓGICA DE EXPORTACIÓN ---
 
         const exportResultsToJson = () => {
-            if (!iamApiData) {
+            if (!window.iamApiData) {
                 alert("Aviso: Debes ejecutar un análisis primero antes de exportar los resultados.");
                 return;
             }
 
             let scanType = "fast";
-            if (configSHApiData || (inspectorApiData && inspectorApiData.results.findings && inspectorApiData.results.findings.length > 0)) {
+            if (window.configSHApiData || (window.inspectorApiData && window.inspectorApiData.results.findings && window.inspectorApiData.results.findings.length > 0)) {
                 scanType = "deep";
             }
             
-            const accountId = iamApiData.metadata.accountId;
-            const accountAlias = federationApiData?.results?.iam_federation?.account_alias || "NoAlias";
-            const timestamp = iamApiData.metadata.executionDate;
+            const accountId = window.iamApiData.metadata.accountId;
+            const accountAlias = window.federationApiData?.results?.iam_federation?.account_alias || "NoAlias";
+            const timestamp = window.iamApiData.metadata.executionDate;
 
             const exportData = {
                 metadata: {
@@ -5454,31 +5401,31 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     exportTimestamp: new Date().toISOString()
                 },
                 results: {
-                    iam: iamApiData?.results || null,
-                    federation: federationApiData?.results || null,
-                    accessAnalyzer: accessAnalyzerApiData?.results || null,
-                    securityhub: securityHubApiData?.results || null,
-                    exposure: exposureApiData?.results || null,
-                    guardduty: guarddutyApiData?.results || null,
-                    waf: wafApiData?.results || null,
-                    cloudtrail: cloudtrailApiData?.results || null,
-                    cloudwatch: cloudwatchApiData?.results || null,
-                    inspector: inspectorApiData?.results || null,
-                    acm: acmApiData?.results || null,
-                    compute: computeApiData?.results || null,
-                    ecr: ecrApiData?.results || null,
-                    databases: databasesApiData?.results || null,
-                    networkPolicies: networkPoliciesApiData?.results || null,
-                    configAndSecurityHubStatus: configSHStatusApiData?.results || null,
-                    configAndSecurityHubDeepScan: configSHApiData?.results || null,
-                    kms: kmsApiData?.results || null, 
+                    iam: window.iamApiData?.results || null,
+                    federation: window.federationApiData?.results || null,
+                    accessAnalyzer: window.accessAnalyzerApiData?.results || null,
+                    securityhub: window.securityHubApiData?.results || null,
+                    exposure: window.exposureApiData?.results || null,
+                    guardduty: window.guarddutyApiData?.results || null,
+                    waf: window.wafApiData?.results || null,
+                    cloudtrail: window.cloudtrailApiData?.results || null,
+                    cloudwatch: window.cloudwatchApiData?.results || null,
+                    inspector: window.inspectorApiData?.results || null,
+                    acm: window.acmApiData?.results || null,
+                    compute: window.computeApiData?.results || null,
+                    ecr: window.ecrApiData?.results || null,
+                    databases: window.databasesApiData?.results || null,
+                    networkPolicies: window.networkPoliciesApiData?.results || null,
+                    configAndSecurityHubStatus: window.configSHStatusApiData?.results || null,
+                    configAndSecurityHubDeepScan: window.configSHApiData?.results || null,
+                    kms: window.kmsApiData?.results || null, 
                     // --- MODIFICACIÓN CLAVE AQUÍ ---
                     // Ahora guardamos un objeto que contiene tanto los resultados del traceroute como los del sslscan.
                     playground: {
-                        traceroute: playgroundApiData?.results || null,
-                        sslscan: playgroundApiData?.sslscan || null
+                        traceroute: window.playgroundApiData?.results || null,
+                        sslscan: window.playgroundApiData?.sslscan || null
                     },
-                    connectivity: connectivityApiData?.results || null
+                    connectivity: window.connectivityApiData?.results || null
                 }
             };
             
@@ -5526,36 +5473,36 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     const results = importedData.results;
                     const metadata = { accountId: importedData.metadata.accountId, executionDate: importedData.metadata.analysisTimestamp };
 
-                    iamApiData = results.iam ? { metadata: metadata, results: results.iam } : null;
-                    federationApiData = results.federation ? { metadata: metadata, results: results.federation } : null;
-                    accessAnalyzerApiData = results.accessAnalyzer ? { metadata: metadata, results: results.accessAnalyzer } : null;
-                    securityHubApiData = results.securityhub ? { metadata: metadata, results: results.securityhub } : null;
-                    exposureApiData = results.exposure ? { metadata: metadata, results: results.exposure } : null;
-                    guarddutyApiData = results.guardduty ? { metadata: metadata, results: results.guardduty } : null;
-                    wafApiData = results.waf ? { metadata: metadata, results: results.waf } : null;
-                    cloudtrailApiData = results.cloudtrail ? { metadata: metadata, results: results.cloudtrail } : null;
-                    cloudwatchApiData = results.cloudwatch ? { metadata: metadata, results: results.cloudwatch } : null;
-                    inspectorApiData = results.inspector ? { metadata: metadata, results: results.inspector } : null;
-                    acmApiData = results.acm ? { metadata: metadata, results: results.acm } : null;
-                    computeApiData = results.compute ? { metadata: metadata, results: results.compute } : null;
-                    ecrApiData = results.ecr ? { metadata: metadata, results: results.ecr } : null;
-                    databasesApiData = results.databases ? { metadata: metadata, results: results.databases } : null;
-                    networkPoliciesApiData = results.networkPolicies ? { metadata: metadata, results: results.networkPolicies } : null;
-                    configSHStatusApiData = results.configAndSecurityHubStatus ? { metadata: metadata, results: results.configAndSecurityHubStatus } : null;
-                    configSHApiData = results.configAndSecurityHubDeepScan ? { metadata: metadata, results: results.configAndSecurityHubDeepScan } : null;
-                    kmsApiData = results.kms ? { metadata: metadata, results: results.kms } : null;
-                    connectivityApiData = results.connectivity ? { metadata: metadata, results: results.connectivity } : null;
+                    window.iamApiData = results.iam ? { metadata: metadata, results: results.iam } : null;
+                    window.federationApiData = results.federation ? { metadata: metadata, results: results.federation } : null;
+                    window.accessAnalyzerApiData = results.accessAnalyzer ? { metadata: metadata, results: results.accessAnalyzer } : null;
+                    window.securityHubApiData = results.securityhub ? { metadata: metadata, results: results.securityhub } : null;
+                    window.exposureApiData = results.exposure ? { metadata: metadata, results: results.exposure } : null;
+                    window.guarddutyApiData = results.guardduty ? { metadata: metadata, results: results.guardduty } : null;
+                    window.wafApiData = results.waf ? { metadata: metadata, results: results.waf } : null;
+                    window.cloudtrailApiData = results.cloudtrail ? { metadata: metadata, results: results.cloudtrail } : null;
+                    window.cloudwatchApiData = results.cloudwatch ? { metadata: metadata, results: results.cloudwatch } : null;
+                    window.inspectorApiData = results.inspector ? { metadata: metadata, results: results.inspector } : null;
+                    window.acmApiData = results.acm ? { metadata: metadata, results: results.acm } : null;
+                    window.computeApiData = results.compute ? { metadata: metadata, results: results.compute } : null;
+                    window.ecrApiData = results.ecr ? { metadata: metadata, results: results.ecr } : null;
+                    window.databasesApiData = results.databases ? { metadata: metadata, results: results.databases } : null;
+                    window.networkPoliciesApiData = results.networkPolicies ? { metadata: metadata, results: results.networkPolicies } : null;
+                    window.configSHStatusApiData = results.configAndSecurityHubStatus ? { metadata: metadata, results: results.configAndSecurityHubStatus } : null;
+                    window.configSHApiData = results.configAndSecurityHubDeepScan ? { metadata: metadata, results: results.configAndSecurityHubDeepScan } : null;
+                    window.kmsApiData = results.kms ? { metadata: metadata, results: results.kms } : null;
+                    window.connectivityApiData = results.connectivity ? { metadata: metadata, results: results.connectivity } : null;
                     
                     // --- MODIFICACIÓN CLAVE AQUÍ ---
-                    // Reconstruimos el objeto playgroundApiData a partir de la nueva estructura del JSON.
+                    // Reconstruimos el objeto window.playgroundApiData a partir de la nueva estructura del JSON.
                     const playgroundImportData = results.playground || {};
-                    playgroundApiData = {
+                    window.playgroundApiData = {
                         metadata: metadata,
                         results: playgroundImportData.traceroute || null,
                         sslscan: playgroundImportData.sslscan || null
                     };
 
-                    allAvailableRegions = networkPoliciesApiData?.results?.all_regions || [];
+                    window.allAvailableRegions = window.networkPoliciesApiData?.results?.all_regions || [];
 
                     log('Datos importados al estado de la aplicación.', 'success');
                     
@@ -5588,7 +5535,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             if (!container) return;
             container.innerHTML = '';
 
-            const filteredFindings = lastHealthyStatusFindings.map(finding => {
+            const filteredFindings = window.lastHealthyStatusFindings.map(finding => {
                 if (selectedRegion !== 'all') {
                     const affectedInRegion = finding.affected_resources.filter(res => res.region === selectedRegion || res.region === 'Global');
                     if (affectedInRegion.length > 0) {
@@ -5655,20 +5602,20 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             log('Running rules engine for Healthy Status…', 'info');
             try {
                 const fullAuditData = {
-                    iam: iamApiData?.results,
-                    guardduty: guarddutyApiData?.results,
-                    config_sh: configSHStatusApiData?.results,
-                    exposure: exposureApiData?.results,
-                    inspector: inspectorApiData?.results,
-                    compute: computeApiData?.results,
-                    networkPolicies: networkPoliciesApiData?.results,
-                    connectivity: connectivityApiData?.results,
-                    acm: acmApiData?.results,
-                    cloudtrail: cloudtrailApiData?.results,
-                    databases: databasesApiData?.results,
-                    kms: kmsApiData?.results,
-                    ecr: ecrApiData?.results,
-                    waf: wafApiData?.results,
+                    iam: window.iamApiData?.results,
+                    guardduty: window.guarddutyApiData?.results,
+                    config_sh: window.configSHStatusApiData?.results,
+                    exposure: window.exposureApiData?.results,
+                    inspector: window.inspectorApiData?.results,
+                    compute: window.computeApiData?.results,
+                    networkPolicies: window.networkPoliciesApiData?.results,
+                    connectivity: window.connectivityApiData?.results,
+                    acm: window.acmApiData?.results,
+                    cloudtrail: window.cloudtrailApiData?.results,
+                    databases: window.databasesApiData?.results,
+                    kms: window.kmsApiData?.results,
+                    ecr: window.ecrApiData?.results,
+                    waf: window.wafApiData?.results,
                 };
 
                 // --- LOG AÑADIDO ---
@@ -5686,7 +5633,7 @@ A continuación te proporciono los hallazgos en formato JSON:`;
                     throw new Error(summaryFindings.error || 'Error al generar el resumen de estado.');
                 }
 
-                lastHealthyStatusFindings = summaryFindings;
+                window.lastHealthyStatusFindings = summaryFindings;
                 log(`Rules analysis complete. Found ${summaryFindings.length} findings.`, 'success');
                 
                 populateHealthyStatusFilter();
@@ -5706,13 +5653,13 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             const filterSelect = document.getElementById('healthy-status-region-filter');
             const geminiFilterSelect = document.getElementById('gemini-region-filter'); // Nuevo selector
 
-            if (!filterSelect || !geminiFilterSelect || !allAvailableRegions) return;
+            if (!filterSelect || !geminiFilterSelect || !window.allAvailableRegions) return;
 
             // Limpiamos opciones anteriores
             filterSelect.innerHTML = '<option value="all">All Regions</option>';
             geminiFilterSelect.innerHTML = '<option value="all">All Regions</option>';
 
-            allAvailableRegions.sort().forEach(region => {
+            window.allAvailableRegions.sort().forEach(region => {
                 const option = document.createElement('option');
                 option.value = region;
                 option.textContent = region;
@@ -5762,6 +5709,23 @@ A continuación te proporciono los hallazgos en formato JSON:`;
             fileInput.addEventListener('change', handleJsonImport);
             setupModalControls();
         });
+
+
+        // Hacemos que las funciones que se llaman desde el HTML (onclick) sean públicas.
+        window.openModalWithSsoDetails = openModalWithSsoDetails;
+        window.openModalWithAccessKeyDetails = openModalWithAccessKeyDetails;
+        window.openModalWithUserGroups = openModalWithUserGroups;
+        window.openModalWithEc2Tags = openModalWithEc2Tags;
+        window.openModalWithLambdaTags = openModalWithLambdaTags;
+        window.openModalWithTlsDetails = openModalWithTlsDetails;
+        window.toggleAlarmDetails = toggleAlarmDetails;
+        window.showCloudtrailEventDetails = showCloudtrailEventDetails;
+        window.openModalWithKmsPolicy = openModalWithKmsPolicy;
+        window.openModalWithLambdaRole = openModalWithLambdaRole;
+        window.openModalWithEcrPolicy = openModalWithEcrPolicy;
+        window.showComplianceDetails = showComplianceDetails;
+        // También exponemos la función de copiado que viene de utils.js
+        window.copyToClipboard = copyToClipboard;
 
 
     </script>
