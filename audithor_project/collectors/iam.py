@@ -129,6 +129,7 @@ def collect_iam_data(session):
         })
 
     detect_privileges(result_users, result_roles, result_groups, session)
+    result_users = check_mfa_compliance_for_cli(session, result_users)
     return {"users": result_users, "roles": result_roles, "groups": result_groups, "password_policy": password_policy}
 
 
@@ -408,3 +409,172 @@ def get_sso_group_members(session, group_id):
                 except ClientError:
                     user_members.append(f"User (ID: {user_id}) - Details Access Denied")
     return sorted(user_members)
+
+
+def check_mfa_compliance_for_cli(session, users):
+   """
+   Analyzes IAM users to determine their MFA compliance specifically for CLI access.
+
+   This function evaluates each user's MFA setup in the context of programmatic access,
+   checking whether they have the necessary MFA devices and policies to ensure secure
+   CLI usage. It identifies users who may be accessing AWS via CLI without proper
+   MFA enforcement.
+
+   Args:
+       session (boto3.Session): The boto3 session for creating IAM clients.
+       users (list): A list of IAM user dictionaries to analyze for MFA compliance.
+
+   Returns:
+       list: The input list of users, with each user dictionary updated to include
+             an 'mfa_compliance' key containing compliance status and risk assessment.
+
+   Example:
+       >>> users_with_mfa_check = check_mfa_compliance_for_cli(session, user_list)
+       >>> print(users_with_mfa_check[0]['mfa_compliance']['cli_compliant'])
+   """
+   iam_client = session.client("iam")
+   account_id = session.client("sts").get_caller_identity()["Account"]
+
+   # Define policy patterns that indicate MFA enforcement
+   mfa_enforcement_patterns = [
+       "aws:MultiFactorAuthPresent",
+       "aws:MultiFactorAuthAge", 
+       "MFA", "mfa"
+   ]
+
+   for user in users:
+       username = user["UserName"]
+       
+       # Check if user has MFA devices configured
+       has_mfa_device = len(user.get("MFADevices", [])) > 0
+       
+       # Check if user has active access keys (CLI capability)
+       active_access_keys = [
+           key for key in user.get("AccessKeys", []) 
+           if key.get("Status") == "Active"
+       ]
+       has_active_access_keys = len(active_access_keys) > 0
+       
+       # Analyze attached policies for MFA requirements
+       has_mfa_policy = False
+       mfa_policy_sources = []
+       
+       try:
+           # Check user's directly attached policies
+           for policy_name in user.get("AttachedPolicies", []):
+               try:
+                   # Get policy details to check for MFA conditions
+                   policy_arn = f"arn:aws:iam::{account_id}:policy/{policy_name}"
+                   if policy_name.startswith("arn:aws:iam::aws:"):
+                       policy_arn = policy_name  # AWS managed policy
+                   
+                   policy_response = iam_client.get_policy(PolicyArn=policy_arn)
+                   policy_version = iam_client.get_policy_version(
+                       PolicyArn=policy_arn,
+                       VersionId=policy_response["Policy"]["DefaultVersionId"]
+                   )
+                   
+                   policy_doc = str(policy_version["PolicyVersion"]["Document"])
+                   if any(pattern in policy_doc for pattern in mfa_enforcement_patterns):
+                       has_mfa_policy = True
+                       mfa_policy_sources.append(f"User Policy: {policy_name}")
+                       
+               except (ClientError, KeyError):
+                   continue
+           
+           # Check inline policies
+           for inline_policy_name in user.get("InlinePolicies", []):
+               try:
+                   inline_policy = iam_client.get_user_policy(
+                       UserName=username,
+                       PolicyName=inline_policy_name
+                   )
+                   policy_doc = str(inline_policy["PolicyDocument"])
+                   if any(pattern in policy_doc for pattern in mfa_enforcement_patterns):
+                       has_mfa_policy = True
+                       mfa_policy_sources.append(f"Inline Policy: {inline_policy_name}")
+                       
+               except ClientError:
+                   continue
+           
+           # Check group policies
+           for group_name in user.get("Groups", []):
+               try:
+                   # Check group's attached policies
+                   group_policies = iam_client.list_attached_group_policies(GroupName=group_name)
+                   for group_policy in group_policies["AttachedPolicies"]:
+                       try:
+                           policy_arn = group_policy["PolicyArn"]
+                           policy_response = iam_client.get_policy(PolicyArn=policy_arn)
+                           policy_version = iam_client.get_policy_version(
+                               PolicyArn=policy_arn,
+                               VersionId=policy_response["Policy"]["DefaultVersionId"]
+                           )
+                           
+                           policy_doc = str(policy_version["PolicyVersion"]["Document"])
+                           if any(pattern in policy_doc for pattern in mfa_enforcement_patterns):
+                               has_mfa_policy = True
+                               mfa_policy_sources.append(f"Group '{group_name}': {group_policy['PolicyName']}")
+                               
+                       except (ClientError, KeyError):
+                           continue
+                   
+                   # Check group's inline policies
+                   group_inline_policies = iam_client.list_group_policies(GroupName=group_name)
+                   for inline_policy_name in group_inline_policies["PolicyNames"]:
+                       try:
+                           inline_policy = iam_client.get_group_policy(
+                               GroupName=group_name,
+                               PolicyName=inline_policy_name
+                           )
+                           policy_doc = str(inline_policy["PolicyDocument"])
+                           if any(pattern in policy_doc for pattern in mfa_enforcement_patterns):
+                               has_mfa_policy = True
+                               mfa_policy_sources.append(f"Group '{group_name}' Inline: {inline_policy_name}")
+                               
+                       except ClientError:
+                           continue
+                           
+               except ClientError:
+                   continue
+       
+       except Exception as e:
+           print(f"Error analyzing MFA policies for user {username}: {e}")
+       
+       # Calculate risk level and compliance status
+       risk_level = "low"
+       cli_compliant = True
+       
+       if has_active_access_keys:
+           if not has_mfa_device:
+               risk_level = "critical"
+               cli_compliant = False
+           elif not has_mfa_policy:
+               risk_level = "high" 
+               cli_compliant = False
+           else:
+               risk_level = "low"
+               cli_compliant = True
+       else:
+           # No access keys means no CLI access capability
+           risk_level = "none"
+           cli_compliant = True  # Compliant by virtue of no CLI access
+       
+       # Store compliance information in user object
+       user["mfa_compliance"] = {
+           "has_mfa_device": has_mfa_device,
+           "has_active_access_keys": has_active_access_keys,
+           "active_access_keys_count": len(active_access_keys),
+           "has_mfa_policy": has_mfa_policy,
+           "mfa_policy_sources": list(set(mfa_policy_sources)),  # Remove duplicates
+           "cli_compliant": cli_compliant,
+           "risk_level": risk_level,
+           "analysis_notes": {
+               "can_access_cli": has_active_access_keys,
+               "mfa_configured": has_mfa_device,
+               "mfa_enforced": has_mfa_policy,
+               "compliance_summary": "Compliant" if cli_compliant else "Non-compliant"
+           }
+       }
+   
+   return users

@@ -201,6 +201,7 @@ const createIamUsuariosHtml = () => `
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Use of Password</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MFA</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CLI MFA</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groups</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inline Policies</th>
@@ -211,7 +212,6 @@ const createIamUsuariosHtml = () => `
             </table>
         </div>
     </div>`;
-
 
 const createIamGruposHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Groups List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="groups-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
 const createIamRolesHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Roles List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
@@ -568,7 +568,7 @@ const renderUsersTable = (users) => {
     const tableBody = document.getElementById('users-table-body');
     tableBody.innerHTML = '';
     if (!users || users.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-gray-500 py-4">No users were found.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-4">No users were found.</td></tr>`;
         return;
     }
     
@@ -576,6 +576,25 @@ const renderUsersTable = (users) => {
         const vipBadge = user.IsPrivileged ? '<span class="bg-yellow-200 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">VIP</span>' : '';
         const passwordEnabled = user.PasswordEnabled ? 'YES' : 'NO';
         const mfaEnabled = user.MFADevices.length > 0 ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">NO</span>';
+        
+        // CLI MFA Compliance check
+        let cliMfaCompliance = '-';
+        if (user.mfa_compliance) {
+            const isCompliant = user.mfa_compliance.cli_compliant;
+            const riskLevel = user.mfa_compliance.risk_level;
+            
+            if (riskLevel === 'none') {
+                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>';
+            } else if (isCompliant) {
+                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Compliant</span>';
+            } else if (riskLevel === 'critical') {
+                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Critical</span>';
+            } else if (riskLevel === 'high') {
+                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">High Risk</span>';
+            } else {
+                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Partial</span>';
+            }
+        }
         
         let groupsHtml = '-';
         if (user.Groups && user.Groups.length > 0) {
@@ -606,6 +625,7 @@ const renderUsersTable = (users) => {
             <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${passwordEnabled}</td> 
             <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${user.PasswordLastUsed}</td> 
             <td class="px-6 py-4 whitespace-nowrap text-xs">${mfaEnabled}</td> 
+            <td class="px-6 py-4 whitespace-nowrap text-xs">${cliMfaCompliance}</td>
             <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${groupsHtml}</td> 
             <td class="px-6 py-4 text-xs text-gray-500 break-words">${attachedPolicies}</td> 
             <td class="px-6 py-4 text-xs text-gray-500 break-words">${inlinePolicies}</td> 
