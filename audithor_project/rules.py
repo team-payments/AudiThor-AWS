@@ -117,29 +117,51 @@ def check_pci_dss_3_2_1_standard_enabled(audit_data):
     """
     Verifica si el estándar de Security Hub 'PCI DSS v3.2.1' está habilitado.
     """
+    failing_resources = []
     service_status = audit_data.get("config_sh", {}).get("service_status", [])
-
+    
+    regions_with_standard = set()
     for region_status in service_status:
         for standard_arn in region_status.get("EnabledStandards", []):
             arn_lower = standard_arn.lower()
             if "pci-dss" in arn_lower and "3.2.1" in arn_lower:
-                return [] 
+                regions_with_standard.add(region_status.get("Region"))
     
-    return ["PCI DSS v3.2.1 Standard"]
+    all_regions = [s.get("Region") for s in service_status]
+
+    for region in all_regions:
+        if region not in regions_with_standard:
+            failing_resources.append({"resource": "PCI DSS v3.2.1 Standard", "region": region})
+    
+    if not service_status:
+        return [{"resource": "PCI DSS v3.2.1 Standard", "region": "Global"}]
+        
+    return failing_resources
 
 def check_pci_dss_4_0_1_standard_enabled(audit_data):
     """
     Verifica si el estándar de Security Hub 'PCI DSS v4.0.1' está habilitado.
     """
+    failing_resources = []
     service_status = audit_data.get("config_sh", {}).get("service_status", [])
-
+    
+    regions_with_standard = set()
     for region_status in service_status:
         for standard_arn in region_status.get("EnabledStandards", []):
             arn_lower = standard_arn.lower()
             if "pci-dss" in arn_lower and "4.0.1" in arn_lower:
-                return [] 
+                regions_with_standard.add(region_status.get("Region"))
     
-    return ["PCI DSS v4.0.1 Standard"]
+    all_regions = [s.get("Region") for s in service_status]
+
+    for region in all_regions:
+        if region not in regions_with_standard:
+            failing_resources.append({"resource": "PCI DSS v4.0.1 Standard", "region": region})
+    
+    if not service_status:
+        return [{"resource": "PCI DSS v4.0.1 Standard", "region": "Global"}]
+        
+    return failing_resources
 
 def check_cis_1_2_0_standard_enabled(audit_data):
     """
