@@ -437,9 +437,9 @@ export const openModalWithSsoDetails = async (groupId, groupName) => {
 
     log(`Fetching members for SSO Group ID: ${groupId}`, 'info');
     const payload = {
-        access_key: accessKeyInput.value.trim(),
-        secret_key: secretKeyInput.value.trim(),
-        session_token: sessionTokenInput.value.trim() || null,
+        access_key: document.getElementById('access-key-input').value.trim(),
+        secret_key: document.getElementById('secret-key-input').value.trim(),
+        session_token: document.getElementById('session-token-input').value.trim() || null,
         group_id: groupId
     };
 
