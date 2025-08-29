@@ -25,3 +25,22 @@ Thumbs.db
 
 # Ficheros de logs
 *.log
+audithor_project/__pycache__/rules.cpython-313.pyc
+audithor_project/collectors/__pycache__/__init__.cpython-313.pyc
+audithor_project/collectors/__pycache__/acm.cpython-313.pyc
+audithor_project/collectors/__pycache__/cloudtrail.cpython-313.pyc
+audithor_project/collectors/__pycache__/cloudwatch.cpython-313.pyc
+audithor_project/collectors/__pycache__/compute.cpython-313.pyc
+audithor_project/collectors/__pycache__/config_sh.cpython-313.pyc
+audithor_project/collectors/__pycache__/connectivity.cpython-313.pyc
+audithor_project/collectors/__pycache__/databases.cpython-313.pyc
+audithor_project/collectors/__pycache__/exposure.cpython-313.pyc
+audithor_project/collectors/__pycache__/guardduty.cpython-313.pyc
+audithor_project/collectors/__pycache__/iam.cpython-313.pyc
+audithor_project/collectors/__pycache__/inspector.cpython-313.pyc
+audithor_project/collectors/__pycache__/kms.cpython-313.pyc
+audithor_project/collectors/__pycache__/network_policies.cpython-313.pyc
+audithor_project/collectors/__pycache__/playground.cpython-313.pyc
+audithor_project/collectors/__pycache__/securityhub.cpython-313.pyc
+audithor_project/collectors/__pycache__/utils.cpython-313.pyc
+audithor_project/collectors/__pycache__/waf.cpython-313.pyc
