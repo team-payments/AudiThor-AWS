@@ -22,6 +22,7 @@ export const buildPlaygroundView = () => {
                 <a href="#" data-tab="pg-tracer-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Traceroute</a>
                 <a href="#" data-tab="pg-sslscan-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">SSL Scan</a>
                 <a href="#" data-tab="pg-simulate-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Simulate Policy</a>
+                <a href="#" data-tab="pg-lambda-simulate-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Lambda Simulation</a>
             </nav>
         </div>
         <div id="pg-tracer-content" class="playground-tab-content">
@@ -121,6 +122,69 @@ export const buildPlaygroundView = () => {
             </div>
             <div id="simulation-results-container" class="mt-6"></div>
         </div>
+        <div id="pg-lambda-simulate-content" class="playground-tab-content hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-lg mb-4 text-[#204071]">Lambda Permission Simulation</h3>
+                <p class="text-sm text-gray-600 mb-4">Test what actions a Lambda function can perform through its execution role.</p>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="pg-lambda-name" class="block text-sm font-medium text-gray-700 mb-1">Function Name</label>
+                        <input type="text" id="pg-lambda-name" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="my-function">
+                    </div>
+                    <div>
+                        <label for="pg-lambda-region" class="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                        <select id="pg-lambda-region" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
+                            <option value="">Select a region...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Actions to Test</label>
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="s3:GetObject"> S3 Read
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="s3:PutObject"> S3 Write
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="dynamodb:GetItem"> DynamoDB Read
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="dynamodb:PutItem"> DynamoDB Write
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="rds:DescribeDBInstances"> RDS Describe
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="secretsmanager:GetSecretValue"> Get Secrets
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="kms:Decrypt"> KMS Decrypt
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="sns:Publish"> SNS Publish
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="lambda-action-checkbox mr-2" value="sqs:SendMessage"> SQS Send
+                        </label>
+                    </div>
+                    
+                    <div>
+                        <label for="pg-lambda-custom-actions" class="block text-sm font-medium text-gray-700 mb-1">Custom Actions (one per line)</label>
+                        <textarea id="pg-lambda-custom-actions" rows="3" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="logs:CreateLogGroup&#10;logs:CreateLogStream&#10;logs:PutLogEvents"></textarea>
+                    </div>
+                </div>
+                
+                <button id="pg-run-lambda-simulation-btn" class="bg-[#204071] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition flex items-center justify-center space-x-2">
+                    <span id="pg-lambda-simulation-btn-text">Run Lambda Simulation</span>
+                    <div id="pg-lambda-simulation-spinner" class="spinner hidden"></div>
+                </button>
+            </div>
+            <div id="lambda-simulation-results-container" class="mt-6"></div>
+        </div>
     `;
 
     const tabsNav = document.getElementById('playground-tabs');
@@ -134,6 +198,10 @@ export const buildPlaygroundView = () => {
 
     const runSimulationBtn = document.getElementById('pg-run-simulation-btn');
     if (runSimulationBtn) runSimulationBtn.addEventListener('click', runSimulation);
+
+    const runLambdaSimulationBtn = document.getElementById('pg-run-lambda-simulation-btn');
+    if (runLambdaSimulationBtn) runLambdaSimulationBtn.addEventListener('click', runLambdaSimulation);
+    populateLambdaRegionSelect();
 
     if (window.playgroundApiData?.results) {
         renderPlaygroundResults();
@@ -417,4 +485,122 @@ const renderSimulationResults = (results) => {
     
     resultHtml += `</tbody></table></div></div>`;
     container.innerHTML = resultHtml;
+};
+const runLambdaSimulation = async () => {
+    const functionName = document.getElementById('pg-lambda-name').value.trim();
+    const region = document.getElementById('pg-lambda-region').value;
+    const customActions = document.getElementById('pg-lambda-custom-actions').value.trim();
+    
+    // Recoger acciones seleccionadas
+    const selectedActions = Array.from(document.querySelectorAll('.lambda-action-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    // Añadir acciones personalizadas
+    if (customActions) {
+        const customActionsList = customActions.split('\n').map(a => a.trim()).filter(a => a);
+        selectedActions.push(...customActionsList);
+    }
+    
+    if (!functionName || selectedActions.length === 0) {
+        document.getElementById('lambda-simulation-results-container').innerHTML = 
+            '<p class="text-red-600 font-medium">Please enter a function name and select at least one action.</p>';
+        return;
+    }
+    
+    const payload = {
+        access_key: document.getElementById('access-key-input').value.trim(),
+        secret_key: document.getElementById('secret-key-input').value.trim(),
+        session_token: document.getElementById('session-token-input').value.trim() || null,
+        function_name: functionName,
+        region: region,
+        actions: selectedActions
+    };
+    
+    // UI updates
+    const btn = document.getElementById('pg-run-lambda-simulation-btn');
+    const btnText = document.getElementById('pg-lambda-simulation-btn-text');
+    const spinner = document.getElementById('pg-lambda-simulation-spinner');
+    
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    btnText.textContent = 'Simulating...';
+    
+    try {
+        const response = await fetch('http://127.0.0.1:5001/api/run-simulate-lambda-policy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+        
+        renderLambdaSimulationResults(data.results);
+        log(`Lambda simulation completed for function: ${functionName}`, 'success');
+        
+    } catch (e) {
+        log(`Lambda simulation error: ${e.message}`, 'error');
+        document.getElementById('lambda-simulation-results-container').innerHTML = 
+            `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Run Lambda Simulation';
+    }
+};
+
+const renderLambdaSimulationResults = (results) => {
+    const container = document.getElementById('lambda-simulation-results-container');
+    
+    let resultHtml = `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h4 class="font-bold text-lg mb-2 text-[#204071]">Simulation Results for Lambda: ${results.function_name}</h4>
+            <p class="text-sm text-gray-600 mb-4">Testing execution role: <span class="font-mono text-xs">${results.execution_role_arn}</span></p>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">`;
+    
+    results.simulation_results.forEach(result => {
+        const decisionClass = result.decision === 'allowed' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100';
+        
+        resultHtml += `
+            <tr>
+                <td class="px-4 py-4 text-sm font-mono">${result.action}</td>
+                <td class="px-4 py-4 text-sm">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${decisionClass}">
+                        ${result.decision.toUpperCase()}
+                    </span>
+                </td>
+            </tr>`;
+    });
+    
+    resultHtml += `</tbody></table></div></div>`;
+    container.innerHTML = resultHtml;
+};
+
+const populateLambdaRegionSelect = () => {
+    const select = document.getElementById('pg-lambda-region');
+    if (!select || !window.allAvailableRegions) return;
+    
+    // Limpiar opciones existentes
+    select.innerHTML = '';
+    
+    // Poblar con todas las regiones disponibles
+    window.allAvailableRegions.forEach(region => {
+        const option = document.createElement('option');
+        option.value = region;
+        option.textContent = region;
+        select.appendChild(option);
+    });
+    
+    // Establecer us-east-1 como predeterminado si existe
+    if (window.allAvailableRegions.includes('us-east-1')) {
+        select.value = 'us-east-1';
+    }
 };

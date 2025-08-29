@@ -566,3 +566,43 @@ def simulate_user_permissions(session, username, actions, context_entries=None):
         if e.response['Error']['Code'] == 'NoSuchEntity':
             raise ValueError(f"User '{username}' not found.")
         raise Exception(f"Simulation failed: {str(e)}")
+    
+def simulate_lambda_permissions(session, function_name, region, actions, context_entries=None):
+    """
+    Simula permisos para una función Lambda usando el rol de ejecución de la función.
+    """
+    lambda_client = session.client("lambda", region_name=region)
+    iam_client = session.client("iam")
+    
+    try:
+        # Obtener la configuración de la función Lambda
+        function_config = lambda_client.get_function_configuration(FunctionName=function_name)
+        execution_role_arn = function_config['Role']
+        
+        # Simular con el rol de ejecución
+        response = iam_client.simulate_principal_policy(
+            PolicySourceArn=execution_role_arn,
+            ActionNames=actions,
+            ContextEntries=context_entries or []
+        )
+        
+        results = []
+        for eval_result in response.get('EvaluationResults', []):
+            results.append({
+                'action': eval_result['EvalActionName'],
+                'decision': eval_result['EvalDecision'],
+                'matched_statements': eval_result.get('MatchedStatements', []),
+                'missing_context_values': eval_result.get('MissingContextValues', [])
+            })
+        
+        return {
+            'function_name': function_name,
+            'execution_role_arn': execution_role_arn,
+            'simulation_results': results,
+            'context_applied': context_entries or []
+        }
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            raise ValueError(f"Lambda function '{function_name}' not found.")
+        raise Exception(f"Simulation failed: {str(e)}")

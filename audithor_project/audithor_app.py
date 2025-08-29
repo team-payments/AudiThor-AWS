@@ -542,6 +542,32 @@ def run_simulate_policy():
     except Exception as e:
         return jsonify({"error": f"Simulation error: {str(e)}"}), 500
 
+@app.route('/api/run-simulate-lambda-policy', methods=['POST'])
+def run_simulate_lambda_policy():
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    
+    try:
+        data = request.get_json()
+        function_name = data.get('function_name')
+        region = data.get('region')
+        actions = data.get('actions', [])
+        
+        if not function_name or not region:
+            return jsonify({"error": "Function name and region are required."}), 400
+        if not actions:
+            return jsonify({"error": "At least one action is required."}), 400
+        
+        simulation_results = playground.simulate_lambda_permissions(
+            session, function_name, region, actions
+        )
+        
+        return jsonify({"results": simulation_results})
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Simulation error: {str(e)}"}), 500
 
 # ==============================================================================
 # EJECUCIÓN SERVIDOR
