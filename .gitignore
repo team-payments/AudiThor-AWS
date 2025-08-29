@@ -1,46 +1,39 @@
 # ============================================================================
-# .gitignore para un proyecto Python / Flask
+# .gitignore for a Python / Flask project
 # ============================================================================
 
-# Ficheros de caché de Python
+# Compiled Python files
 __pycache__/
 *.py[cod]
-*$py.class
 
-# Entorno virtual
-# Reemplaza 'venv' por el nombre de tu carpeta de entorno si es diferente
+# Virtual environment
+# This ignores any directory named 'venv', 'env', 'ENV', etc.
+.venv
 venv/
-.venv/
-ENV/
 env/
-ENV/
 
-# Ficheros específicos del sistema operativo
+# IDE-specific files and folders
+# Visual Studio Code
+.vscode/
+
+# PyCharm/IntelliJ
+.idea/
+
+# Operating system files
 .DS_Store
 Thumbs.db
 
-# Ficheros de configuración de IDEs populares
-.vscode/
-.idea/
-
-# Ficheros de logs
+# Log files
 *.log
-audithor_project/__pycache__/rules.cpython-313.pyc
-audithor_project/collectors/__pycache__/__init__.cpython-313.pyc
-audithor_project/collectors/__pycache__/acm.cpython-313.pyc
-audithor_project/collectors/__pycache__/cloudtrail.cpython-313.pyc
-audithor_project/collectors/__pycache__/cloudwatch.cpython-313.pyc
-audithor_project/collectors/__pycache__/compute.cpython-313.pyc
-audithor_project/collectors/__pycache__/config_sh.cpython-313.pyc
-audithor_project/collectors/__pycache__/connectivity.cpython-313.pyc
-audithor_project/collectors/__pycache__/databases.cpython-313.pyc
-audithor_project/collectors/__pycache__/exposure.cpython-313.pyc
-audithor_project/collectors/__pycache__/guardduty.cpython-313.pyc
-audithor_project/collectors/__pycache__/iam.cpython-313.pyc
-audithor_project/collectors/__pycache__/inspector.cpython-313.pyc
-audithor_project/collectors/__pycache__/kms.cpython-313.pyc
-audithor_project/collectors/__pycache__/network_policies.cpython-313.pyc
-audithor_project/collectors/__pycache__/playground.cpython-313.pyc
-audithor_project/collectors/__pycache__/securityhub.cpython-313.pyc
-audithor_project/collectors/__pycache__/utils.cpython-313.pyc
-audithor_project/collectors/__pycache__/waf.cpython-313.pyc
+
+# Example for ignoring a specific log file in the project
+# This is often better than ignoring all log files, as some might be needed.
+# For example: audithor.log
+# audithor.log
+
+# Database files
+*.sqlite
+db.sqlite3
+
+# Flask-specific files
+instance/
