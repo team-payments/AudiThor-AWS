@@ -504,6 +504,45 @@ def check_healthy_status_rules_endpoint():
         print(f"[ERROR] in check_healthy_status_rules_endpoint: {e}")
         return jsonify({"error": f"An error occurred while checking rules: {str(e)}"}), 500
 
+
+@app.route('/api/run-simulate-policy', methods=['POST'])
+def run_simulate_policy():
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        actions = data.get('actions', [])
+        include_mfa_context = data.get('include_mfa_context', False)
+        
+        if not username:
+            return jsonify({"error": "Username is required."}), 400
+        if not actions:
+            return jsonify({"error": "At least one action is required."}), 400
+        
+        context_entries = []
+        if include_mfa_context:
+            context_entries = [
+                {
+                    'ContextKeyName': 'aws:MultiFactorAuthPresent',
+                    'ContextKeyValues': ['false'],
+                    'ContextKeyType': 'boolean'
+                }
+            ]
+        
+        simulation_results = playground.simulate_user_permissions(
+            session, username, actions, context_entries
+        )
+        
+        return jsonify({"results": simulation_results})
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Simulation error: {str(e)}"}), 500
+
+
 # ==============================================================================
 # EJECUCIÓN SERVIDOR
 # ==============================================================================

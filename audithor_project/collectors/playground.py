@@ -519,3 +519,50 @@ def run_sslscan_on_targets(targets_str):
         thread.join()
 
     return results
+
+
+def simulate_user_permissions(session, username, actions, context_entries=None):
+    """
+    Simulates permissions for a specific IAM user using simulate_principal_policy.
+    
+    Args:
+        session (boto3.Session): The boto3 session.
+        username (str): The IAM username to simulate.
+        actions (list): List of actions to test.
+        context_entries (list): Optional context entries (e.g., MFA conditions).
+    
+    Returns:
+        dict: Results of the simulation with detailed evaluation.
+    """
+    iam_client = session.client("iam")
+    sts_client = session.client("sts")
+    account_id = sts_client.get_caller_identity()["Account"]
+    user_arn = f"arn:aws:iam::{account_id}:user/{username}"
+    
+    try:
+        response = iam_client.simulate_principal_policy(
+            PolicySourceArn=user_arn,
+            ActionNames=actions,
+            ContextEntries=context_entries or []
+        )
+        
+        results = []
+        for eval_result in response.get('EvaluationResults', []):
+            results.append({
+                'action': eval_result['EvalActionName'],
+                'decision': eval_result['EvalDecision'],
+                'matched_statements': eval_result.get('MatchedStatements', []),
+                'missing_context_values': eval_result.get('MissingContextValues', [])
+            })
+        
+        return {
+            'username': username,
+            'user_arn': user_arn,
+            'simulation_results': results,
+            'context_applied': context_entries or []
+        }
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchEntity':
+            raise ValueError(f"User '{username}' not found.")
+        raise Exception(f"Simulation failed: {str(e)}")

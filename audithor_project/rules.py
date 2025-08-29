@@ -762,6 +762,41 @@ def check_lambda_using_privileged_role(audit_data):
                 
     return failing_resources
 
+def check_cli_mfa_non_compliance(audit_data):
+    """
+    Verifica si usuarios con acceso CLI no cumplen con los requisitos de MFA.
+    Busca usuarios que tienen access keys activas pero no tienen MFA configurado 
+    correctamente para acceso programático.
+    """
+    failing_resources = []
+    users = audit_data.get("iam", {}).get("users", [])
+    
+    for user in users:
+        # Verificar si el usuario tiene información de compliance MFA CLI
+        mfa_compliance = user.get("mfa_compliance")
+        if not mfa_compliance:
+            continue
+            
+        # Solo evaluar usuarios que pueden acceder por CLI
+        if not mfa_compliance.get("has_active_access_keys"):
+            continue
+            
+        # Si no es CLI compliant, es un hallazgo
+        if not mfa_compliance.get("cli_compliant"):
+            risk_level = mfa_compliance.get("risk_level", "unknown")
+            
+            # Crear descripción detallada basada en el tipo de problema
+            if risk_level == "critical":
+                detail = " (Sin dispositivo MFA)"
+            elif risk_level == "high":
+                detail = " (Sin política que requiera MFA)"
+            else:
+                detail = ""
+                
+            failing_resources.append(f"{user.get('UserName')}{detail}")
+    
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -802,6 +837,15 @@ RULES_TO_CHECK = [
         "description": "A user has been detected with one or more IAM policies attached directly to their identity. AWS best practice recommends managing permissions through groups and roles to simplify administration and reduce the risk of configuration errors.",
         "remediation": "Create an IAM group that represents the user's role, attach the necessary policies to that group, and then add the user to the group. Finally, remove the policies that are directly attached to the user.",
         "check_function": check_user_has_attached_policies
+    },
+    {
+    "rule_id": "IAM_005",
+    "section": "Identity & Access",
+    "name": "User with CLI access does not comply with MFA requirements",
+    "severity": SEVERITY["HIGH"],
+    "description": "An IAM user with active access keys (CLI/programmatic access) does not properly comply with MFA requirements. This could be because the user lacks an MFA device entirely, or because there are no IAM policies enforcing MFA authentication for API calls. Without proper MFA enforcement for CLI access, the account is vulnerable to credential theft and unauthorized programmatic access.",
+    "remediation": "For users without MFA devices: Enable MFA in the IAM console under 'Security credentials'. For users without MFA enforcement policies: Create or attach an IAM policy that includes a condition requiring 'aws:MultiFactorAuthPresent' to be true for sensitive actions. Consider using STS GetSessionToken with MFA for temporary credentials in CLI workflows.",
+    "check_function": check_cli_mfa_non_compliance
     },
     {
         "rule_id": "GUARDDUTY_001",

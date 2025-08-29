@@ -21,6 +21,7 @@ export const buildPlaygroundView = () => {
             <nav class="-mb-px flex flex-wrap space-x-6" id="playground-tabs">
                 <a href="#" data-tab="pg-tracer-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Traceroute</a>
                 <a href="#" data-tab="pg-sslscan-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">SSL Scan</a>
+                <a href="#" data-tab="pg-simulate-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Simulate Policy</a>
             </nav>
         </div>
         <div id="pg-tracer-content" class="playground-tab-content">
@@ -59,6 +60,67 @@ export const buildPlaygroundView = () => {
             </div>
             <div id="sslscan-results-container" class="mt-6"></div>
         </div>
+        <div id="pg-simulate-content" class="playground-tab-content hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Policy Simulation</h3>
+                <p class="text-sm text-gray-600 mb-4">Test what actions a user can perform, with or without MFA context.</p>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="pg-username" class="block text-sm font-medium text-gray-700 mb-1">IAM Username</label>
+                        <input type="text" id="pg-username" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="admin-user">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Context</label>
+                        <div class="flex items-center space-x-4 mt-2">
+                            <label class="flex items-center">
+                                <input type="radio" name="mfa-context" value="without-mfa" class="mr-2" checked>
+                                <span class="text-sm">Without MFA</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="mfa-context" value="with-mfa" class="mr-2">
+                                <span class="text-sm">With MFA</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Actions to Test</label>
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="action-checkbox mr-2" value="s3:GetObject"> S3 Read
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="action-checkbox mr-2" value="s3:DeleteBucket"> S3 Delete Bucket
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="action-checkbox mr-2" value="ec2:DescribeInstances"> EC2 Describe
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="action-checkbox mr-2" value="ec2:TerminateInstances"> EC2 Terminate
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="action-checkbox mr-2" value="iam:CreateUser"> IAM Create User
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" class="action-checkbox mr-2" value="iam:DeleteUser"> IAM Delete User
+                        </label>
+                    </div>
+                    
+                    <div>
+                        <label for="pg-custom-actions" class="block text-sm font-medium text-gray-700 mb-1">Custom Actions (one per line)</label>
+                        <textarea id="pg-custom-actions" rows="3" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="rds:DeleteDBInstance&#10;cloudtrail:StopLogging"></textarea>
+                    </div>
+                </div>
+                
+                <button id="pg-run-simulation-btn" class="bg-[#204071] text-white px-4 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition flex items-center justify-center space-x-2">
+                    <span id="pg-simulation-btn-text">Run Simulation</span>
+                    <div id="pg-simulation-spinner" class="spinner hidden"></div>
+                </button>
+            </div>
+            <div id="simulation-results-container" class="mt-6"></div>
+        </div>
     `;
 
     const tabsNav = document.getElementById('playground-tabs');
@@ -69,6 +131,9 @@ export const buildPlaygroundView = () => {
 
     const runSslScanBtn = document.getElementById('pg-run-sslscan-btn');
     if (runSslScanBtn) runSslScanBtn.addEventListener('click', runSslScan);
+
+    const runSimulationBtn = document.getElementById('pg-run-simulation-btn');
+    if (runSimulationBtn) runSimulationBtn.addEventListener('click', runSimulation);
 
     if (window.playgroundApiData?.results) {
         renderPlaygroundResults();
@@ -252,4 +317,104 @@ const runSslScan = async () => {
         spinner.classList.add('hidden');
         btnText.textContent = 'Scan SSL/TLS';
     }
+};
+
+const runSimulation = async () => {
+    const username = document.getElementById('pg-username').value.trim();
+    const customActions = document.getElementById('pg-custom-actions').value.trim();
+    const mfaContext = document.querySelector('input[name="mfa-context"]:checked').value;
+    
+    // Recoger acciones seleccionadas
+    const selectedActions = Array.from(document.querySelectorAll('.action-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    // Añadir acciones personalizadas
+    if (customActions) {
+        const customActionsList = customActions.split('\n').map(a => a.trim()).filter(a => a);
+        selectedActions.push(...customActionsList);
+    }
+    
+    if (!username || selectedActions.length === 0) {
+        document.getElementById('simulation-results-container').innerHTML = 
+            '<p class="text-red-600 font-medium">Please enter a username and select at least one action.</p>';
+        return;
+    }
+    
+    const payload = {
+        access_key: document.getElementById('access-key-input').value.trim(),
+        secret_key: document.getElementById('secret-key-input').value.trim(),
+        session_token: document.getElementById('session-token-input').value.trim() || null,
+        username: username,
+        actions: selectedActions,
+        include_mfa_context: mfaContext === 'without-mfa'
+    };
+    
+    // UI updates
+    const btn = document.getElementById('pg-run-simulation-btn');
+    const btnText = document.getElementById('pg-simulation-btn-text');
+    const spinner = document.getElementById('pg-simulation-spinner');
+    
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    btnText.textContent = 'Simulating...';
+    
+    try {
+        const response = await fetch('http://127.0.0.1:5001/api/run-simulate-policy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+        
+        renderSimulationResults(data.results);
+        log(`Policy simulation completed for user: ${username}`, 'success');
+        
+    } catch (e) {
+        log(`Simulation error: ${e.message}`, 'error');
+        document.getElementById('simulation-results-container').innerHTML = 
+            `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Run Simulation';
+    }
+};
+
+const renderSimulationResults = (results) => {
+    const container = document.getElementById('simulation-results-container');
+    
+    let resultHtml = `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h4 class="font-bold text-lg mb-4 text-[#204071]">Simulation Results for: ${results.username}</h4>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Context</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">`;
+    
+    results.simulation_results.forEach(result => {
+        const decisionClass = result.decision === 'allowed' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100';
+        const contextText = results.context_applied.length > 0 ? 'Without MFA' : 'Default Context';
+        
+        resultHtml += `
+            <tr>
+                <td class="px-4 py-4 text-sm font-mono">${result.action}</td>
+                <td class="px-4 py-4 text-sm">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${decisionClass}">
+                        ${result.decision.toUpperCase()}
+                    </span>
+                </td>
+                <td class="px-4 py-4 text-sm text-gray-600">${contextText}</td>
+            </tr>`;
+    });
+    
+    resultHtml += `</tbody></table></div></div>`;
+    container.innerHTML = resultHtml;
 };
