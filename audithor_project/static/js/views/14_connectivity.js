@@ -7,6 +7,33 @@
 // This module only needs the handleTabClick utility.
 import { handleTabClick } from '../utils.js';
 
+// --- SERVICE DESCRIPTIONS ---
+const serviceDescriptions = {
+    peering: {
+        title: "VPC Peering",
+        description: "VPC Peering creates a private network connection between two VPCs, allowing resources to communicate using private IP addresses as if they were within the same network.",
+        useCases: "Cross-account communication, multi-region architecture, hybrid cloud connectivity between different environments (dev/prod).",
+        auditConsiderations: "Review route tables, security groups, and NACLs to ensure proper network segmentation. Verify that peering connections don't create unintended access paths."
+    },
+    tgw: {
+        title: "Transit Gateway",
+        description: "Transit Gateway acts as a central hub that connects VPCs and on-premises networks through a single gateway, simplifying network architecture.",
+        useCases: "Hub-and-spoke network topologies, centralized connectivity for multiple VPCs, simplified routing management, on-premises integration.",
+        auditConsiderations: "Examine route tables and propagation settings. Verify that network segmentation is maintained and that sensitive environments are properly isolated."
+    },
+    vpn: {
+        title: "VPN Connections",
+        description: "Site-to-Site VPN connections provide secure IPsec tunnels between your VPC and on-premises networks or other cloud providers.",
+        useCases: "Hybrid cloud connectivity, secure communication with corporate data centers, backup connectivity for Direct Connect, multi-cloud architectures.",
+        auditConsiderations: "Verify encryption algorithms, tunnel redundancy, BGP routing, and that customer gateway configurations meet security standards."
+    },
+    endpoints: {
+        title: "VPC Endpoints",
+        description: "VPC Endpoints enable private connectivity to AWS services without using internet gateways, NAT devices, or VPN connections.",
+        useCases: "Secure access to S3, DynamoDB, and other AWS services, compliance requirements for private connectivity, reducing data transfer costs.",
+        auditConsiderations: "Review endpoint policies, ensure proper DNS resolution, verify that traffic doesn't traverse the public internet for sensitive operations."
+    }
+};
 
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
 // We export the main function so app.js can find and use it.
@@ -23,6 +50,12 @@ export const buildConnectivityView = () => {
                 <p class="text-sm text-gray-500">${window.connectivityApiData.metadata.executionDate}</p>
             </div>
         </header>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="text-sm font-semibold text-blue-800 mb-2">Audit Guidance</h3>
+            <p class="text-sm text-blue-700">Review network connectivity components to ensure proper segmentation, security controls, and compliance with data flow requirements. Each tab provides specific audit considerations for that service type.</p>
+        </div>
+        
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex flex-wrap space-x-6" id="connectivity-tabs">
                 <a href="#" data-tab="conn-peering-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">VPC Peering (${peering_connections.length})</a>
@@ -32,10 +65,22 @@ export const buildConnectivityView = () => {
             </nav>
         </div>
         <div id="connectivity-tab-content-container">
-            <div id="conn-peering-content" class="connectivity-tab-content">${renderPeeringTable(peering_connections)}</div>
-            <div id="conn-tgw-content" class="connectivity-tab-content hidden">${renderTgwAttachmentsTable(tgw_attachments)}</div>
-            <div id="conn-vpn-content" class="connectivity-tab-content hidden">${renderVpnConnectionsTable(vpn_connections)}</div>
-            <div id="conn-endpoints-content" class="connectivity-tab-content hidden">${renderVpcEndpointsTable(vpc_endpoints)}</div>
+            <div id="conn-peering-content" class="connectivity-tab-content">
+                ${renderServiceDescription(serviceDescriptions.peering)}
+                ${renderPeeringTable(peering_connections)}
+            </div>
+            <div id="conn-tgw-content" class="connectivity-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.tgw)}
+                ${renderTgwAttachmentsTable(tgw_attachments)}
+            </div>
+            <div id="conn-vpn-content" class="connectivity-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.vpn)}
+                ${renderVpnConnectionsTable(vpn_connections)}
+            </div>
+            <div id="conn-endpoints-content" class="connectivity-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.endpoints)}
+                ${renderVpcEndpointsTable(vpc_endpoints)}
+            </div>
         </div>
     `;
     
@@ -43,11 +88,46 @@ export const buildConnectivityView = () => {
     if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.connectivity-tab-content'));
 };
 
+// --- SERVICE DESCRIPTION RENDERER ---
+const renderServiceDescription = (serviceInfo) => {
+    return `
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">${serviceInfo.title}</h3>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Definition:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.description}</p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Common Use Cases:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.useCases}</p>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+                    <h4 class="text-sm font-medium text-yellow-800 mb-1">Audit Considerations:</h4>
+                    <p class="text-sm text-yellow-700">${serviceInfo.auditConsiderations}</p>
+                </div>
+            </div>
+        </div>
+    `;
+};
 
 // --- INTERNAL MODULE FUNCTIONS (NOT EXPORTED) ---
 
 const renderPeeringTable = (connections) => {
-    if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No active VPC Peering connections were found.</p></div>';
+    if (!connections || connections.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No VPC Peering connections found</h3>
+                    <p class="mt-1 text-sm text-gray-500">This account does not have active VPC Peering connections, which may indicate a simplified network architecture.</p>
+                </div>
+            </div>
+        `;
+    }
+    
     let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Connection ID</th>' +
@@ -69,7 +149,20 @@ const renderPeeringTable = (connections) => {
 };
 
 const renderTgwAttachmentsTable = (attachments) => {
-    if (!attachments || attachments.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No VPC attachments to Transit Gateways were found.</p></div>';
+    if (!attachments || attachments.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No Transit Gateway attachments found</h3>
+                    <p class="mt-1 text-sm text-gray-500">This account does not use Transit Gateway for centralized network connectivity.</p>
+                </div>
+            </div>
+        `;
+    }
+    
      let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transit Gateway ID</th>' +
@@ -89,7 +182,20 @@ const renderTgwAttachmentsTable = (attachments) => {
 };
 
 const renderVpnConnectionsTable = (connections) => {
-    if (!connections || connections.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No active VPN connections were found.</p></div>';
+    if (!connections || connections.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No VPN connections found</h3>
+                    <p class="mt-1 text-sm text-gray-500">This account does not have active site-to-site VPN connections to on-premises networks.</p>
+                </div>
+            </div>
+        `;
+    }
+    
     let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPN Connection ID</th>' +
@@ -109,7 +215,20 @@ const renderVpnConnectionsTable = (connections) => {
 };
 
 const renderVpcEndpointsTable = (endpoints) => {
-    if (!endpoints || endpoints.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No VPC Endpoints were found.</p></div>';
+    if (!endpoints || endpoints.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No VPC Endpoints found</h3>
+                    <p class="mt-1 text-sm text-gray-500">This account does not use VPC Endpoints for private connectivity to AWS services.</p>
+                </div>
+            </div>
+        `;
+    }
+    
     let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
