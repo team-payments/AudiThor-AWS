@@ -23,8 +23,6 @@ Whether you're conducting PCI DSS assessments, SOC 2 audits, SWIFT compliance re
 
 The majority of this project was developed with the assistance of an AI language model (Google's Gemini), which helped accelerate the implementation of various checks and the creation of the dashboard.
 
-<img width="1839" height="396" alt="image" src="https://github.com/user-attachments/assets/d890814c-e0a9-4fbe-8f95-8a5455dce423" />
-
 ## 🚀 Key Features
 
 AudiThor offers a wide range of auditing modules in a single place:
