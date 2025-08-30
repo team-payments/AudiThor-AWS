@@ -3,6 +3,24 @@
 **A security auditing tool for AWS, with a focus on PCI DSS compliance.**
 AudiThor is a local web application that provides a unified dashboard for conducting read-only security audits in AWS environments. It allows auditors, administrators, and security teams to get a quick and comprehensive overview of an account's security posture, identify potential risks, and verify policy compliance, especially those related to the PCI DSS standard.
 
+## 🎯 Who Is This Tool For?
+
+AudiThor-AWS is specifically designed for **audit teams and security professionals** who need to assess AWS environments for compliance purposes. Traditionally, audit teams have faced significant challenges in:
+
+- **Limited AWS Visibility**: Gaining comprehensive oversight of complex cloud environments across multiple regions and services
+- **Evidence Collection Bottlenecks**: Manually gathering security evidence from dozens of AWS services for compliance frameworks
+- **Time-Intensive Audits**: Spending weeks collecting basic configuration data instead of analyzing security posture
+- **Compliance Gap Identification**: Quickly identifying non-compliance with standards like PCI DSS, SOC 2, SWIFT, and ISO 27001
+- **Cross-Service Correlation**: Understanding how security configurations interact across different AWS services
+
+This tool addresses these pain points by providing:
+- **Automated Evidence Collection**: Gather security configurations from 20+ AWS services in minutes
+- **Compliance-Focused Analysis**: Built-in rules for PCI DSS 3.2.1/4.0.1, CIS Benchmark, and AWS security best practices
+- **Comprehensive Reporting**: AI-powered executive summaries and detailed technical findings
+- **Risk Prioritization**: Severity-based findings to focus on critical security gaps first
+
+Whether you're conducting PCI DSS assessments, SOC 2 audits, SWIFT compliance reviews, or general security assessments, AudiThor-AWS transforms weeks of manual evidence gathering into automated, comprehensive analysis.
+
 The majority of this project was developed with the assistance of an AI language model (Google's Gemini), which helped accelerate the implementation of various checks and the creation of the dashboard.
 
 <img width="1839" height="396" alt="image" src="https://github.com/user-attachments/assets/d890814c-e0a9-4fbe-8f95-8a5455dce423" />
