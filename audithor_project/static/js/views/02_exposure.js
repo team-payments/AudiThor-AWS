@@ -410,6 +410,7 @@ const renderOpenSecurityGroupsTable = (openSgs) => {
     return tableHtml;
 };
 
+
 const renderApiGatewayTable = (apisByRegion) => {
     const allApis = Object.values(apisByRegion || {}).flat();
     if (allApis.length === 0) {
@@ -420,7 +421,9 @@ const renderApiGatewayTable = (apisByRegion) => {
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">API Name</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">API ID</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">API Type</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Endpoint Type</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stages</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Creation Date</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>' +
                     '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Invoke URL</th>' +
@@ -428,56 +431,78 @@ const renderApiGatewayTable = (apisByRegion) => {
 
     Object.entries(apisByRegion).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).forEach(([region, apis]) => {
         apis.forEach(api => {
-            // Parsear la información del API - puede venir como string o objeto
+            // Manejar tanto el formato antiguo (string) como el nuevo (objeto)
             let apiName = '';
             let apiId = '';
-            let endpointType = 'Regional';
+            let apiType = 'REST';
+            let endpointTypes = ['Regional'];
+            let stages = [];
             let createdDate = 'N/A';
             let description = 'No description';
             let invokeUrl = 'N/A';
 
             if (typeof api === 'string') {
-                // Si es string, extraer información del formato típico
+                // Formato antiguo - mantener compatibilidad
                 if (api.includes('(Regional)')) {
                     apiName = api.replace(' (Regional)', '');
-                    endpointType = 'Regional';
+                    endpointTypes = ['Regional'];
                 } else if (api.includes('(Edge)')) {
                     apiName = api.replace(' (Edge)', '');
-                    endpointType = 'Edge Optimized';
+                    endpointTypes = ['Edge Optimized'];
                 } else if (api.includes('(Private)')) {
                     apiName = api.replace(' (Private)', '');
-                    endpointType = 'Private';
+                    endpointTypes = ['Private'];
                 } else {
                     apiName = api;
                 }
             } else if (typeof api === 'object') {
-                // Si es objeto, usar las propiedades disponibles
-                apiName = api.name || api.Name || 'Unknown API';
-                apiId = api.id || api.Id || 'Unknown ID';
-                endpointType = api.endpointConfiguration?.types?.[0] || 'Regional';
-                createdDate = api.createdDate || api.CreatedDate || 'N/A';
-                description = api.description || api.Description || 'No description';
+                // Formato nuevo - usar todas las propiedades disponibles
+                apiName = api.name || 'Unknown API';
+                apiId = api.id || 'Unknown ID';
+                apiType = api.apiType || 'REST';
+                endpointTypes = api.endpointConfiguration || ['Regional'];
+                stages = api.stages || [];
+                createdDate = api.createdDate;
+                description = api.description || 'No description';
                 
                 // Construir URL de invocación
                 if (apiId && region) {
-                    invokeUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/`;
+                    const primaryStage = stages.length > 0 ? stages[0] : 'prod';
+                    invokeUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/${primaryStage}/`;
                 }
             }
 
-            // Formatear endpoint type
-            const endpointBadgeClass = endpointType === 'Regional' ? 'bg-blue-100 text-blue-800' : 
-                                     endpointType === 'Edge Optimized' ? 'bg-green-100 text-green-800' :
+            // Formatear endpoint types
+            const endpointTypeText = endpointTypes.join(', ');
+            const endpointBadgeClass = endpointTypes.includes('REGIONAL') ? 'bg-blue-100 text-blue-800' : 
+                                     endpointTypes.includes('EDGE') ? 'bg-green-100 text-green-800' :
                                      'bg-purple-100 text-purple-800';
+
+            // Formatear API type
+            const apiTypeBadgeClass = apiType === 'REST' ? 'bg-indigo-100 text-indigo-800' : 'bg-cyan-100 text-cyan-800';
+
+            // Formatear stages
+            const stagesHtml = stages.length > 0 ? 
+                stages.map(stage => `<span class="inline-block bg-gray-100 text-gray-800 text-xs font-medium mr-1 mb-1 px-2 py-0.5 rounded">${stage}</span>`).join('') :
+                '<span class="text-gray-400 text-xs">No stages</span>';
+
+            // Formatear fecha
+            const formattedDate = createdDate && createdDate !== 'N/A' ? 
+                new Date(createdDate).toLocaleDateString() : 'N/A';
 
             tableHtml += `<tr class="hover:bg-gray-50">
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${region}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${apiName}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${apiId}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${endpointBadgeClass}">${endpointType}</span>
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${apiTypeBadgeClass}">${apiType}</span>
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${createdDate !== 'N/A' && createdDate ? new Date(createdDate).toLocaleDateString() : 'N/A'}</td>
-                            <td class="px-4 py-4 text-sm text-gray-600 break-words max-w-xs">${description}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${endpointBadgeClass}">${endpointTypeText}</span>
+                            </td>
+                            <td class="px-4 py-4 text-sm text-gray-600 break-words max-w-xs">${stagesHtml}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${formattedDate}</td>
+                            <td class="px-4 py-4 text-sm text-gray-600 break-words max-w-xs" title="${description}">${description.length > 50 ? description.substring(0, 50) + '...' : description}</td>
                             <td class="px-4 py-4 text-center">
                                 ${invokeUrl !== 'N/A' ? 
                                     `<button onclick="copyToClipboard(this, '${invokeUrl}')" title="${invokeUrl}" class="p-1 rounded-md hover:bg-gray-200 transition">
@@ -493,6 +518,7 @@ const renderApiGatewayTable = (apisByRegion) => {
     tableHtml += '</tbody></table></div>';
     return tableHtml;
 };
+
 
 const renderExposureDetails = (service, regions) => {
     const flattenedData = Object.values(regions).flat();

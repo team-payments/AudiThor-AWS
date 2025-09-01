@@ -103,6 +103,100 @@ def role_is_assumable_by_anyone(role):
     return False
 
 
+def collect_api_gateway_details(session, region):
+    """
+    Collects detailed API Gateway information for a specific region.
+    
+    Args:
+        session (boto3.Session): The boto3 session to use for creating clients.
+        region (str): The AWS region to scan.
+    
+    Returns:
+        list: A list of dictionaries with detailed API Gateway information.
+    """
+    try:
+        client = session.client("apigateway", region_name=region)
+        apis = []
+        
+        # Get REST APIs
+        rest_apis_response = client.get_rest_apis()
+        for api in rest_apis_response.get("items", []):
+            endpoint_config = api.get("endpointConfiguration", {})
+            endpoint_types = endpoint_config.get("types", ["REGIONAL"])  # Default to REGIONAL if not specified
+            
+            # Check if it's a public API (Regional or Edge-optimized, exclude Private)
+            public_endpoint_types = [t for t in endpoint_types if t in ["REGIONAL", "EDGE"]]
+            if public_endpoint_types:
+                # Get additional details about stages
+                try:
+                    stages_response = client.get_stages(restApiId=api["id"])
+                    stages = [stage["stageName"] for stage in stages_response.get("item", [])]
+                except ClientError:
+                    stages = []
+                
+                # Format endpoint types for display
+                formatted_endpoint_types = []
+                for et in public_endpoint_types:
+                    if et == "REGIONAL":
+                        formatted_endpoint_types.append("Regional")
+                    elif et == "EDGE":
+                        formatted_endpoint_types.append("Edge Optimized")
+                
+                api_info = {
+                    "id": api["id"],
+                    "name": api["name"],
+                    "description": api.get("description", "No description"),
+                    "createdDate": api.get("createdDate").isoformat() if api.get("createdDate") else None,
+                    "version": api.get("version", "N/A"),
+                    "endpointConfiguration": formatted_endpoint_types,
+                    "stages": stages,
+                    "region": region,
+                    "apiType": "REST"
+                }
+                apis.append(api_info)
+        
+        # Get HTTP APIs (API Gateway v2)
+        try:
+            apiv2_client = session.client("apigatewayv2", region_name=region)
+            http_apis_response = apiv2_client.get_apis()
+            
+            for api in http_apis_response.get("Items", []):
+                # HTTP APIs are typically public by default unless configured otherwise
+                if api.get("ProtocolType") == "HTTP":
+                    # Get stages for HTTP API
+                    try:
+                        stages_response = apiv2_client.get_stages(ApiId=api["ApiId"])
+                        stages = [stage["StageName"] for stage in stages_response.get("Items", [])]
+                    except ClientError:
+                        stages = []
+                    
+                    api_info = {
+                        "id": api["ApiId"],
+                        "name": api["Name"],
+                        "description": api.get("Description", "No description"),
+                        "createdDate": api.get("CreatedDate").isoformat() if api.get("CreatedDate") else None,
+                        "version": api.get("Version", "N/A"),
+                        "endpointConfiguration": ["Regional"],  # HTTP APIs are regional by default
+                        "stages": stages,
+                        "region": region,
+                        "apiType": "HTTP"
+                    }
+                    apis.append(api_info)
+        except ClientError:
+            # API Gateway v2 might not be available in all regions
+            pass
+            
+        return apis
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 
+                                          'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
+            return []
+        raise
+    except Exception:
+        return []
+
+
 def collect_network_ports_data(session, regions):
     """
     Scans Security Groups and Network ACLs across regions for rules allowing inbound traffic from 0.0.0.0/0.
@@ -200,7 +294,6 @@ def collect_exposure_data(session):
                         if inst.get("PublicIpAddress"):
                             exposed.append({"Id": inst['InstanceId'], "State": inst.get("State", {}).get("Name", "unknown"), "PublicIp": inst.get("PublicIpAddress")})
 
-            # --- INICIO DE LA MODIFICACIÓN ---
             elif service == "Security Groups Open":
                 client = current_session.client("ec2", region_name=region)
                 sgs = client.describe_security_groups().get("SecurityGroups", [])
@@ -227,7 +320,6 @@ def collect_exposure_data(session):
                                 "PortRange": port_range,
                                 "Region": region
                             })
-            # --- FIN DE LA MODIFICACIÓN ---
 
             elif service == "ALB/NLB Public":
                 client = current_session.client("elbv2", region_name=region)
@@ -261,10 +353,8 @@ def collect_exposure_data(session):
                         exposed.append(fn["FunctionName"])
 
             elif service == "API Gateway Public":
-                client = current_session.client("apigateway", region_name=region)
-                for api in client.get_rest_apis()["items"]:
-                    if "REGIONAL" in api.get("endpointConfiguration", {}).get("types", []):
-                        exposed.append(f"{api['name']} (Regional)")
+                # Use the new detailed collection function
+                exposed = collect_api_gateway_details(current_session, region)
 
             elif service == "Assumable Roles":
                 client = current_session.client("iam", region_name="us-east-1")
