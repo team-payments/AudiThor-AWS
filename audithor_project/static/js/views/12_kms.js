@@ -6,6 +6,33 @@
 // --- IMPORTS ---
 import { handleTabClick, createStatusBadge } from '../utils.js';
 
+// --- SERVICE DESCRIPTIONS ---
+const serviceDescriptions = {
+    overview: {
+        title: "AWS Key Management Service (KMS)",
+        description: "AWS KMS is a managed service that makes it easy to create and control cryptographic keys used to encrypt your data. It provides centralized key management integrated with other AWS services.",
+        useCases: "Data encryption at rest and in transit, database encryption, S3 bucket encryption, EBS volume encryption, application-level encryption, compliance with regulatory requirements.",
+        auditConsiderations: "Review key policies for least privilege access, verify automatic key rotation is enabled for customer-managed keys, ensure proper separation of duties for key administration, validate that sensitive workloads use customer-managed keys instead of AWS-managed keys."
+    },
+    customerManagedKeys: {
+        title: "Customer Managed Keys (CMK)",
+        description: "Customer Managed Keys are KMS keys that you create, own, and manage. You have full control over these keys including key policies, rotation, and deletion.",
+        useCases: "High-security environments requiring full control, compliance requirements mandating customer key ownership, cross-account access scenarios, custom key rotation policies.",
+        auditConsiderations: "Verify that sensitive data uses CMKs instead of AWS-managed keys, ensure key rotation is enabled and appropriate, review key policies for overly permissive access, validate key usage logging in CloudTrail."
+    },
+    awsManagedKeys: {
+        title: "AWS Managed Keys",
+        description: "AWS Managed Keys are created, managed, and used on your behalf by AWS services. You cannot manage these keys directly, but you can audit their usage.",
+        useCases: "Default encryption for AWS services, simplified key management for non-sensitive workloads, services that require transparent encryption without additional configuration.",
+        auditConsiderations: "Identify workloads using AWS-managed keys that should potentially use customer-managed keys for enhanced security, monitor usage patterns, ensure compliance policies allow AWS-managed key usage."
+    },
+    keyRotation: {
+        title: "Key Rotation",
+        description: "Key rotation is the practice of replacing cryptographic keys on a regular schedule. AWS KMS supports automatic annual rotation for customer-managed keys.",
+        useCases: "Compliance requirements for regular key rotation, reducing cryptographic risk over time, maintaining security best practices for long-lived encryption keys.",
+        auditConsiderations: "Verify automatic rotation is enabled for all customer-managed keys unless there's a valid business reason, review rotation schedules align with compliance requirements, ensure applications can handle key rotation transparently."
+    }
+};
 
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
 export const buildKmsView = () => {
@@ -15,6 +42,10 @@ export const buildKmsView = () => {
     const { keys } = window.kmsApiData.results;
     const executionDate = window.kmsApiData.metadata.executionDate;
 
+    // Separate keys by type for tab counts
+    const customerManagedKeys = keys.filter(k => k.KeyManager === 'CUSTOMER');
+    const awsManagedKeys = keys.filter(k => k.KeyManager === 'AWS');
+
     container.innerHTML = `
         <header class="flex justify-between items-center mb-6">
             <div>
@@ -22,15 +53,39 @@ export const buildKmsView = () => {
                 <p class="text-sm text-gray-500">${executionDate}</p>
             </div>
         </header>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="text-sm font-semibold text-blue-800 mb-2">Audit Guidance</h3>
+            <p class="text-sm text-blue-700">Review KMS key management to ensure proper encryption controls, key rotation policies, and access management. Focus on customer-managed keys for sensitive workloads and verify compliance with organizational security requirements.</p>
+        </div>
+        
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex flex-wrap space-x-6" id="kms-tabs">
                 <a href="#" data-tab="kms-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
-                <a href="#" data-tab="kms-keys-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">KMS Keys (${keys.length})</a>
+                <a href="#" data-tab="kms-overview-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">KMS Overview</a>
+                <a href="#" data-tab="kms-customer-keys-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Customer Keys (${customerManagedKeys.length})</a>
+                <a href="#" data-tab="kms-aws-keys-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">AWS Keys (${awsManagedKeys.length})</a>
+                <a href="#" data-tab="kms-rotation-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Key Rotation</a>
             </nav>
         </div>
         <div id="kms-tab-content-container">
             <div id="kms-summary-content" class="kms-tab-content">${createKmsSummaryCardsHtml()}</div>
-            <div id="kms-keys-content" class="kms-tab-content hidden">${renderKmsKeysTable(keys)}</div>
+            <div id="kms-overview-content" class="kms-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.overview)}
+                ${renderAllKeysTable(keys)}
+            </div>
+            <div id="kms-customer-keys-content" class="kms-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.customerManagedKeys)}
+                ${renderCustomerManagedKeysTable(customerManagedKeys)}
+            </div>
+            <div id="kms-aws-keys-content" class="kms-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.awsManagedKeys)}
+                ${renderAwsManagedKeysTable(awsManagedKeys)}
+            </div>
+            <div id="kms-rotation-content" class="kms-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.keyRotation)}
+                ${renderKeyRotationTable(customerManagedKeys)}
+            </div>
         </div>
     `;
 
@@ -40,6 +95,28 @@ export const buildKmsView = () => {
     if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.kms-tab-content'));
 };
 
+// --- SERVICE DESCRIPTION RENDERER ---
+const renderServiceDescription = (serviceInfo) => {
+    return `
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">${serviceInfo.title}</h3>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Definition:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.description}</p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Common Use Cases:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.useCases}</p>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+                    <h4 class="text-sm font-medium text-yellow-800 mb-1">Audit Considerations:</h4>
+                    <p class="text-sm text-yellow-700">${serviceInfo.auditConsiderations}</p>
+                </div>
+            </div>
+        </div>
+    `;
+};
 
 // --- INTERNAL MODULE FUNCTIONS (NOT EXPORTED) ---
 
@@ -83,7 +160,104 @@ const updateKmsSummaryCards = (keys) => {
     document.getElementById('kms-rotation-disabled').textContent = keys.filter(k => k.RotationEnabled === 'Disabled').length;
 };
 
-const renderKmsKeysTable = (keys) => {
+const renderAllKeysTable = (keys) => {
+    if (!keys || keys.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No KMS keys found</h3>
+                    <p class="mt-1 text-sm text-gray-500">This account does not have any KMS keys configured.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    return renderKmsKeysTable(keys, 'All KMS Keys');
+};
+
+const renderCustomerManagedKeysTable = (keys) => {
+    if (!keys || keys.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No customer-managed keys found</h3>
+                    <p class="mt-1 text-sm text-gray-500">Consider creating customer-managed keys for enhanced security control over sensitive workloads.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    return renderKmsKeysTable(keys, 'Customer Managed Keys');
+};
+
+const renderAwsManagedKeysTable = (keys) => {
+    if (!keys || keys.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No AWS-managed keys found</h3>
+                    <p class="mt-1 text-sm text-gray-500">AWS-managed keys are automatically created when AWS services require encryption.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    return renderKmsKeysTable(keys, 'AWS Managed Keys');
+};
+
+const renderKeyRotationTable = (keys) => {
+    if (!keys || keys.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No customer-managed keys for rotation analysis</h3>
+                    <p class="mt-1 text-sm text-gray-500">Key rotation only applies to customer-managed keys.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alias</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Key ID</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rotation Status</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Risk Level</th>' +
+                    '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+    
+    keys.sort((a,b) => a.Region.localeCompare(b.Region) || a.Aliases.localeCompare(b.Aliases)).forEach((k) => {
+        const rotationBadge = k.RotationEnabled === 'Enabled' ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
+        const riskLevel = k.RotationEnabled === 'Disabled' ? 
+            '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">High Risk</span>' :
+            '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Low Risk</span>';
+        
+        tableHtml += `
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${k.Region}</td>
+                <td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${k.Aliases}</td>
+                <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600 font-mono">${k.KeyId}</td>
+                <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${rotationBadge}</td>
+                <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${riskLevel}</td>
+            </tr>
+        `;
+    });
+    tableHtml += '</tbody></table></div>';
+    return tableHtml;
+};
+
+const renderKmsKeysTable = (keys, title) => {
     if (!keys || keys.length === 0) {
         return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No KMS keys were found.</p></div>';
     }
@@ -122,8 +296,8 @@ const renderKmsKeysTable = (keys) => {
     tableHtml += '</tbody></table></div>';
     return tableHtml;
 };
-// Add this function to the end of 12_kms.js
 
+// --- MODAL FUNCTION (EXPORTED) ---
 export const openModalWithKmsPolicy = (keyIndex) => {
     const modal = document.getElementById('details-modal');
     const modalTitle = document.getElementById('modal-title');
