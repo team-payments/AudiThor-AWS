@@ -628,24 +628,58 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configurar controles del log
     if (clearLogBtn) {
         clearLogBtn.addEventListener('click', () => {
-            if (logContainer) logContainer.innerHTML = '';
+            if (logContainer) {
+                logContainer.innerHTML = '';
+                // Remover la clase de nuevo log si existe
+                if (logPanel) {
+                    logPanel.classList.remove('new-log');
+                }
+            }
         });
     }
 
     if (toggleLogBtn && logPanel) {
-        toggleLogBtn.addEventListener('click', () => {
-            const isMinimized = logPanel.classList.contains('minimized');
-            
-            if (isMinimized) {
-                // Show the full panel
-                logPanel.classList.remove('minimized');
-                toggleLogBtn.textContent = 'Minimize';
-            } else {
-                // Minimize the panel (slide down, keeping only 48px visible)
-                logPanel.classList.add('minimized');
-                toggleLogBtn.textContent = 'Show Log';
+        toggleLogBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evitar que se propague al panel
+            minimizeLogPanel();
+        });
+
+        // Click en el panel flotante para maximizar
+        logPanel.addEventListener('click', (e) => {
+            if (logPanel.classList.contains('floating')) {
+                e.stopPropagation();
+                maximizeLogPanel();
             }
         });
+    }
+
+    // 3. AÑADE estas dos funciones nuevas después de la sección anterior:
+
+    // Función para minimizar el panel (convertir a flotante)
+    function minimizeLogPanel() {
+        if (logPanel) {
+            logPanel.classList.remove('minimized');
+            logPanel.classList.add('floating');
+            
+            if (toggleLogBtn) {
+                toggleLogBtn.textContent = 'Show Log';
+            }
+            
+            log('Event Log minimized to floating button', 'info');
+        }
+    }
+
+    // Función para maximizar el panel (volver al estado normal)
+    function maximizeLogPanel() {
+        if (logPanel) {
+            logPanel.classList.remove('floating', 'new-log');
+            
+            if (toggleLogBtn) {
+                toggleLogBtn.textContent = 'Minimize';
+            }
+            
+            log('Event Log expanded', 'info');
+        }
     }
 
     // Configurar modal

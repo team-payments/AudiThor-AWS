@@ -73,9 +73,27 @@
         </div>
     </div>
 
+    <!-- Event Log Panel Mejorado -->
     <div id="log-panel" class="fixed bottom-0 right-0 w-full md:w-1/3 h-64 bg-[#1a2b47] text-white rounded-t-lg shadow-2xl p-4 flex flex-col z-50">
-        <div class="flex justify-between items-center mb-2"><h4 class="font-bold text-slate-300">Event Log</h4><div><button id="clear-log-btn" class="text-xs bg-[#2f5a9e] hover:bg-[#204071] px-2 py-1 rounded">Clear</button><button id="toggle-log-btn" class="text-xs bg-[#2f5a9e] hover:bg-[#204071] px-2 py-1 rounded">Minimize</button></div></div>
-        <div id="log-container" class="flex-1 bg-slate-900 p-2 rounded overflow-y-auto text-xs space-y-1"></div>
+        <!-- Icono flotante (solo visible cuando está minimizado) -->
+        <div id="floating-icon" title="Click to open Event Log">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-bar-graph" viewBox="0 0 16 16">
+                <path d="M4.5 12a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5zm3 0a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5zm3 0a.5.5 0 0 1-.5-.5v-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5z"/>
+                <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1"/>
+            </svg>
+        </div>
+        
+        <!-- Contenido normal del panel -->
+        <div class="log-panel-content">
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="font-bold text-slate-300">Event Log</h4>
+                <div>
+                    <button id="clear-log-btn" class="text-xs bg-[#2f5a9e] hover:bg-[#204071] px-2 py-1 rounded mr-1">Clear</button>
+                    <button id="toggle-log-btn" class="text-xs bg-[#2f5a9e] hover:bg-[#204071] px-2 py-1 rounded">Minimize</button>
+                </div>
+            </div>
+            <div id="log-container" class="flex-1 bg-slate-900 p-2 rounded overflow-y-auto text-xs space-y-1"></div>
+        </div>
     </div>
 
     <div id="details-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
