@@ -7,6 +7,35 @@
 import { handleTabClick, createStatusBadge } from '../utils.js';
 
 
+// --- SERVICE DESCRIPTIONS ---
+const serviceDescriptions = {
+    rds: {
+        title: "RDS Instances",
+        description: "Amazon Relational Database Service (RDS) simplifies the setup, operation, and scaling of relational databases in the cloud. It manages the underlying infrastructure, including patching, backups, and scaling.",
+        useCases: "Web and mobile applications, enterprise applications, e-commerce platforms, and general-purpose relational database workloads.",
+        auditConsiderations: "Verify that instances are not publicly accessible and use private subnets. Ensure that storage is encrypted with KMS. Check for proper security group and network ACL configurations to restrict access. Review the use of IAM database authentication."
+    },
+    aurora: {
+        title: "Aurora Clusters",
+        description: "Amazon Aurora is a MySQL and PostgreSQL-compatible relational database built for the cloud, combining the performance of high-end commercial databases with the simplicity and cost-effectiveness of open-source databases.",
+        useCases: "High-performance, mission-critical applications that require scalability and high availability, multi-tenant SaaS applications, and modern e-commerce platforms.",
+        auditConsiderations: "Confirm that clusters are encrypted and configured for multi-AZ deployment. Review replication settings and ensure that the cluster endpoint is not exposed to public networks."
+    },
+    dynamodb: {
+        title: "DynamoDB Tables",
+        description: "Amazon DynamoDB is a fully managed, serverless NoSQL database service that provides single-digit millisecond performance at any scale. It supports both document and key-value data models.",
+        useCases: "Mobile and web applications, gaming, ad tech, and IoT that require high-performance, low-latency data access at massive scale.",
+        auditConsiderations: "Check that tables are encrypted with AWS KMS. Review IAM policies to ensure least-privilege access. Verify that access to the data is secured via fine-grained access control (FGAC) and that private endpoints are used."
+    },
+    docdb: {
+        title: "DocumentDB Clusters",
+        description: "Amazon DocumentDB is a fully managed document database service that supports MongoDB workloads. It's designed to be highly scalable, durable, and fully managed.",
+        useCases: "Content management, user profiles, and catalog data that requires a flexible, JSON-based document model.",
+        auditConsiderations: "Ensure that clusters are encrypted at rest and in transit. Verify that network access is properly restricted and that audit logging is enabled to track access to the database."
+    }
+};
+
+
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
 export const buildDatabasesView = () => {
     const container = document.getElementById('databases-view');
@@ -21,6 +50,12 @@ export const buildDatabasesView = () => {
                 <p class="text-sm text-gray-500">${window.databasesApiData.metadata.executionDate}</p>
             </div>
         </header>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="text-sm font-semibold text-blue-800 mb-2">Audit Guidance</h3>
+            <p class="text-sm text-blue-700">Review database configurations to ensure data integrity, availability, and confidentiality. Each tab provides specific audit considerations for that database service type.</p>
+        </div>
+
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex flex-wrap space-x-6" id="databases-tabs">
                 <a href="#" data-tab="db-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
@@ -32,10 +67,22 @@ export const buildDatabasesView = () => {
         </div>
         <div id="databases-tab-content-container">
             <div id="db-summary-content" class="databases-tab-content">${createDatabasesSummaryCardsHtml()}</div>
-            <div id="db-rds-content" class="databases-tab-content hidden">${renderRdsTable(rds_instances)}</div>
-            <div id="db-aurora-content" class="databases-tab-content hidden">${renderAuroraTable(aurora_clusters)}</div>
-            <div id="db-dynamodb-content" class="databases-tab-content hidden">${renderDynamoDbTable(dynamodb_tables)}</div>
-            <div id="db-docdb-content" class="databases-tab-content hidden">${renderDocumentDbTable(documentdb_clusters)}</div>
+            <div id="db-rds-content" class="databases-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.rds)}
+                ${renderRdsTable(rds_instances)}
+            </div>
+            <div id="db-aurora-content" class="databases-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.aurora)}
+                ${renderAuroraTable(aurora_clusters)}
+            </div>
+            <div id="db-dynamodb-content" class="databases-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.dynamodb)}
+                ${renderDynamoDbTable(dynamodb_tables)}
+            </div>
+            <div id="db-docdb-content" class="databases-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.docdb)}
+                ${renderDocumentDbTable(documentdb_clusters)}
+            </div>
         </div>
     `;
     
@@ -80,6 +127,30 @@ const createDatabasesSummaryCardsHtml = () => `
         </div>
     </div>
 `;
+
+// --- SERVICE DESCRIPTION RENDERER ---
+const renderServiceDescription = (serviceInfo) => {
+    return `
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">${serviceInfo.title}</h3>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Definition:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.description}</p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Common Use Cases:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.useCases}</p>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+                    <h4 class="text-sm font-medium text-yellow-800 mb-1">Audit Considerations:</h4>
+                    <p class="text-sm text-yellow-700">${serviceInfo.auditConsiderations}</p>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
 
 const createEncryptionBadge = (isEncrypted) => {
     return isEncrypted
