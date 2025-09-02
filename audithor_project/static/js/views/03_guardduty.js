@@ -7,6 +7,21 @@
 // Importamos las funciones de utilidad que necesita este módulo.
 import { handleTabClick, createStatusBadge } from '../utils.js';
 
+// --- SERVICE DESCRIPTIONS ---
+const serviceDescriptions = {
+    status: {
+        title: "GuardDuty Status & Configuration",
+        description: "Amazon GuardDuty is a threat detection service that continuously monitors your AWS accounts and workloads for malicious activity using machine learning, anomaly detection, and integrated threat intelligence.",
+        useCases: "Automated threat detection, compliance monitoring, incident response triggers, security operations center (SOC) integration, real-time security alerting.",
+        auditConsiderations: "Verify GuardDuty is enabled across all regions with business operations. Review data source configurations (S3 logs, Kubernetes logs, Malware Protection) to ensure comprehensive coverage. Confirm findings are being monitored and acted upon through proper incident response procedures."
+    },
+    findings: {
+        title: "GuardDuty Findings Analysis",
+        description: "GuardDuty findings represent potential security threats detected through analysis of DNS logs, VPC Flow Logs, CloudTrail events, and other data sources. Each finding includes severity levels, threat intelligence, and recommended actions.",
+        useCases: "Threat hunting, incident investigation, security alert prioritization, compliance evidence collection, automated security response workflows.",
+        auditConsiderations: "Review high and critical severity findings for immediate response. Validate that findings align with known security events and aren't false positives. Ensure findings are integrated with SIEM/SOAR tools and that response procedures are documented and tested."
+    }
+};
 
 // --- FUNCIÓN PRINCIPAL DE LA VISTA (EXPORTADA) ---
 // Exportamos la función principal para que app.js pueda usarla.
@@ -22,6 +37,12 @@ export const buildGuarddutyView = () => {
                 <p class="text-sm text-gray-500">${window.guarddutyApiData.metadata.executionDate}</p>
             </div>
         </header>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="text-sm font-semibold text-blue-800 mb-2">Audit Guidance</h3>
+            <p class="text-sm text-blue-700">Review GuardDuty configuration and findings to ensure comprehensive threat detection coverage and proper incident response procedures. Verify that all regions are monitored and findings are being actively reviewed and remediated.</p>
+        </div>
+        
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex flex-wrap space-x-6" id="guardduty-tabs">
                 <a href="#" data-tab="gd-status-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Status per Region</a>
@@ -29,8 +50,12 @@ export const buildGuarddutyView = () => {
             </nav>
         </div>
         <div id="guardduty-tab-content-container">
-            <div id="gd-status-content" class="guardduty-tab-content">${renderGuarddutyStatusTable(status)}</div>
+            <div id="gd-status-content" class="guardduty-tab-content">
+                ${renderServiceDescription(serviceDescriptions.status)}
+                ${renderGuarddutyStatusTable(status)}
+            </div>
             <div id="gd-findings-content" class="guardduty-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.findings)}
                 <div id="gd-filter-controls" class="flex flex-wrap items-center gap-2 mb-4">
                     <span class="text-sm font-medium text-gray-700 mr-2">Filter by Severity:</span>
                     <button data-severity="ALL" class="gd-filter-btn px-3 py-1 text-sm font-semibold rounded-md shadow-sm bg-[#eb3496] text-white">All</button>
@@ -50,6 +75,28 @@ export const buildGuarddutyView = () => {
     setupGuarddutyFindingsFilter();
 };  
 
+// --- SERVICE DESCRIPTION RENDERER ---
+const renderServiceDescription = (serviceInfo) => {
+    return `
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">${serviceInfo.title}</h3>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Definition:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.description}</p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Common Use Cases:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.useCases}</p>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+                    <h4 class="text-sm font-medium text-yellow-800 mb-1">Audit Considerations:</h4>
+                    <p class="text-sm text-yellow-700">${serviceInfo.auditConsiderations}</p>
+                </div>
+            </div>
+        </div>
+    `;
+};
 
 // --- FUNCIONES INTERNAS DEL MÓDULO (NO SE EXPORTAN) ---
 
