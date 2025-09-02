@@ -14,9 +14,15 @@ export const buildPlaygroundView = () => {
         <header class="flex justify-between items-center mb-6">
             <div>
                 <h2 class="text-2xl font-bold text-[#204071]">Playground</h2>
-                <p class="text-sm text-gray-500">Interactive Analysis Tools.</p>
+                <p class="text-sm text-gray-500">Interactive Analysis Tools for Security Testing.</p>
             </div>
         </header>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="text-sm font-semibold text-blue-800 mb-2">Security Testing Guidelines</h3>
+            <p class="text-sm text-blue-700">These tools help evaluate network connectivity, SSL/TLS configurations, and IAM permissions. Always ensure you have proper authorization before testing production systems and follow your organization's security testing policies.</p>
+        </div>
+        
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex flex-wrap space-x-6" id="playground-tabs">
                 <a href="#" data-tab="pg-tracer-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Traceroute</a>
@@ -27,8 +33,13 @@ export const buildPlaygroundView = () => {
         </div>
         <div id="pg-tracer-content" class="playground-tab-content">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="font-bold text-lg mb-4 text-[#204071]">Connectivity Analyzer Between Resources</h3>
-                <p class="text-sm text-gray-600 mb-4">Enter the source and destination instance ARNs (you can copy them from the Compute -> EC2 tab) to verify if a network path is allowed between them.</p>
+                <h3 class="font-bold text-lg mb-3 text-[#204071]">Network Connectivity Analyzer</h3>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3 mb-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">What this tool does:</h4>
+                    <p class="text-sm text-gray-600 mb-2">Analyzes the complete network path between two AWS resources, checking Security Groups, NACLs, and Route Tables to determine if connectivity is possible.</p>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Security considerations:</h4>
+                    <p class="text-sm text-gray-600">Use this to validate network segmentation, identify unintended connectivity paths, and verify that security controls are properly configured.</p>
+                </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label for="pg-source-arn" class="block text-sm font-medium text-gray-700 mb-1">Source ARN</label>
@@ -48,8 +59,13 @@ export const buildPlaygroundView = () => {
         </div>
         <div id="pg-sslscan-content" class="playground-tab-content hidden">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="font-bold text-lg mb-4 text-[#204071]">SSL/TLS Configuration Scanner</h3>
-                <p class="text-sm text-gray-600 mb-4">Enter one or more comma-separated domains/IPs to analyze their configuration.</p>
+                <h3 class="font-bold text-lg mb-3 text-[#204071]">SSL/TLS Security Scanner</h3>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3 mb-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">What this tool does:</h4>
+                    <p class="text-sm text-gray-600 mb-2">Performs comprehensive SSL/TLS analysis including cipher suites, certificate validation, protocol versions, and security vulnerabilities.</p>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Security considerations:</h4>
+                    <p class="text-sm text-gray-600">Identify weak ciphers, expired certificates, unsupported protocols, and other SSL/TLS misconfigurations that could expose sensitive data.</p>
+                </div>
                 <div>
                     <label for="pg-sslscan-target" class="block text-sm font-medium text-gray-700 mb-1">Domain(s) or IP(s)</label>
                     <input type="text" id="pg-sslscan-target" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="e.g.: google.com, github.com, 1.1.1.1">
@@ -63,8 +79,13 @@ export const buildPlaygroundView = () => {
         </div>
         <div id="pg-simulate-content" class="playground-tab-content hidden">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Policy Simulation</h3>
-                <p class="text-sm text-gray-600 mb-4">Test what actions a user can perform, with or without MFA context.</p>
+                <h3 class="font-bold text-lg mb-3 text-[#204071]">IAM Policy Simulation</h3>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3 mb-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">What this tool does:</h4>
+                    <p class="text-sm text-gray-600 mb-2">Simulates IAM policy evaluation for specific users and actions, testing both normal conditions and MFA-required scenarios using AWS's policy simulator.</p>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Security considerations:</h4>
+                    <p class="text-sm text-gray-600">Verify that users have appropriate permissions, test MFA enforcement, identify overprivileged accounts, and validate that critical actions require proper authentication.</p>
+                </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                     <div>
@@ -72,7 +93,7 @@ export const buildPlaygroundView = () => {
                         <input type="text" id="pg-username" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="admin-user">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Context</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">MFA Context</label>
                         <div class="flex items-center space-x-4 mt-2">
                             <label class="flex items-center">
                                 <input type="radio" name="mfa-context" value="without-mfa" class="mr-2" checked>
@@ -83,6 +104,7 @@ export const buildPlaygroundView = () => {
                                 <span class="text-sm">With MFA</span>
                             </label>
                         </div>
+                        <p class="text-xs text-gray-500 mt-1">Test if MFA requirements are properly enforced for sensitive operations</p>
                     </div>
                 </div>
                 
@@ -124,8 +146,13 @@ export const buildPlaygroundView = () => {
         </div>
         <div id="pg-lambda-simulate-content" class="playground-tab-content hidden">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="font-bold text-lg mb-4 text-[#204071]">Lambda Permission Simulation</h3>
-                <p class="text-sm text-gray-600 mb-4">Test what actions a Lambda function can perform through its execution role.</p>
+                <h3 class="font-bold text-lg mb-3 text-[#204071]">Lambda Permission Simulation</h3>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3 mb-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">What this tool does:</h4>
+                    <p class="text-sm text-gray-600 mb-2">Tests what AWS actions a Lambda function can perform through its execution role, helping validate the principle of least privilege.</p>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Security considerations:</h4>
+                    <p class="text-sm text-gray-600">Identify overprivileged Lambda functions, verify that functions can only access required resources, and ensure proper role-based access controls.</p>
+                </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                     <div>
@@ -249,12 +276,17 @@ const runPlaygroundAnalysis = async () => {
     };
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
         const response = await fetch('http://127.0.0.1:5001/api/run-playground-audit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
         window.playgroundApiData = await response.json();
         
         if (!response.ok) {
@@ -265,8 +297,13 @@ const runPlaygroundAnalysis = async () => {
         renderPlaygroundResults();
 
     } catch(e) {
-        log(`Path analysis error: ${e.message}`, 'error');
-        resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        if (e.name === 'AbortError') {
+            log('Path analysis timed out after 30 seconds.', 'error');
+            resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Timeout Error</h4><p>The analysis took too long to complete. Please check your network connection and try again.</p></div>`;
+        } else {
+            log(`Path analysis error: ${e.message}`, 'error');
+            resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        }
     } finally {
         runBtn.disabled = false;
         spinner.classList.add('hidden');
@@ -364,11 +401,17 @@ const runSslScan = async () => {
     btnText.textContent = 'Scanning...';
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
         const response = await fetch('http://127.0.0.1:5001/api/run-sslscan', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ target: target })
+            body: JSON.stringify({ target: target }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
         const data = await response.json();
         if (!response.ok && data.error) {
             throw new Error(data.error);
@@ -377,9 +420,14 @@ const runSslScan = async () => {
         window.playgroundApiData.sslscan = data.results;
         renderSslScanResults(data.results);
         log(`sslscan completed for: ${target}.`, 'success');
-    } catch (e) {
-        log(`sslscan error: ${e.message}`, 'error');
-        resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+            } catch (e) {
+        if (e.name === 'AbortError') {
+            log('SSL scan timed out after 2 minutes.', 'error');
+            resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Timeout Error</h4><p>The SSL scan took too long to complete. This may be due to network connectivity issues or unresponsive targets.</p></div>`;
+        } else {
+            log(`sslscan error: ${e.message}`, 'error');
+            resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        }
     } finally {
         runBtn.disabled = false;
         spinner.classList.add('hidden');
@@ -392,11 +440,11 @@ const runSimulation = async () => {
     const customActions = document.getElementById('pg-custom-actions').value.trim();
     const mfaContext = document.querySelector('input[name="mfa-context"]:checked').value;
     
-    // Recoger acciones seleccionadas
+    // Collect selected actions
     const selectedActions = Array.from(document.querySelectorAll('.action-checkbox:checked'))
         .map(cb => cb.value);
     
-    // Añadir acciones personalizadas
+    // Add custom actions
     if (customActions) {
         const customActionsList = customActions.split('\n').map(a => a.trim()).filter(a => a);
         selectedActions.push(...customActionsList);
@@ -407,14 +455,25 @@ const runSimulation = async () => {
             '<p class="text-red-600 font-medium">Please enter a username and select at least one action.</p>';
         return;
     }
+
+    // Check credentials
+    const accessKeyInput = document.getElementById('access-key-input');
+    const secretKeyInput = document.getElementById('secret-key-input');
+    const sessionTokenInput = document.getElementById('session-token-input');
+    
+    if (!accessKeyInput.value.trim() || !secretKeyInput.value.trim()) {
+        document.getElementById('simulation-results-container').innerHTML = 
+            '<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Credentials Required</h4><p>Please enter your AWS credentials in the header before running the simulation.</p></div>';
+        return;
+    }
     
     const payload = {
-        access_key: document.getElementById('access-key-input').value.trim(),
-        secret_key: document.getElementById('secret-key-input').value.trim(),
-        session_token: document.getElementById('session-token-input').value.trim() || null,
+        access_key: accessKeyInput.value.trim(),
+        secret_key: secretKeyInput.value.trim(),
+        session_token: sessionTokenInput.value.trim() || null,
         username: username,
         actions: selectedActions,
-        include_mfa_context: mfaContext === 'without-mfa'
+        include_mfa_context: mfaContext === 'with-mfa'  // FIXED: This was inverted
     };
     
     // UI updates
@@ -427,22 +486,33 @@ const runSimulation = async () => {
     btnText.textContent = 'Simulating...';
     
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
         const response = await fetch('http://127.0.0.1:5001/api/run-simulate-policy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) throw new Error(data.error || 'Simulation failed');
         
         renderSimulationResults(data.results);
         log(`Policy simulation completed for user: ${username}`, 'success');
         
     } catch (e) {
-        log(`Simulation error: ${e.message}`, 'error');
-        document.getElementById('simulation-results-container').innerHTML = 
-            `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        if (e.name === 'AbortError') {
+            log('Simulation timed out after 30 seconds.', 'error');
+            document.getElementById('simulation-results-container').innerHTML = 
+                `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Timeout Error</h4><p>The simulation took too long to complete. Please check your credentials and network connection.</p></div>`;
+        } else {
+            log(`Simulation error: ${e.message}`, 'error');
+            document.getElementById('simulation-results-container').innerHTML = 
+                `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        }
     } finally {
         btn.disabled = false;
         spinner.classList.add('hidden');
@@ -453,64 +523,89 @@ const runSimulation = async () => {
 const renderSimulationResults = (results) => {
     const container = document.getElementById('simulation-results-container');
     
+    // Determine context label
+    const contextText = results.context_applied && results.context_applied.length > 0 ? 'With MFA Context' : 'Without MFA Context';
+    
     let resultHtml = `
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h4 class="font-bold text-lg mb-4 text-[#204071]">Simulation Results for: ${results.username}</h4>
+            <h4 class="font-bold text-lg mb-2 text-[#204071]">Policy Simulation Results</h4>
+            <div class="mb-4 p-3 bg-gray-50 rounded">
+                <p class="text-sm"><strong>User:</strong> <span class="font-mono">${results.username}</span></p>
+                <p class="text-sm"><strong>Context:</strong> ${contextText}</p>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Context</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">`;
     
     results.simulation_results.forEach(result => {
         const decisionClass = result.decision === 'allowed' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100';
-        const contextText = results.context_applied.length > 0 ? 'Without MFA' : 'Default Context';
+        let matchedPolicies = 'No matching policies';
+        if (result.matched_statements && result.matched_statements.length > 0) {
+            const count = result.matched_statements.length;
+            matchedPolicies = count === 1 
+                ? '1 policy rule matched' 
+                : `${count} policy rules matched`;
+        }
         
         resultHtml += `
-            <tr>
+            <tr class="hover:bg-gray-50">
                 <td class="px-4 py-4 text-sm font-mono">${result.action}</td>
                 <td class="px-4 py-4 text-sm">
                     <span class="px-2 py-1 text-xs font-semibold rounded-full ${decisionClass}">
                         ${result.decision.toUpperCase()}
                     </span>
                 </td>
-                <td class="px-4 py-4 text-sm text-gray-600">${contextText}</td>
+                <td class="px-4 py-4 text-sm text-gray-600">${matchedPolicies}</td>
             </tr>`;
     });
     
     resultHtml += `</tbody></table></div></div>`;
     container.innerHTML = resultHtml;
 };
+
 const runLambdaSimulation = async () => {
     const functionName = document.getElementById('pg-lambda-name').value.trim();
     const region = document.getElementById('pg-lambda-region').value;
     const customActions = document.getElementById('pg-lambda-custom-actions').value.trim();
     
-    // Recoger acciones seleccionadas
+    // Collect selected actions
     const selectedActions = Array.from(document.querySelectorAll('.lambda-action-checkbox:checked'))
         .map(cb => cb.value);
     
-    // Añadir acciones personalizadas
+    // Add custom actions
     if (customActions) {
         const customActionsList = customActions.split('\n').map(a => a.trim()).filter(a => a);
         selectedActions.push(...customActionsList);
     }
     
-    if (!functionName || selectedActions.length === 0) {
+    if (!functionName || !region || selectedActions.length === 0) {
         document.getElementById('lambda-simulation-results-container').innerHTML = 
-            '<p class="text-red-600 font-medium">Please enter a function name and select at least one action.</p>';
+            '<p class="text-red-600 font-medium">Please enter a function name, select a region, and choose at least one action.</p>';
+        return;
+    }
+
+    // Check credentials
+    const accessKeyInput = document.getElementById('access-key-input');
+    const secretKeyInput = document.getElementById('secret-key-input');
+    const sessionTokenInput = document.getElementById('session-token-input');
+    
+    if (!accessKeyInput.value.trim() || !secretKeyInput.value.trim()) {
+        document.getElementById('lambda-simulation-results-container').innerHTML = 
+            '<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Credentials Required</h4><p>Please enter your AWS credentials in the header before running the simulation.</p></div>';
         return;
     }
     
     const payload = {
-        access_key: document.getElementById('access-key-input').value.trim(),
-        secret_key: document.getElementById('secret-key-input').value.trim(),
-        session_token: document.getElementById('session-token-input').value.trim() || null,
+        access_key: accessKeyInput.value.trim(),
+        secret_key: secretKeyInput.value.trim(),
+        session_token: sessionTokenInput.value.trim() || null,
         function_name: functionName,
         region: region,
         actions: selectedActions
@@ -526,22 +621,33 @@ const runLambdaSimulation = async () => {
     btnText.textContent = 'Simulating...';
     
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
         const response = await fetch('http://127.0.0.1:5001/api/run-simulate-lambda-policy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) throw new Error(data.error || 'Lambda simulation failed');
         
         renderLambdaSimulationResults(data.results);
         log(`Lambda simulation completed for function: ${functionName}`, 'success');
         
     } catch (e) {
-        log(`Lambda simulation error: ${e.message}`, 'error');
-        document.getElementById('lambda-simulation-results-container').innerHTML = 
-            `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        if (e.name === 'AbortError') {
+            log('Lambda simulation timed out after 30 seconds.', 'error');
+            document.getElementById('lambda-simulation-results-container').innerHTML = 
+                `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Timeout Error</h4><p>The simulation took too long to complete. Please check your credentials and network connection.</p></div>`;
+        } else {
+            log(`Lambda simulation error: ${e.message}`, 'error');
+            document.getElementById('lambda-simulation-results-container').innerHTML = 
+                `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        }
     } finally {
         btn.disabled = false;
         spinner.classList.add('hidden');
@@ -554,14 +660,18 @@ const renderLambdaSimulationResults = (results) => {
     
     let resultHtml = `
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h4 class="font-bold text-lg mb-2 text-[#204071]">Simulation Results for Lambda: ${results.function_name}</h4>
-            <p class="text-sm text-gray-600 mb-4">Testing execution role: <span class="font-mono text-xs">${results.execution_role_arn}</span></p>
+            <h4 class="font-bold text-lg mb-2 text-[#204071]">Lambda Permission Analysis</h4>
+            <div class="mb-4 p-3 bg-gray-50 rounded">
+                <p class="text-sm"><strong>Function:</strong> <span class="font-mono">${results.function_name}</span></p>
+                <p class="text-sm"><strong>Execution Role:</strong> <span class="font-mono text-xs">${results.execution_role_arn}</span></p>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Risk Level</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">`;
@@ -569,14 +679,31 @@ const renderLambdaSimulationResults = (results) => {
     results.simulation_results.forEach(result => {
         const decisionClass = result.decision === 'allowed' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100';
         
+        // Assess risk level for allowed actions
+        let riskLevel = 'N/A';
+        let riskClass = 'text-gray-600';
+        if (result.decision === 'allowed') {
+            if (result.action.includes('Delete') || result.action.includes('Terminate') || result.action.includes('Put') || result.action.includes('Create')) {
+                riskLevel = 'High';
+                riskClass = 'text-red-600 font-semibold';
+            } else if (result.action.includes('Get') || result.action.includes('List') || result.action.includes('Describe')) {
+                riskLevel = 'Low';
+                riskClass = 'text-green-600';
+            } else {
+                riskLevel = 'Medium';
+                riskClass = 'text-yellow-600';
+            }
+        }
+        
         resultHtml += `
-            <tr>
+            <tr class="hover:bg-gray-50">
                 <td class="px-4 py-4 text-sm font-mono">${result.action}</td>
                 <td class="px-4 py-4 text-sm">
                     <span class="px-2 py-1 text-xs font-semibold rounded-full ${decisionClass}">
                         ${result.decision.toUpperCase()}
                     </span>
                 </td>
+                <td class="px-4 py-4 text-sm ${riskClass}">${riskLevel}</td>
             </tr>`;
     });
     
@@ -588,10 +715,10 @@ const populateLambdaRegionSelect = () => {
     const select = document.getElementById('pg-lambda-region');
     if (!select || !window.allAvailableRegions) return;
     
-    // Limpiar opciones existentes
-    select.innerHTML = '';
+    // Clear existing options
+    select.innerHTML = '<option value="">Select a region...</option>';
     
-    // Poblar con todas las regiones disponibles
+    // Populate with all available regions
     window.allAvailableRegions.forEach(region => {
         const option = document.createElement('option');
         option.value = region;
@@ -599,7 +726,7 @@ const populateLambdaRegionSelect = () => {
         select.appendChild(option);
     });
     
-    // Establecer us-east-1 como predeterminado si existe
+    // Set us-east-1 as default if it exists
     if (window.allAvailableRegions.includes('us-east-1')) {
         select.value = 'us-east-1';
     }
