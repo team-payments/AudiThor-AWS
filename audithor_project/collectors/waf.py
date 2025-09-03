@@ -38,9 +38,77 @@ def parse_resource_arn(arn):
         return arn
 
 
+def get_logging_configuration_details(client, acl_arn, scope):
+    """
+    Retrieves detailed logging configuration for a Web ACL, including both
+    'All logging' and 'Logging destination only' configurations.
+    
+    Args:
+        client: WAFv2 boto3 client
+        acl_arn (str): ARN of the Web ACL
+        scope (str): Scope of the Web ACL ('CLOUDFRONT' or 'REGIONAL')
+    
+    Returns:
+        dict: Dictionary containing detailed logging configuration
+    """
+    logging_details = {
+        'all_logging': {
+            'enabled': False,
+            'destinations': [],
+            'log_filters': [],
+            'default_behavior': None
+        },
+        'destination_only_logging': {
+            'enabled': False,
+            'destinations': [],
+            'log_filters': [],
+            'default_behavior': None
+        }
+    }
+    
+    try:
+        # Get the full logging configuration
+        response = client.get_logging_configuration(ResourceArn=acl_arn)
+        logging_config = response.get('LoggingConfiguration', {})
+        
+        if logging_config:
+            destinations = logging_config.get('LogDestinationConfigs', [])
+            redacted_fields = logging_config.get('RedactedFields', [])
+            log_filters = logging_config.get('LoggingFilter', {}).get('Filters', [])
+            default_behavior = logging_config.get('LoggingFilter', {}).get('DefaultBehavior', 'KEEP')
+            
+            # Check if "All logging" is enabled (when LoggingFilter is not restrictive)
+            all_logging_enabled = True
+            if log_filters:
+                # If there are filters, check if they are configured for selective logging
+                destination_only_filters = [f for f in log_filters if f.get('Behavior') == 'KEEP']
+                if destination_only_filters and default_behavior == 'DROP':
+                    all_logging_enabled = False
+            
+            # Populate all_logging configuration
+            if all_logging_enabled:
+                logging_details['all_logging']['enabled'] = True
+                logging_details['all_logging']['destinations'] = destinations
+                logging_details['all_logging']['default_behavior'] = default_behavior
+            
+            # Populate destination_only_logging configuration
+            if log_filters and default_behavior == 'DROP':
+                logging_details['destination_only_logging']['enabled'] = True
+                logging_details['destination_only_logging']['destinations'] = destinations
+                logging_details['destination_only_logging']['log_filters'] = log_filters
+                logging_details['destination_only_logging']['default_behavior'] = default_behavior
+            
+    except ClientError as e:
+        # Logging configuration might not exist or access denied
+        pass
+    
+    return logging_details
+
+
 def collect_waf_data(session):
     """
-    Collects data on AWS WAFv2 Web ACLs and IP Sets, including CloudWatch metrics for top rules.
+    Collects data on AWS WAFv2 Web ACLs and IP Sets, including CloudWatch metrics for top rules
+    and detailed logging configurations (both 'All logging' and 'Logging destination only').
 
     This function handles the dual-scope nature of WAFv2 by first querying for
     global resources (Scope='CLOUDFRONT') in us-east-1, and then iterating
@@ -48,7 +116,7 @@ def collect_waf_data(session):
     It gathers details for Web ACLs (logging, visibility) and IP Sets.
     
     For each Web ACL, it also queries CloudWatch for the 'BlockedRequests' metric
-    over the last 3 days to identify the most triggered rules.
+    over the last 30 days to identify the most triggered rules.
 
     Args:
         session (boto3.Session): The Boto3 session object for AWS authentication.
@@ -56,7 +124,7 @@ def collect_waf_data(session):
     Returns:
         dict: A dictionary containing two keys:
               - 'acls': A list of all Web ACLs, each including a 'TopRules' key 
-                        with metric data if available.
+                        with metric data if available and detailed logging configuration.
               - 'ip_sets': A list of all IP Sets, global and regional.
     """
     all_acls = []
@@ -78,7 +146,12 @@ def collect_waf_data(session):
                 WebACLArn=acl_summary["ARN"]
             ).get("ResourceArns", [])
             
-            # --- NEW: Collect CloudWatch metrics for the ACL ---
+            # Get detailed logging configuration
+            logging_details = get_logging_configuration_details(
+                client_global, acl_summary["ARN"], "CLOUDFRONT"
+            )
+            
+            # --- Collect CloudWatch metrics for the ACL ---
             top_rules = []
             try:
                 cloudwatch_client = session.client('cloudwatch', region_name="us-east-1")
@@ -94,7 +167,7 @@ def collect_waf_data(session):
                                     {'Name': 'Rule', 'Value': 'ALL'}
                                 ]
                             },
-                            'Period': 2592000,  # 3 days in seconds
+                            'Period': 2592000,  # 30 days in seconds
                             'Stat': 'Sum',
                         },
                         'ReturnData': True,
@@ -110,7 +183,6 @@ def collect_waf_data(session):
                             top_rules.append({"RuleName": rule_name, "BlockedRequests": int(total_blocked)})
             except ClientError:
                 pass # Fails silently if metrics are not available
-            # --- END of new metric collection ---
 
             all_acls.append({
                 "Name": acl_summary["Name"],
@@ -120,6 +192,7 @@ def collect_waf_data(session):
                 "Region": "Global",
                 "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw],
                 "LoggingConfiguration": acl_details.get("LoggingConfiguration", {}),
+                "LoggingDetails": logging_details,
                 "VisibilityConfig": acl_details.get("VisibilityConfig", {}),
                 "TopRules": sorted(top_rules, key=lambda x: x['BlockedRequests'], reverse=True)
             })
@@ -142,7 +215,12 @@ def collect_waf_data(session):
                     WebACLArn=acl_summary["ARN"]
                 ).get("ResourceArns", [])
 
-                # --- NEW: Collect CloudWatch metrics for the ACL ---
+                # Get detailed logging configuration
+                logging_details = get_logging_configuration_details(
+                    client_regional, acl_summary["ARN"], "REGIONAL"
+                )
+
+                # --- Collect CloudWatch metrics for the ACL ---
                 top_rules = []
                 try:
                     cloudwatch_client = session.client('cloudwatch', region_name=region)
@@ -174,7 +252,6 @@ def collect_waf_data(session):
                                 top_rules.append({"RuleName": rule_name, "BlockedRequests": int(total_blocked)})
                 except ClientError:
                     pass # Fails silently if metrics are not available
-                # --- END of new metric collection ---
 
                 all_acls.append({
                     "Name": acl_summary["Name"],
@@ -184,6 +261,7 @@ def collect_waf_data(session):
                     "Region": region,
                     "AssociatedResourceArns": [parse_resource_arn(r) for r in resources_raw],
                     "LoggingConfiguration": acl_details.get("LoggingConfiguration", {}),
+                    "LoggingDetails": logging_details,
                     "VisibilityConfig": acl_details.get("VisibilityConfig", {}),
                     "TopRules": sorted(top_rules, key=lambda x: x['BlockedRequests'], reverse=True)
                 })

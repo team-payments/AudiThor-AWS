@@ -57,7 +57,6 @@ export function buildWafView() {
                 <a href="#" data-tab="waf-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
                 <a href="#" data-tab="waf-acls-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Web ACLs (${acls.length})</a>
                 <a href="#" data-tab="waf-ipsets-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">IP Sets (${ip_sets.length})</a>
-                <a href="#" data-tab="waf-monitoring-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Logging & Monitoring</a>
                 <a href="#" data-tab="waf-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${wafFindings.length})</a>
             </nav>
         </div>
@@ -70,10 +69,6 @@ export function buildWafView() {
             <div id="waf-ipsets-content" class="waf-tab-content hidden">
                 ${renderServiceDescription(serviceDescriptions.ipsets)}
                 ${renderWafIpSetsTable(ip_sets)}
-            </div>
-            <div id="waf-monitoring-content" class="waf-tab-content hidden">
-                ${renderServiceDescription(serviceDescriptions.logging)}
-                ${renderWafMonitoringAnalysis(acls)}
             </div>
             <div id="waf-sh-content" class="waf-tab-content hidden">${createWafSecurityHubHtml()}</div>
         </div>
@@ -135,9 +130,46 @@ function createWafSummaryCardsHtml() {
 
 function updateWafSummaryCards(acls, ipSets, wafFindings) {
     const aclCount = acls.length;
-    const loggingEnabledCount = acls.filter(acl => acl.LoggingConfiguration && Object.keys(acl.LoggingConfiguration).length > 0).length;
+    
+    // Calculate new logging metrics
+    const allLoggingEnabled = acls.filter(acl => 
+        acl.LoggingDetails && acl.LoggingDetails.all_logging && acl.LoggingDetails.all_logging.enabled
+    ).length;
+    
+    const destinationOnlyEnabled = acls.filter(acl => 
+        acl.LoggingDetails && acl.LoggingDetails.destination_only_logging && acl.LoggingDetails.destination_only_logging.enabled
+    ).length;
+    
+    const anyLoggingEnabled = acls.filter(acl => 
+        (acl.LoggingDetails && acl.LoggingDetails.all_logging && acl.LoggingDetails.all_logging.enabled) ||
+        (acl.LoggingDetails && acl.LoggingDetails.destination_only_logging && acl.LoggingDetails.destination_only_logging.enabled) ||
+        (acl.LoggingConfiguration && Object.keys(acl.LoggingConfiguration).length > 0)
+    ).length;
+    
     document.getElementById('waf-acl-count').textContent = aclCount;
-    document.getElementById('waf-logging-enabled').textContent = `${loggingEnabledCount} / ${aclCount}`;
+    
+    // Update logging display to show breakdown
+    const loggingBreakdown = `${anyLoggingEnabled} / ${aclCount}`;
+    document.getElementById('waf-logging-enabled').textContent = loggingBreakdown;
+    
+    // Add tooltip or additional display for logging breakdown if needed
+    const loggingElement = document.getElementById('waf-logging-enabled');
+    if (loggingElement && loggingElement.parentElement) {
+        const parentCard = loggingElement.parentElement;
+        const existingDetails = parentCard.querySelector('.logging-details');
+        if (existingDetails) {
+            existingDetails.remove();
+        }
+        
+        const loggingDetails = document.createElement('div');
+        loggingDetails.className = 'logging-details text-xs text-gray-500 mt-1';
+        loggingDetails.innerHTML = `
+            <div>All: ${allLoggingEnabled}</div>
+            <div>Destination Only: ${destinationOnlyEnabled}</div>
+        `;
+        loggingElement.parentElement.appendChild(loggingDetails);
+    }
+    
     const protectedResources = acls.reduce((sum, acl) => sum + (acl.AssociatedResourceArns?.length || 0), 0);
     document.getElementById('waf-protected-resources').textContent = protectedResources;
     updateWafTopRulesChart(acls);
@@ -202,24 +234,139 @@ function renderWafAclsTable(acls) {
         `;
     }
     
-    let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logging Destination</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sampled Requests</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Protected Resources</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
-    acls.sort((a,b) => a.Name.localeCompare(b.Name)).forEach(acl => {
-        let resourcesHtml = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">No associated resources</span>';
-        if (acl.AssociatedResourceArns && acl.AssociatedResourceArns.length > 0) {
-            resourcesHtml = `<div class="flex flex-col space-y-1">` + acl.AssociatedResourceArns.map(arn => `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 font-mono">${arn}</span>`).join('') + `</div>`;
-        }
-        let loggingHtml = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Disabled</span>';
-        if (acl.LoggingConfiguration && acl.LoggingConfiguration.LogDestinationConfigs && acl.LoggingConfiguration.LogDestinationConfigs.length > 0) {
-            const firehoseArn = acl.LoggingConfiguration.LogDestinationConfigs[0];
-            const firehoseName = firehoseArn.split('/').pop();
-            loggingHtml = `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 font-mono" title="${firehoseArn}">${firehoseName}</span>`;
-        }
-        const sampledEnabled = acl.VisibilityConfig ? acl.VisibilityConfig.SampledRequestsEnabled : false;
-        const sampledBadge = sampledEnabled ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
-        table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${acl.Name}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Scope}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Region}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${loggingHtml}</td><td class="px-4 py-4 align-top whitespace-nowrap text-sm">${sampledBadge}</td><td class="px-4 py-4 align-top text-sm">${resourcesHtml}</td></tr>`;
-    });
-    table += '</tbody></table></div>';
-    return table;
+    return `
+        <div class="space-y-6">
+            ${renderLoggingConfigurationGuide()}
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">All Logging</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destination Only</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sampled Requests</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Protected Resources</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${acls.sort((a,b) => a.Name.localeCompare(b.Name)).map(acl => renderWafAclRow(acl)).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function renderWafAclRow(acl) {
+    // Resources HTML
+    let resourcesHtml = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">No associated resources</span>';
+    if (acl.AssociatedResourceArns && acl.AssociatedResourceArns.length > 0) {
+        resourcesHtml = `<div class="flex flex-col space-y-1">` + 
+            acl.AssociatedResourceArns.map(arn => 
+                `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 font-mono">${arn}</span>`
+            ).join('') + `</div>`;
+    }
+    
+    // Logging configuration HTML
+    const loggingDetails = acl.LoggingDetails || {
+        all_logging: { enabled: false, destinations: [] },
+        destination_only_logging: { enabled: false, destinations: [] }
+    };
+    
+    let allLoggingHtml = createLoggingStatusBadge(loggingDetails.all_logging);
+    let destinationOnlyHtml = createLoggingStatusBadge(loggingDetails.destination_only_logging);
+    
+    // Sampled requests
+    const sampledEnabled = acl.VisibilityConfig ? acl.VisibilityConfig.SampledRequestsEnabled : false;
+    const sampledBadge = sampledEnabled ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
+    
+    return `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-medium text-gray-800">${acl.Name}</td>
+            <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Scope}</td>
+            <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${acl.Region}</td>
+            <td class="px-4 py-4 align-top text-sm">${allLoggingHtml}</td>
+            <td class="px-4 py-4 align-top text-sm">${destinationOnlyHtml}</td>
+            <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${sampledBadge}</td>
+            <td class="px-4 py-4 align-top text-sm">${resourcesHtml}</td>
+        </tr>
+    `;
+}
+
+function createLoggingStatusBadge(loggingConfig) {
+    if (!loggingConfig.enabled) {
+        return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Disabled</span>';
+    }
+    
+    if (loggingConfig.destinations && loggingConfig.destinations.length > 0) {
+        const destination = loggingConfig.destinations[0];
+        const destinationName = destination.split('/').pop();
+        return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 font-mono" title="${destination}">${destinationName}</span>`;
+    }
+    
+    return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Enabled (No Destination)</span>';
+}
+
+function renderLoggingConfigurationGuide() {
+    return `
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-blue-800 mb-4">WAF Logging Configuration Types</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white border border-blue-200 rounded-lg p-4">
+                    <h4 class="text-sm font-semibold text-blue-800 mb-2 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        All Logging
+                    </h4>
+                    <p class="text-sm text-blue-700 mb-3">
+                        <strong>What it does:</strong> Logs all web requests processed by the Web ACL, regardless of whether they are allowed or blocked.
+                    </p>
+                    <p class="text-sm text-blue-700 mb-3">
+                        <strong>Use case:</strong> Comprehensive traffic analysis, security monitoring, compliance requirements, and forensic investigations.
+                    </p>
+                    <div class="bg-blue-100 border border-blue-300 rounded p-2">
+                        <p class="text-xs text-blue-800">
+                            <strong>Audit Recommendation:</strong> Enable for high-security environments and compliance requirements, but consider cost implications for high-traffic applications.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="bg-white border border-blue-200 rounded-lg p-4">
+                    <h4 class="text-sm font-semibold text-blue-800 mb-2 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        Logging Destination Only
+                    </h4>
+                    <p class="text-sm text-blue-700 mb-3">
+                        <strong>What it does:</strong> Logs only requests that match specific filter conditions (e.g., only blocked requests, only requests from specific rules).
+                    </p>
+                    <p class="text-sm text-blue-700 mb-3">
+                        <strong>Use case:</strong> Cost optimization, focused security monitoring, specific compliance requirements for blocked traffic only.
+                    </p>
+                    <div class="bg-green-100 border border-green-300 rounded p-2">
+                        <p class="text-xs text-green-800">
+                            <strong>Audit Recommendation:</strong> Ideal for cost-conscious environments where you only need to monitor security events and blocked requests.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 bg-yellow-50 border border-yellow-300 rounded p-3">
+                <h4 class="text-sm font-semibold text-yellow-800 mb-2">Key Audit Considerations:</h4>
+                <ul class="text-xs text-yellow-700 space-y-1">
+                    <li>• <strong>Cost Impact:</strong> "All Logging" generates significantly more log data than "Destination Only" - evaluate cost vs. security benefits</li>
+                    <li>• <strong>Compliance:</strong> Some regulations require comprehensive logging ("All Logging"), while others may accept selective logging</li>
+                    <li>• <strong>Incident Response:</strong> "All Logging" provides better context for investigations, while "Destination Only" may miss legitimate traffic patterns</li>
+                    <li>• <strong>Performance Impact:</strong> Both options have minimal performance impact on WAF processing</li>
+                    <li>• <strong>Storage Requirements:</strong> Consider log retention policies and storage costs when enabling comprehensive logging</li>
+                </ul>
+            </div>
+        </div>
+    `;
 }
 
 function renderWafIpSetsTable(ipSets) { 
@@ -246,15 +393,25 @@ function renderWafIpSetsTable(ipSets) {
 }
 
 function renderWafMonitoringAnalysis(acls) {
-    // Calculate monitoring metrics
+    // Calculate monitoring metrics with both logging types
     let totalAcls = acls.length;
-    let loggingEnabled = acls.filter(acl => acl.LoggingConfiguration && Object.keys(acl.LoggingConfiguration).length > 0).length;
+    let allLoggingEnabled = acls.filter(acl => 
+        acl.LoggingDetails && acl.LoggingDetails.all_logging && acl.LoggingDetails.all_logging.enabled
+    ).length;
+    let destinationOnlyLoggingEnabled = acls.filter(acl => 
+        acl.LoggingDetails && acl.LoggingDetails.destination_only_logging && acl.LoggingDetails.destination_only_logging.enabled
+    ).length;
+    let anyLoggingEnabled = acls.filter(acl => 
+        (acl.LoggingDetails && acl.LoggingDetails.all_logging && acl.LoggingDetails.all_logging.enabled) ||
+        (acl.LoggingDetails && acl.LoggingDetails.destination_only_logging && acl.LoggingDetails.destination_only_logging.enabled) ||
+        (acl.LoggingConfiguration && Object.keys(acl.LoggingConfiguration).length > 0)
+    ).length;
     let samplingEnabled = acls.filter(acl => acl.VisibilityConfig && acl.VisibilityConfig.SampledRequestsEnabled).length;
     let unprotectedAcls = acls.filter(acl => !acl.AssociatedResourceArns || acl.AssociatedResourceArns.length === 0).length;
     
     return `
         <div class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div class="bg-white border border-gray-200 rounded-lg p-4">
                     <div class="flex items-center">
                         <div class="flex-shrink-0">
@@ -265,8 +422,26 @@ function renderWafMonitoringAnalysis(acls) {
                             </div>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm font-medium text-gray-500">Logging Coverage</p>
-                            <p class="text-2xl font-semibold text-gray-900">${Math.round((loggingEnabled/totalAcls)*100) || 0}%</p>
+                            <p class="text-sm font-medium text-gray-500">All Logging</p>
+                            <p class="text-2xl font-semibold text-gray-900">${Math.round((allLoggingEnabled/totalAcls)*100) || 0}%</p>
+                            <p class="text-xs text-gray-500">${allLoggingEnabled}/${totalAcls} ACLs</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500">Destination Only</p>
+                            <p class="text-2xl font-semibold text-gray-900">${Math.round((destinationOnlyLoggingEnabled/totalAcls)*100) || 0}%</p>
+                            <p class="text-xs text-gray-500">${destinationOnlyLoggingEnabled}/${totalAcls} ACLs</p>
                         </div>
                     </div>
                 </div>
@@ -276,14 +451,14 @@ function renderWafMonitoringAnalysis(acls) {
                         <div class="flex-shrink-0">
                             <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                             </div>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm font-medium text-gray-500">Request Sampling</p>
-                            <p class="text-2xl font-semibold text-gray-900">${Math.round((samplingEnabled/totalAcls)*100) || 0}%</p>
+                            <p class="text-sm font-medium text-gray-500">Any Logging</p>
+                            <p class="text-2xl font-semibold text-gray-900">${Math.round((anyLoggingEnabled/totalAcls)*100) || 0}%</p>
+                            <p class="text-xs text-gray-500">${anyLoggingEnabled}/${totalAcls} ACLs</p>
                         </div>
                     </div>
                 </div>
@@ -293,13 +468,15 @@ function renderWafMonitoringAnalysis(acls) {
                         <div class="flex-shrink-0">
                             <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
                                 <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                 </svg>
                             </div>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm font-medium text-gray-500">Active Protection</p>
-                            <p class="text-2xl font-semibold text-gray-900">${Math.round(((totalAcls - unprotectedAcls)/totalAcls)*100) || 0}%</p>
+                            <p class="text-sm font-medium text-gray-500">Request Sampling</p>
+                            <p class="text-2xl font-semibold text-gray-900">${Math.round((samplingEnabled/totalAcls)*100) || 0}%</p>
+                            <p class="text-xs text-gray-500">${samplingEnabled}/${totalAcls} ACLs</p>
                         </div>
                     </div>
                 </div>
@@ -316,17 +493,18 @@ function renderWafMonitoringAnalysis(acls) {
                         <div class="ml-3">
                             <p class="text-sm font-medium text-gray-500">Unprotected ACLs</p>
                             <p class="text-2xl font-semibold text-gray-900">${unprotectedAcls}</p>
+                            <p class="text-xs text-gray-500">No resources</p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            ${renderWafMonitoringRecommendations(acls, loggingEnabled, samplingEnabled, unprotectedAcls)}
+            ${renderWafMonitoringRecommendations(acls, allLoggingEnabled, destinationOnlyLoggingEnabled, anyLoggingEnabled, samplingEnabled, unprotectedAcls)}
         </div>
     `;
 }
 
-function renderWafMonitoringRecommendations(acls, loggingEnabled, samplingEnabled, unprotectedAcls) {
+function renderWafMonitoringRecommendations(acls, allLoggingEnabled, destinationOnlyLoggingEnabled, anyLoggingEnabled, samplingEnabled, unprotectedAcls) {
     const recommendations = [];
     const totalAcls = acls.length;
     
@@ -338,21 +516,51 @@ function renderWafMonitoringRecommendations(acls, loggingEnabled, samplingEnable
             action: 'Implement WAF protection for all public-facing web applications and APIs.'
         });
     } else {
-        if (loggingEnabled < totalAcls) {
+        // Logging recommendations based on both types
+        if (anyLoggingEnabled === 0) {
             recommendations.push({
-                type: 'warning',
-                title: 'Incomplete Logging Coverage',
-                message: `${totalAcls - loggingEnabled} Web ACL(s) do not have logging enabled, limiting incident response capabilities.`,
-                action: 'Enable comprehensive logging for all Web ACLs and configure appropriate log retention policies.'
+                type: 'critical',
+                title: 'No Logging Enabled',
+                message: 'No Web ACLs have any form of logging enabled, severely limiting incident response and compliance capabilities.',
+                action: 'Enable at minimum "Destination Only" logging for security events, or "All Logging" for comprehensive monitoring.'
+            });
+        } else if (allLoggingEnabled < totalAcls && destinationOnlyLoggingEnabled < totalAcls) {
+            const unloggedAcls = totalAcls - anyLoggingEnabled;
+            if (unloggedAcls > 0) {
+                recommendations.push({
+                    type: 'warning',
+                    title: 'Incomplete Logging Coverage',
+                    message: `${unloggedAcls} Web ACL(s) have no logging configured. Consider implementing at least selective logging for security monitoring.`,
+                    action: 'Enable "Destination Only" logging for cost-effective security monitoring, or "All Logging" for comprehensive analysis.'
+                });
+            }
+        }
+        
+        // Specific logging strategy recommendations
+        if (allLoggingEnabled === 0 && destinationOnlyLoggingEnabled > 0) {
+            recommendations.push({
+                type: 'info',
+                title: 'Selective Logging in Use',
+                message: `All logging is configured as "Destination Only" - good for cost optimization but may limit incident investigation capabilities.`,
+                action: 'Consider enabling "All Logging" for critical applications that require comprehensive traffic analysis.'
+            });
+        }
+        
+        if (allLoggingEnabled > 0 && destinationOnlyLoggingEnabled === 0) {
+            recommendations.push({
+                type: 'info',
+                title: 'Comprehensive Logging Enabled',
+                message: `All logging is configured as "All Logging" - excellent for security analysis but may increase costs.`,
+                action: 'Monitor log volumes and costs. Consider "Destination Only" logging for non-critical applications if cost optimization is needed.'
             });
         }
         
         if (samplingEnabled < totalAcls) {
             recommendations.push({
                 type: 'info',
-                title: 'Request Sampling Disabled',
-                message: `${totalAcls - samplingEnabled} Web ACL(s) have request sampling disabled, reducing visibility into blocked requests.`,
-                action: 'Enable request sampling for better rule analysis and tuning capabilities.'
+                title: 'Request Sampling Opportunities',
+                message: `${totalAcls - samplingEnabled} Web ACL(s) have request sampling disabled, reducing visibility into request patterns.`,
+                action: 'Enable request sampling for better rule analysis and tuning capabilities without significant cost impact.'
             });
         }
         
@@ -360,17 +568,18 @@ function renderWafMonitoringRecommendations(acls, loggingEnabled, samplingEnable
             recommendations.push({
                 type: 'warning',
                 title: 'Unattached Web ACLs',
-                message: `${unprotectedAcls} Web ACL(s) are not protecting any resources.`,
+                message: `${unprotectedAcls} Web ACL(s) are not protecting any resources, indicating potential configuration drift.`,
                 action: 'Associate Web ACLs with relevant resources or remove unused ACLs to maintain clean configuration.'
             });
         }
         
+        // Positive recommendations
         if (recommendations.length === 0) {
             recommendations.push({
                 type: 'success',
-                title: 'WAF Configuration Healthy',
-                message: 'All Web ACLs are properly configured with logging and monitoring enabled.',
-                action: 'Continue monitoring WAF effectiveness and regularly review rule performance metrics.'
+                title: 'Excellent WAF Configuration',
+                message: 'All Web ACLs are properly configured with appropriate logging and monitoring enabled.',
+                action: 'Continue monitoring WAF effectiveness and regularly review rule performance metrics and cost optimization opportunities.'
             });
         }
     }
@@ -398,7 +607,7 @@ function renderWafMonitoringRecommendations(acls, loggingEnabled, samplingEnable
     
     return `
         <div class="bg-white border border-gray-200 rounded-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">WAF Monitoring & Logging Recommendations</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">WAF Logging Strategy Recommendations</h3>
             <div class="space-y-4">
                 ${recommendations.map(rec => `
                     <div class="border rounded-lg p-4 ${typeColors[rec.type]}">
@@ -414,6 +623,48 @@ function renderWafMonitoringRecommendations(acls, loggingEnabled, samplingEnable
                         </div>
                     </div>
                 `).join('')}
+            </div>
+            
+            <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-800 mb-3">Logging Strategy Decision Matrix</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-xs">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2 font-medium text-gray-700">Scenario</th>
+                                <th class="text-left py-2 font-medium text-gray-700">Recommendation</th>
+                                <th class="text-left py-2 font-medium text-gray-700">Cost Impact</th>
+                                <th class="text-left py-2 font-medium text-gray-700">Security Benefit</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr>
+                                <td class="py-2 text-gray-600">High-security/regulated environment</td>
+                                <td class="py-2 text-blue-600 font-medium">All Logging</td>
+                                <td class="py-2 text-red-600">High</td>
+                                <td class="py-2 text-green-600">Maximum</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 text-gray-600">Cost-conscious security monitoring</td>
+                                <td class="py-2 text-indigo-600 font-medium">Destination Only</td>
+                                <td class="py-2 text-yellow-600">Low</td>
+                                <td class="py-2 text-blue-600">Targeted</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 text-gray-600">Development/testing environments</td>
+                                <td class="py-2 text-purple-600 font-medium">Sampling Only</td>
+                                <td class="py-2 text-green-600">Minimal</td>
+                                <td class="py-2 text-gray-600">Basic</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 text-gray-600">Mixed environment strategy</td>
+                                <td class="py-2 text-teal-600 font-medium">Hybrid Approach</td>
+                                <td class="py-2 text-yellow-600">Balanced</td>
+                                <td class="py-2 text-blue-600">Optimized</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `;
