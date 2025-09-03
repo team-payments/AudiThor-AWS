@@ -110,23 +110,55 @@ function createWafSummaryCardsHtml() {
     return `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                <p class="text-sm text-gray-500">Total Web ACLs</p>
-                <p id="waf-acl-count" class="text-3xl font-bold text-[#204071] mt-2">--</p>
+                <div class="flex items-center">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-500">Total Web ACLs</p>
+                        <p id="waf-acl-count" class="text-3xl font-bold text-[#204071] mt-2">--</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-[#204071]" viewBox="0 0 16 16">
+                            <path d="M0 .5A.5.5 0 0 1 .5 0h15a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5H14v2h1.5a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5H14v2h1.5a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 .5-.5H2v-2H.5a.5.5 0 0 1-.5-.5v-3A.5.5 0 0 1 .5 6H2V4H.5a.5.5 0 0 1-.5-.5zM3 4v2h4.5V4zm5.5 0v2H13V4zM3 10v2h4.5v-2zm5.5 0v2H13v-2zM1 1v2h3.5V1zm4.5 0v2h5V1zm6 0v2H15V1zM1 7v2h3.5V7zm4.5 0v2h5V7zm6 0v2H15V7zM1 13v2h3.5v-2zm4.5 0v2h5v-2zm6 0v2H15v-2z"/>
+                        </svg>
+                    </div>
+                </div>
             </div>
+            
             <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                <p class="text-sm text-gray-500">ACLs with Logging</p>
-                <p id="waf-logging-enabled" class="text-3xl font-bold text-green-600 mt-2">--</p>
+                <div class="flex items-center">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-500">ACLs with Logging</p>
+                        <p id="waf-logging-enabled" class="text-3xl font-bold text-green-600 mt-2">--</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-green-600" viewBox="0 0 16 16">
+                            <path d="M10 13.5a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-6a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5zm-2.5.5a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5zm-3 0a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5z"/>
+                            <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+                        </svg>
+                    </div>
+                </div>
             </div>
+            
             <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
-                <p class="text-sm text-gray-500">Protected Resources</p>
-                <p id="waf-protected-resources" class="text-3xl font-bold text-[#204071] mt-2">--</p>
+                <div class="flex items-center">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-500">Protected Resources</p>
+                        <p id="waf-protected-resources" class="text-3xl font-bold text-[#204071] mt-2">--</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-[#204071]" viewBox="0 0 16 16">
+                            <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464z"/>
+                        </svg>
+                    </div>
+                </div>
             </div>
         </div>
+        
         <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm mb-8">
             <h3 class="font-bold text-lg text-[#204071] mb-2">Top 5 Blocked Rules (Last 30 Days)</h3>
             <div class="h-48"><canvas id="wafTopRulesChart"></canvas></div>
         </div>`;
 }
+
 
 function updateWafSummaryCards(acls, ipSets, wafFindings) {
     const aclCount = acls.length;
@@ -278,9 +310,11 @@ function renderWafAclRow(acl) {
     let allLoggingHtml = createLoggingStatusBadge(loggingDetails.all_logging);
     let destinationOnlyHtml = createLoggingStatusBadge(loggingDetails.destination_only_logging);
     
-    // Sampled requests
+    // Sampled requests con colores apropiados
     const sampledEnabled = acl.VisibilityConfig ? acl.VisibilityConfig.SampledRequestsEnabled : false;
-    const sampledBadge = sampledEnabled ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
+    const sampledBadge = sampledEnabled ? 
+        '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>' :
+        '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Disabled</span>';
     
     return `
         <tr class="hover:bg-gray-50">
@@ -297,13 +331,13 @@ function renderWafAclRow(acl) {
 
 function createLoggingStatusBadge(loggingConfig) {
     if (!loggingConfig.enabled) {
-        return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Disabled</span>';
+        return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Disabled</span>';
     }
     
     if (loggingConfig.destinations && loggingConfig.destinations.length > 0) {
         const destination = loggingConfig.destinations[0];
         const destinationName = destination.split('/').pop();
-        return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 font-mono" title="${destination}">${destinationName}</span>`;
+        return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 font-mono" title="${destination}">${destinationName}</span>`;
     }
     
     return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Enabled (No Destination)</span>';
