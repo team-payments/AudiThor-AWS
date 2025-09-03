@@ -388,17 +388,6 @@ function renderLoggingConfigurationGuide() {
                     </div>
                 </div>
             </div>
-            
-            <div class="mt-4 bg-yellow-50 border border-yellow-300 rounded p-3">
-                <h4 class="text-sm font-semibold text-yellow-800 mb-2">Key Audit Considerations:</h4>
-                <ul class="text-xs text-yellow-700 space-y-1">
-                    <li>• <strong>Cost Impact:</strong> "All Logging" generates significantly more log data than "Destination Only" - evaluate cost vs. security benefits</li>
-                    <li>• <strong>Compliance:</strong> Some regulations require comprehensive logging ("All Logging"), while others may accept selective logging</li>
-                    <li>• <strong>Incident Response:</strong> "All Logging" provides better context for investigations, while "Destination Only" may miss legitimate traffic patterns</li>
-                    <li>• <strong>Performance Impact:</strong> Both options have minimal performance impact on WAF processing</li>
-                    <li>• <strong>Storage Requirements:</strong> Consider log retention policies and storage costs when enabling comprehensive logging</li>
-                </ul>
-            </div>
         </div>
     `;
 }

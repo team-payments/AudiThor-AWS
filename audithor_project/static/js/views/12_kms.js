@@ -238,7 +238,7 @@ const renderKeyRotationTable = (keys) => {
                     '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
     
     keys.sort((a,b) => a.Region.localeCompare(b.Region) || a.Aliases.localeCompare(b.Aliases)).forEach((k) => {
-        const rotationBadge = k.RotationEnabled === 'Enabled' ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
+        const rotationBadge = createKmsStatusBadge(k.RotationEnabled, 'rotation');
         const riskLevel = k.RotationEnabled === 'Disabled' ? 
             '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">High Risk</span>' :
             '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Low Risk</span>';
@@ -273,16 +273,22 @@ const renderKmsKeysTable = (keys, title) => {
                     '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
     
     keys.sort((a,b) => a.Region.localeCompare(b.Region) || a.Aliases.localeCompare(b.Aliases)).forEach((k, index) => {
-        const rotationBadge = k.RotationEnabled === 'Enabled' ? createStatusBadge('Enabled') : (k.RotationEnabled === 'Disabled' ? createStatusBadge('Disabled') : createStatusBadge(k.RotationEnabled));
+        const rotationBadge = createKmsStatusBadge(k.RotationEnabled, 'rotation');
+        const stateBadge = createKmsStatusBadge(k.Status, 'state');
+        
+        // Manager badge with color coding
+        const managerBadge = k.KeyManager === 'CUSTOMER' ?
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">CUSTOMER</span>' :
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">AWS</span>';
         
         tableHtml += `
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${k.Region}</td>
                 <td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${k.Aliases}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600 font-mono">${k.KeyId}</td>
-                <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${createStatusBadge(k.Status)}</td>
+                <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${stateBadge}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${rotationBadge}</td>
-                <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${k.KeyManager}</td>                        
+                <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${managerBadge}</td>                        
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">
                     <button 
                         onclick="openModalWithKmsPolicy(${index})" 
@@ -296,6 +302,8 @@ const renderKmsKeysTable = (keys, title) => {
     tableHtml += '</tbody></table></div>';
     return tableHtml;
 };
+
+
 
 // --- MODAL FUNCTION (EXPORTED) ---
 export const openModalWithKmsPolicy = (keyIndex) => {
@@ -317,4 +325,30 @@ export const openModalWithKmsPolicy = (keyIndex) => {
     `;
 
     modal.classList.remove('hidden');
+};
+
+const createKmsStatusBadge = (value, type = 'default') => {
+    if (type === 'rotation') {
+        if (value === 'Enabled') {
+            return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>';
+        } else if (value === 'Disabled') {
+            return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Disabled</span>';
+        } else {
+            // For AWS managed keys that don't support rotation
+            return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>';
+        }
+    } else if (type === 'state') {
+        if (value === 'Enabled') {
+            return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>';
+        } else if (value === 'Disabled') {
+            return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Disabled</span>';
+        } else if (value === 'PendingDeletion') {
+            return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">Pending Deletion</span>';
+        } else {
+            return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${value}</span>`;
+        }
+    } else {
+        // Default case
+        return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${value}</span>`;
+    }
 };

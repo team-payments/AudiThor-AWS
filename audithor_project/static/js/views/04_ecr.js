@@ -182,6 +182,7 @@ export const openModalWithEcrPolicy = (repoIndex) => {
     modal.classList.remove('hidden');
 };
 
+
 const renderSecurityAnalysisTable = (repositories) => {
     if (!repositories || repositories.length === 0) {
         return `
@@ -208,14 +209,10 @@ const renderSecurityAnalysisTable = (repositories) => {
                     '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
 
     repositories.sort((a,b) => a.Region.localeCompare(b.Region) || a.RepositoryName.localeCompare(b.RepositoryName)).forEach((repo) => {
-        const publicBadge = repo.IsPublic ? 
-            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">YES</span>' : 
-            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">NO</span>';
-        
-        const scanBadge = repo.ScanOnPush ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
-        const signingBadge = repo.ImageSigningEnabled ? createStatusBadge('Enabled') : createStatusBadge('Disabled');
-        const mutabilityBadge = repo.ImageTagMutability === 'IMMUTABLE' ? 
-            createStatusBadge('IMMUTABLE') : createStatusBadge('MUTABLE');
+        const publicBadge = createSecurityStatusBadge('', !repo.IsPublic, 'public');
+        const scanBadge = createSecurityStatusBadge(repo.ScanOnPush ? 'Enabled' : 'Disabled', repo.ScanOnPush);
+        const signingBadge = createSecurityStatusBadge(repo.ImageSigningEnabled ? 'Enabled' : 'Disabled', repo.ImageSigningEnabled);
+        const mutabilityBadge = createSecurityStatusBadge('', repo.ImageTagMutability === 'IMMUTABLE', 'mutability');
         
         // Calculate comprehensive risk level
         let riskLevel = 'Low Risk';
@@ -256,6 +253,7 @@ const renderSecurityAnalysisTable = (repositories) => {
     return tableHtml;
 };
 
+
 const renderComprehensiveRepositoriesTable = (repositories) => {
     if (!repositories || repositories.length === 0) {
         return `
@@ -284,13 +282,15 @@ const renderComprehensiveRepositoriesTable = (repositories) => {
     repositories.sort((a,b) => a.Region.localeCompare(b.Region) || a.RepositoryName.localeCompare(b.RepositoryName)).forEach((repo, index) => {
         const lifecyclePolicyStatus = repo.HasLifecyclePolicy ? 
             '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Configured</span>' :
-            '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">None</span>';
+            '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">None</span>';
 
         const signingProfile = repo.SigningProfileName ? 
-            `<span class="text-xs font-mono text-gray-600">${repo.SigningProfileName}</span>` : '-';
+            `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 font-mono">${repo.SigningProfileName}</span>` : 
+            '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">None</span>';
         
         const policyButton = repo.Policy ? 
-            `<button onclick="openModalWithEcrPolicy(${index})" class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">View Policy</button>` : '-';
+            `<button onclick="openModalWithEcrPolicy(${index})" class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">View Policy</button>` : 
+            '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">None</span>';
 
         // Generate recommendations
         const recommendations = [];
@@ -325,6 +325,8 @@ const renderComprehensiveRepositoriesTable = (repositories) => {
     return tableHtml;
 };
 
+
+
 const createEcrSecurityHubHtml = () => {
     return `
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -332,4 +334,23 @@ const createEcrSecurityHubHtml = () => {
             <div id="sh-ecr-findings-container" class="overflow-x-auto"></div>
         </div>
     `;
+};
+
+const createSecurityStatusBadge = (value, isSecure, type = 'default') => {
+    if (type === 'public') {
+        // Para acceso público: YES es rojo (malo), NO es verde (bueno)
+        return isSecure ? 
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">NO</span>' :
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">YES</span>';
+    } else if (type === 'mutability') {
+        // Para mutabilidad: IMMUTABLE es verde (bueno), MUTABLE es rojo (malo)
+        return isSecure ?
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">IMMUTABLE</span>' :
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">MUTABLE</span>';
+    } else {
+        // Para otras configuraciones: Enabled/Yes es verde (bueno), Disabled/No es rojo (malo)
+        return isSecure ?
+            `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${value}</span>` :
+            `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">${value}</span>`;
+    }
 };
