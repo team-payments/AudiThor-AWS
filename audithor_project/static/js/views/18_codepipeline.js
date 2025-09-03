@@ -160,6 +160,7 @@ const createCodePipelineSummaryCardsHtml = (pipelines) => {
 
 
 // --- FUNCIÓN PARA RENDERIZAR ANÁLISIS DE SEGURIDAD ---
+
 const renderSecurityAnalysisTable = (pipelines) => {
     const securityIssues = pipelines.filter(p => !p.IsEncrypted || !p.HasManualApproval || !p.HasSecurityScan);
     
@@ -229,13 +230,13 @@ const renderSecurityAnalysisTable = (pipelines) => {
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pipeline.Region}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        ${createStatusBadge(pipeline.IsEncrypted ? 'Yes' : 'No', pipeline.IsEncrypted ? 'success' : 'error')}
+                                        ${createColoredStatusBadge(pipeline.IsEncrypted ? 'Yes' : 'No', pipeline.IsEncrypted)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        ${createStatusBadge(pipeline.HasManualApproval ? 'Yes' : 'No', pipeline.HasManualApproval ? 'success' : 'warning')}
+                                        ${createColoredStatusBadge(pipeline.HasManualApproval ? 'Yes' : 'No', pipeline.HasManualApproval)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        ${createStatusBadge(pipeline.HasSecurityScan ? 'Yes' : 'No', pipeline.HasSecurityScan ? 'success' : 'warning')}
+                                        ${createColoredStatusBadge(pipeline.HasSecurityScan ? 'Yes' : 'No', pipeline.HasSecurityScan)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${riskColor}-100 text-${riskColor}-800">${riskLevel}</span>
@@ -251,7 +252,9 @@ const renderSecurityAnalysisTable = (pipelines) => {
     `;
 };
 
+
 // --- FUNCIÓN PARA RENDERIZAR TABLA COMPLETA DE PIPELINES ---
+
 const renderPipelinesTable = (pipelines) => {
     if (pipelines.length === 0) {
         return renderEmptyState("No CodePipeline pipelines found in any region");
@@ -294,13 +297,13 @@ const renderPipelinesTable = (pipelines) => {
                                         ${pipeline.SourceDetails?.Owner ? `<div class="text-xs text-gray-500">${pipeline.SourceDetails.Owner}/${pipeline.SourceDetails.Repo || 'N/A'}</div>` : ''}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        ${createStatusBadge(pipeline.IsEncrypted ? 'Yes' : 'No', pipeline.IsEncrypted ? 'success' : 'error')}
+                                        ${createColoredStatusBadge(pipeline.IsEncrypted ? 'Yes' : 'No', pipeline.IsEncrypted)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        ${createStatusBadge(pipeline.HasManualApproval ? 'Yes' : 'No', pipeline.HasManualApproval ? 'success' : 'warning')}
+                                        ${createColoredStatusBadge(pipeline.HasManualApproval ? 'Yes' : 'No', pipeline.HasManualApproval)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        ${createStatusBadge(pipeline.HasSecurityScan ? 'Yes' : 'No', pipeline.HasSecurityScan ? 'success' : 'warning')}
+                                        ${createColoredStatusBadge(pipeline.HasSecurityScan ? 'Yes' : 'No', pipeline.HasSecurityScan)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-xs text-gray-600 font-mono max-w-32 truncate" title="${pipeline.RoleArn}">${roleName}</div>
@@ -315,6 +318,8 @@ const renderPipelinesTable = (pipelines) => {
         </div>
     `;
 };
+
+
 
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
 export const buildCodePipelineView = () => {
@@ -406,4 +411,12 @@ export const buildCodePipelineView = () => {
 
     const tabsNav = container.querySelector('#codepipeline-tabs');
     if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.codepipeline-tab-content'));
+};
+
+const createColoredStatusBadge = (value, isSecure) => {
+    if (isSecure) {
+        return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">${value}</span>`;
+    } else {
+        return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">${value}</span>`;
+    }
 };
