@@ -431,14 +431,14 @@ def check_cloudtrail_kms_encryption_disabled(audit_data):
     Verifica si los trails de CloudTrail tienen el cifrado con KMS habilitado.
     """
     failing_resources = []
-    # Obtenemos la lista de trails del análisis
     trails = audit_data.get("cloudtrail", {}).get("trails", [])
 
     for trail in trails:
-        # La ausencia de una KmsKeyId indica que el cifrado KMS no está activado
         if not trail.get("KmsKeyId"):
-            # Añadimos el nombre del trail a la lista de recursos que fallan la comprobación
-            failing_resources.append(trail.get("Name", trail.get("TrailARN")))
+            failing_resources.append({
+                "resource": trail.get("Name", trail.get("TrailARN")),
+                "region": trail.get("HomeRegion", "Unknown Region")
+            })
             
     return failing_resources
 
@@ -450,10 +450,11 @@ def check_cloudtrail_log_file_validation_disabled(audit_data):
     trails = audit_data.get("cloudtrail", {}).get("trails", [])
 
     for trail in trails:
-        # La clave 'LogFileValidationEnabled' será False si la opción no está activada.
         if not trail.get("LogFileValidationEnabled"):
-            # Añadimos el nombre del trail que no cumple con la regla.
-            failing_resources.append(trail.get("Name", trail.get("TrailARN")))
+            failing_resources.append({
+                "resource": trail.get("Name", trail.get("TrailARN")),
+                "region": trail.get("HomeRegion", "Unknown Region")
+            })
             
     return failing_resources
 
@@ -578,14 +579,14 @@ def check_cloudtrail_cloudwatch_destination_disabled(audit_data):
     Checks if CloudTrail trails have a CloudWatch Logs log group destination enabled.
     """
     failing_resources = []
-    # Safely get the list of trails from the audit data
     trails = audit_data.get("cloudtrail", {}).get("trails", [])
 
     for trail in trails:
-        # If the 'CloudWatchLogsLogGroupArn' key is missing or empty, the destination is not configured
         if not trail.get("CloudWatchLogsLogGroupArn"):
-            # Add the name of the non-compliant trail to the list of failing resources
-            failing_resources.append(trail.get("Name", trail.get("TrailARN")))
+            failing_resources.append({
+                "resource": trail.get("Name", trail.get("TrailARN")),
+                "region": trail.get("HomeRegion", "Unknown Region")
+            })
             
     return failing_resources
 
@@ -611,43 +612,6 @@ def check_kms_customer_key_rotation_disabled(audit_data):
             })
             
     return failing_resources
-
-def check_ecr_tag_mutability(audit_data):
-    """
-    Checks for ECR repositories configured with mutable image tags.
-    """
-    failing_resources = []
-    # Safely get the list of repositories from the audit data
-    repositories = audit_data.get("ecr", {}).get("repositories", [])
-
-    for repo in repositories:
-        # Check if the image tag mutability is set to MUTABLE
-        if repo.get("ImageTagMutability") == "MUTABLE":
-            failing_resources.append({
-                "resource": repo.get("RepositoryName", "Unknown ID"),
-                "region": repo.get("Region", "Unknown Region")
-            })
-            
-    return failing_resources
-
-def check_ecr_scan_on_push_disabled(audit_data):
-    """
-    Checks for ECR repositories that do not have the 'scan on push' feature enabled.
-    """
-    failing_resources = []
-    # Safely get the list of repositories from the audit data
-    repositories = audit_data.get("ecr", {}).get("repositories", [])
-
-    for repo in repositories:
-        # The key 'ScanOnPush' will be False if the setting is disabled
-        if not repo.get("ScanOnPush"):
-            failing_resources.append({
-                "resource": repo.get("RepositoryName", "Unknown ID"),
-                "region": repo.get("Region", "Unknown Region")
-            })
-            
-    return failing_resources
-
 
 def check_waf_sampled_requests_disabled(audit_data):
     """
@@ -798,6 +762,138 @@ def check_cli_mfa_non_compliance(audit_data):
     return failing_resources
 
 
+def check_ecr_public_repository(audit_data):
+    """
+    Checks for ECR repositories that are configured with a public access policy.
+    """
+    failing_resources = []
+    # Safely get the list of repositories from the audit data
+    repositories = audit_data.get("ecr", {}).get("repositories", [])
+
+    for repo in repositories:
+        # The 'IsPublic' key will be True if the policy allows public access
+        if repo.get("IsPublic"):
+            failing_resources.append({
+                "resource": repo.get("RepositoryName", "Unknown ID"),
+                "region": repo.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
+def check_ecr_image_signing_disabled(audit_data):
+    """
+    Checks for ECR repositories that do not have image signing enabled.
+    """
+    failing_resources = []
+    repositories = audit_data.get("ecr", {}).get("repositories", [])
+
+    for repo in repositories:
+        # 'ImageSigningEnabled' will be False if not configured
+        if not repo.get("ImageSigningEnabled"):
+            failing_resources.append({
+                "resource": repo.get("RepositoryName", "Unknown ID"),
+                "region": repo.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
+def check_ecr_tag_mutability_mutable(audit_data):
+    """
+    Checks for ECR repositories that are configured with mutable image tags.
+    """
+    failing_resources = []
+    repositories = audit_data.get("ecr", {}).get("repositories", [])
+
+    for repo in repositories:
+        # Check if the image tag mutability is set to MUTABLE
+        if repo.get("ImageTagMutability") == "MUTABLE":
+            failing_resources.append({
+                "resource": repo.get("RepositoryName", "Unknown ID"),
+                "region": repo.get("Region", "Unknown Region")
+            })
+            
+    return failing_resources
+
+def _get_regions_with_inspector_ecr_scan(audit_data):
+    """
+    Helper function to determine in which regions Inspector ECR scanning is active
+    where ECR repositories actually exist.
+    """
+    inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
+    ecr_repositories = audit_data.get("ecr", {}).get("repositories", [])
+    
+    regions_with_ecr = {repo['Region'] for repo in ecr_repositories}
+    inspector_ecr_scan_status = {status['Region']: status.get('ScanECR') for status in inspector_status}
+    
+    enabled_regions = set()
+    for region in regions_with_ecr:
+        if inspector_ecr_scan_status.get(region) == 'ENABLED':
+            enabled_regions.add(region)
+            
+    return enabled_regions
+
+def check_codepipeline_unencrypted_artifacts(audit_data):
+    """Checks for CodePipeline pipelines with unencrypted artifact stores."""
+    failing_resources = []
+    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
+    for p in pipelines:
+        if not p.get("IsEncrypted"):
+            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+    return failing_resources
+
+def check_codepipeline_no_manual_approval(audit_data):
+    """Checks for CodePipeline pipelines lacking a manual approval stage."""
+    failing_resources = []
+    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
+    for p in pipelines:
+        if not p.get("HasManualApproval"):
+            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+    return failing_resources
+
+def check_codepipeline_no_scan_and_no_inspector(audit_data):
+    """(MEDIUM Risk) Checks for pipelines without security scan in regions where Inspector ECR is also disabled."""
+    failing_resources = []
+    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
+    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data)
+    
+    for p in pipelines:
+        if not p.get("HasSecurityScan") and p.get("Region") not in regions_with_inspector:
+            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+    return failing_resources
+
+def check_codepipeline_no_scan_but_inspector_ok(audit_data):
+    """(LOW Risk) Checks for pipelines without security scan in regions where Inspector ECR is enabled."""
+    failing_resources = []
+    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
+    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data)
+    
+    for p in pipelines:
+        if not p.get("HasSecurityScan") and p.get("Region") in regions_with_inspector:
+            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+    return failing_resources
+
+def check_ecr_no_scan_on_push_and_no_inspector(audit_data):
+    """(MEDIUM Risk) Checks for ECR repos with scan-on-push disabled where Inspector ECR is also disabled."""
+    failing_resources = []
+    repositories = audit_data.get("ecr", {}).get("repositories", [])
+    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data)
+    
+    for repo in repositories:
+        if not repo.get("ScanOnPush") and repo.get("Region") not in regions_with_inspector:
+            failing_resources.append({"resource": repo.get("RepositoryName"), "region": repo.get("Region")})
+    return failing_resources
+
+def check_ecr_no_scan_on_push_but_inspector_ok(audit_data):
+    """(LOW Risk) Checks for ECR repos with scan-on-push disabled where Inspector ECR is enabled."""
+    failing_resources = []
+    repositories = audit_data.get("ecr", {}).get("repositories", [])
+    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data)
+    
+    for repo in repositories:
+        if not repo.get("ScanOnPush") and repo.get("Region") in regions_with_inspector:
+            failing_resources.append({"resource": repo.get("RepositoryName"), "region": repo.get("Region")})
+    return failing_resources
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -839,13 +935,13 @@ RULES_TO_CHECK = [
         "check_function": check_user_has_attached_policies
     },
     {
-    "rule_id": "IAM_005",
-    "section": "Identity & Access",
-    "name": "User with CLI access does not comply with MFA requirements",
-    "severity": SEVERITY["HIGH"],
-    "description": "An IAM user with active access keys (CLI/programmatic access) does not properly comply with MFA requirements. This could be because the user lacks an MFA device entirely, or because there are no IAM policies enforcing MFA authentication for API calls. Without proper MFA enforcement for CLI access, the account is vulnerable to credential theft and unauthorized programmatic access.",
-    "remediation": "For users without MFA devices: Enable MFA in the IAM console under 'Security credentials'. For users without MFA enforcement policies: Create or attach an IAM policy that includes a condition requiring 'aws:MultiFactorAuthPresent' to be true for sensitive actions. Consider using STS GetSessionToken with MFA for temporary credentials in CLI workflows.",
-    "check_function": check_cli_mfa_non_compliance
+        "rule_id": "IAM_005",
+        "section": "Identity & Access",
+        "name": "User with CLI access does not comply with MFA requirements",
+        "severity": SEVERITY["HIGH"],
+        "description": "An IAM user with active access keys (CLI/programmatic access) does not properly comply with MFA requirements. This could be because the user lacks an MFA device entirely, or because there are no IAM policies enforcing MFA authentication for API calls. Without proper MFA enforcement for CLI access, the account is vulnerable to credential theft and unauthorized programmatic access.",
+        "remediation": "For users without MFA devices: Enable MFA in the IAM console under 'Security credentials'. For users without MFA enforcement policies: Create or attach an IAM policy that includes a condition requiring 'aws:MultiFactorAuthPresent' to be true for sensitive actions. Consider using STS GetSessionToken with MFA for temporary credentials in CLI workflows.",
+        "check_function": check_cli_mfa_non_compliance
     },
     {
         "rule_id": "GUARDDUTY_001",
@@ -1094,19 +1190,82 @@ RULES_TO_CHECK = [
         "rule_id": "ECR_001",
         "section": "Vulnerability Management",
         "name": "ECR repository with mutable image tags",
-        "severity": SEVERITY["MEDIUM"],
+        "severity": SEVERITY["LOW"],
         "description": "An ECR repository allows image tags to be overwritten. This practice goes against the principle of immutability and can lead to confusion in deployments, making it difficult to track which version of an image is running. In a worst-case scenario, a malicious image could be pushed with a production tag.",
         "remediation": "Navigate to the ECR console, select the repository, and edit its settings to change 'Tag immutability' to 'Immutable'. This ensures that once an image tag is pushed, it cannot be modified.",
-        "check_function": check_ecr_tag_mutability
+        "check_function": check_ecr_tag_mutability_mutable
     },
     {
         "rule_id": "ECR_002",
         "section": "Vulnerability Management",
-        "name": "ECR repository with scan on push disabled",
-        "severity": SEVERITY["HIGH"],
-        "description": "An ECR repository does not automatically scan images for vulnerabilities upon being pushed. This is a critical security gap, as it allows potentially vulnerable container images to be stored and later deployed into production environments without a security check.",
-        "remediation": "Navigate to the ECR console, select the repository, and edit its settings. In the 'Image scanning' section, enable the 'Scan on push' configuration. This will trigger a vulnerability scan for every new image pushed to the repository.",
-        "check_function": check_ecr_scan_on_push_disabled
+        "name": "ECR repository is publicly accessible",
+        "severity": SEVERITY["LOW"],
+        "description": "An ECR repository has a resource-based policy that grants public access. This allows any user on the internet to pull images, potentially exposing proprietary code or vulnerable container images.",
+        "remediation": "Navigate to the ECR console, select the repository, and under 'Permissions', edit the policy to remove any statements that grant access to a public principal ('*').",
+        "check_function": check_ecr_public_repository
+    },
+    {
+        "rule_id": "ECR_003",
+        "section": "Vulnerability Management",
+        "name": "ECR repository with image signing disabled",
+        "severity": SEVERITY["LOW"],
+        "description": "An ECR repository does not have an image signing configuration. Image signing ensures the authenticity and integrity of container images, confirming they are from a trusted source and have not been tampered with.",
+        "remediation": "Configure AWS Signer with a signing profile for container images and integrate it with your CI/CD pipeline to sign images before they are pushed to ECR. Enforce policies that only allow signed images to be deployed.",
+        "check_function": check_ecr_image_signing_disabled
+    },
+        {
+        "rule_id": "ECR_004",
+        "section": "Vulnerability Management",
+        "name": "ECR repo with scan on push disabled and no compensating control",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An ECR repository does not automatically scan images for vulnerabilities, and Amazon Inspector is also not configured to scan ECR images in this region. This creates a critical security gap, as there is no automated mechanism to detect vulnerabilities in container images.",
+        "remediation": "The highest priority is to enable 'Scan on push' in the ECR repository settings. As a secondary control, enable Amazon Inspector for ECR in the region.",
+        "check_function": check_ecr_no_scan_on_push_and_no_inspector
+    },
+    {
+        "rule_id": "ECR_005",
+        "section": "Vulnerability Management",
+        "name": "ECR repo with scan on push disabled but Inspector is active",
+        "severity": SEVERITY["LOW"],
+        "description": "An ECR repository does not use the basic 'Scan on push' feature. However, Amazon Inspector is active for ECR in this region, which acts as a compensating control by providing advanced vulnerability scanning. While this is a better configuration, enabling 'Scan on push' is still recommended for immediate feedback.",
+        "remediation": "Enable 'Scan on push' in the ECR repository settings to get immediate vulnerability feedback upon pushing an image.",
+        "check_function": check_ecr_no_scan_on_push_but_inspector_ok
+    },
+    {
+        "rule_id": "CODEPIPELINE_001",
+        "section": "CI/CD Security",
+        "name": "CodePipeline artifact store is not encrypted",
+        "severity": SEVERITY["LOW"],
+        "description": "A CodePipeline is using an artifact store (S3 bucket) that does not have encryption enabled. This could expose source code, build artifacts, and sensitive configuration files if the bucket is compromised.",
+        "remediation": "Navigate to the CodePipeline settings, edit the pipeline, and in the 'Artifact store' section, configure a KMS key for encryption.",
+        "check_function": check_codepipeline_unencrypted_artifacts
+    },
+    {
+        "rule_id": "CODEPIPELINE_002",
+        "section": "CI/CD Security",
+        "name": "CodePipeline is missing a manual approval stage",
+        "severity": SEVERITY["LOW"],
+        "description": "A CodePipeline does not have a manual approval stage. This is a security risk, especially for pipelines deploying to production, as it allows code changes to be deployed automatically without human oversight.",
+        "remediation": "Edit the pipeline and add a new stage before the production deployment action. In this stage, add a 'Manual approval' action. This will pause the pipeline until an authorized user approves the deployment.",
+        "check_function": check_codepipeline_no_manual_approval
+    },
+    {
+        "rule_id": "CODEPIPELINE_003",
+        "section": "CI/CD Security",
+        "name": "CodePipeline lacks a security scan and has no compensating control",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "A CodePipeline does not have an integrated security scanning stage, and Amazon Inspector is also not configured to scan container images in this region. This means code or images could be deployed to production with known vulnerabilities without any automated checks.",
+        "remediation": "The best practice is to add a security scanning stage to your pipeline (e.g., using CodeBuild with tools like Trivy, SonarQube, or AWS Inspector). As a baseline, ensure Amazon Inspector is enabled for ECR in the region.",
+        "check_function": check_codepipeline_no_scan_and_no_inspector
+    },
+    {
+        "rule_id": "CODEPIPELINE_004",
+        "section": "CI/CD Security",
+        "name": "CodePipeline lacks a security scan but Inspector is active",
+        "severity": SEVERITY["LOW"],
+        "description": "A CodePipeline does not have a specific security scanning stage. However, Amazon Inspector is active for ECR in this region, providing a compensating control for container image vulnerabilities. While this is a good baseline, integrating a scan directly into the pipeline provides earlier feedback.",
+        "remediation": "For more robust security, add a dedicated security scanning stage to your pipeline. This allows you to fail the build early if critical vulnerabilities are found, rather than discovering them after the image is in ECR.",
+        "check_function": check_codepipeline_no_scan_but_inspector_ok
     },
     {
         "rule_id": "WAF_001",
