@@ -523,7 +523,8 @@ const runAndDisplayHealthyStatus = async () => {
             configSHStatus: window.configSHStatusApiData,
             config_sh: window.configSHStatusApiData,
             kms: window.kmsApiData,
-            connectivity: window.connectivityApiData
+            connectivity: window.connectivityApiData,
+            codepipeline: window.codepipelineApiData
         };
 
         // Call the backend API to check rules

@@ -814,63 +814,147 @@ def check_ecr_tag_mutability_mutable(audit_data):
             
     return failing_resources
 
-def _get_regions_with_inspector_ecr_scan(audit_data):
+
+#
+# rules.py (Reemplaza la sección de CodePipeline con esto)
+#
+
+def _get_codepipeline_pipelines(audit_data):
     """
-    Helper function to determine in which regions Inspector ECR scanning is active
-    where ECR repositories actually exist.
+    Función auxiliar simple y robusta para obtener la lista de pipelines.
     """
-    inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
-    ecr_repositories = audit_data.get("ecr", {}).get("repositories", [])
-    
-    regions_with_ecr = {repo['Region'] for repo in ecr_repositories}
-    inspector_ecr_scan_status = {status['Region']: status.get('ScanECR') for status in inspector_status}
-    
-    enabled_regions = set()
-    for region in regions_with_ecr:
-        if inspector_ecr_scan_status.get(region) == 'ENABLED':
-            enabled_regions.add(region)
-            
-    return enabled_regions
+    # El backend prepara los datos en audit_data['codepipeline']['pipelines']
+    # Usamos .get() para evitar errores si la clave no existiera por alguna razón.
+    return audit_data.get("codepipeline", {}).get("pipelines", [])
 
 def check_codepipeline_unencrypted_artifacts(audit_data):
-    """Checks for CodePipeline pipelines with unencrypted artifact stores."""
+    """Verifica si los pipelines de CodePipeline tienen almacenes de artefactos no cifrados."""
     failing_resources = []
-    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
+    pipelines = _get_codepipeline_pipelines(audit_data)
+    
     for p in pipelines:
         if not p.get("IsEncrypted"):
-            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+            failing_resources.append({
+                "resource": p.get("Name", "Unknown Pipeline"),
+                "region": p.get("Region", "Unknown Region")
+            })
     return failing_resources
 
 def check_codepipeline_no_manual_approval(audit_data):
-    """Checks for CodePipeline pipelines lacking a manual approval stage."""
+    """Verifica si los pipelines de CodePipeline carecen de una etapa de aprobación manual."""
     failing_resources = []
-    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
+    pipelines = _get_codepipeline_pipelines(audit_data)
+    
     for p in pipelines:
         if not p.get("HasManualApproval"):
-            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+            failing_resources.append({
+                "resource": p.get("Name", "Unknown Pipeline"),
+                "region": p.get("Region", "Unknown Region")
+            })
     return failing_resources
 
 def check_codepipeline_no_scan_and_no_inspector(audit_data):
-    """(MEDIUM Risk) Checks for pipelines without security scan in regions where Inspector ECR is also disabled."""
+    """Verifica pipelines sin escaneo de seguridad en regiones donde Inspector ECR también está deshabilitado."""
     failing_resources = []
-    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
-    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data)
+    pipelines = _get_codepipeline_pipelines(audit_data)
+    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data) # Esta función auxiliar ya era correcta
     
     for p in pipelines:
-        if not p.get("HasSecurityScan") and p.get("Region") not in regions_with_inspector:
-            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+        has_scan = p.get("HasSecurityScan", False)
+        region = p.get("Region")
+        
+        if not has_scan and region not in regions_with_inspector:
+            failing_resources.append({
+                "resource": p.get("Name", "Unknown Pipeline"),
+                "region": region or "Unknown Region"
+            })
     return failing_resources
 
 def check_codepipeline_no_scan_but_inspector_ok(audit_data):
-    """(LOW Risk) Checks for pipelines without security scan in regions where Inspector ECR is enabled."""
+    """Verifica pipelines sin escaneo de seguridad en regiones donde Inspector ECR está habilitado."""
     failing_resources = []
-    pipelines = audit_data.get("codepipeline", {}).get("pipelines", [])
-    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data)
+    pipelines = _get_codepipeline_pipelines(audit_data)
+    regions_with_inspector = _get_regions_with_inspector_ecr_scan(audit_data) # Reutilizamos la función
     
     for p in pipelines:
-        if not p.get("HasSecurityScan") and p.get("Region") in regions_with_inspector:
-            failing_resources.append({"resource": p.get("Name"), "region": p.get("Region")})
+        has_scan = p.get("HasSecurityScan", False)
+        region = p.get("Region")
+        
+        if not has_scan and region in regions_with_inspector:
+            failing_resources.append({
+                "resource": p.get("Name", "Unknown Pipeline"),
+                "region": region or "Unknown Region"
+            })
     return failing_resources
+
+# NOTA: La función _get_regions_with_inspector_ecr_scan que ya tenías es correcta.
+# Puedes mantenerla como está o usar esta versión ligeramente más limpia si lo prefieres.
+
+def _get_regions_with_inspector_ecr_scan(audit_data):
+    """Determina las regiones con escaneo de Inspector ECR activo."""
+    try:
+        inspector_status = audit_data.get("inspector", {}).get("scan_status", [])
+        ecr_repositories = audit_data.get("ecr", {}).get("repositories", [])
+        
+        regions_with_ecr = {repo.get('Region') for repo in ecr_repositories if repo.get('Region')}
+        
+        enabled_regions = set()
+        for status in inspector_status:
+            if status.get('Region') in regions_with_ecr and status.get('ScanECR') == 'ENABLED':
+                enabled_regions.add(status.get('Region'))
+                
+        return enabled_regions
+    except Exception as e:
+        print(f"[WARNING] Error in _get_regions_with_inspector_ecr_scan: {e}")
+        return set()
+
+
+def _get_regions_with_inspector_ecr_scan(audit_data):
+    """
+    Helper function mejorada para determinar regiones con Inspector ECR activo.
+    También es adaptativa para diferentes estructuras de datos.
+    """
+    try:
+        # Intentar acceso directo primero
+        inspector_data = audit_data.get("inspector", {})
+        ecr_data = audit_data.get("ecr", {})
+        
+        # Si no encontramos datos directamente, buscar en results
+        if not inspector_data or "scan_status" not in inspector_data:
+            for service_key, service_data in audit_data.items():
+                if isinstance(service_data, dict) and "results" in service_data:
+                    results = service_data["results"]
+                    if isinstance(results, dict):
+                        if service_key == "inspector" and "scan_status" in results:
+                            inspector_data = results
+                        elif service_key == "ecr" and "repositories" in results:
+                            ecr_data = results
+        
+        inspector_status = inspector_data.get("scan_status", [])
+        ecr_repositories = ecr_data.get("repositories", [])
+        
+        regions_with_ecr = {repo.get('Region') for repo in ecr_repositories if repo.get('Region')}
+        inspector_ecr_scan_status = {
+            status.get('Region'): status.get('ScanECR') 
+            for status in inspector_status 
+            if status.get('Region')
+        }
+        
+        enabled_regions = set()
+        for region in regions_with_ecr:
+            if inspector_ecr_scan_status.get(region) == 'ENABLED':
+                enabled_regions.add(region)
+                
+        return enabled_regions
+        
+    except Exception as e:
+        print(f"[WARNING] Error in _get_regions_with_inspector_ecr_scan: {e}")
+        return set()
+
+
+
+
+
 
 def check_ecr_no_scan_on_push_and_no_inspector(audit_data):
     """(MEDIUM Risk) Checks for ECR repos with scan-on-push disabled where Inspector ECR is also disabled."""
