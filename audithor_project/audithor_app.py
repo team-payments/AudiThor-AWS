@@ -21,7 +21,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from collectors import (
     utils, iam, securityhub, exposure, guardduty, waf, cloudtrail,
     cloudwatch, inspector, kms, acm, compute, databases,
-    network_policies, connectivity, config_sh, playground, ecr
+    network_policies, connectivity, config_sh, playground, ecr, codepipeline
 )
 
 
@@ -568,6 +568,18 @@ def run_simulate_lambda_policy():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": f"Simulation error: {str(e)}"}), 500
+
+
+@app.route('/api/run-codepipeline-audit', methods=['POST'])
+def run_codepipeline_audit():
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    try:
+        codepipeline_results = codepipeline.collect_codepipeline_data(session)
+        sts = session.client("sts")
+        return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": codepipeline_results })
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error while collecting CodePipeline data: {str(e)}"}), 500
 
 # ==============================================================================
 # EJECUCIÓN SERVIDOR

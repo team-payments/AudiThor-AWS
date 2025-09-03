@@ -36,6 +36,7 @@ import { buildKmsView } from '/static/js/views/12_kms.js';
 import { buildNetworkPoliciesView } from '/static/js/views/13_network_policies.js';
 import { buildConnectivityView } from '/static/js/views/14_connectivity.js';
 import { buildConfigSHView } from '/static/js/views/15_config_sh.js';
+import { buildCodePipelineView } from '/static/js/views/18_codepipeline.js';
 import { buildPlaygroundView } from '/static/js/views/16_playground.js';
 import { buildHealthyStatusView, buildGeminiReportView } from '/static/js/views/17_healthy_status.js';
 
@@ -69,6 +70,7 @@ window.ecrApiData = null;
 window.databasesApiData = null;
 window.networkPoliciesApiData = null;
 window.connectivityApiData = null;
+window.codepipelineApiData = null;
 window.playgroundApiData = null;
 window.configSHApiData = null;
 window.configSHStatusApiData = null;
@@ -145,7 +147,7 @@ const handleMainNavClick = (e) => {
 
 const runAnalysisFromInputs = async () => {
     // Resetear estado
-    window.iamApiData = null; window.securityHubApiData = null; window.exposureApiData = null; window.guarddutyApiData = null; window.wafApiData = null; window.cloudtrailApiData = null; window.cloudwatchApiData = null; window.inspectorApiData = null; window.acmApiData = null; window.computeApiData = null; window.databasesApiData = null; window.networkPoliciesApiData = null; window.connectivityApiData = null; window.playgroundApiData = null; window.allAvailableRegions = []; window.lastCloudtrailLookupResults = []; window.federationApiData = null; window.configSHApiData = null; window.configSHStatusApiData = null; window.kmsApiData = null; window.ecrApiData = null;
+    window.iamApiData = null; window.securityHubApiData = null; window.exposureApiData = null; window.guarddutyApiData = null; window.wafApiData = null; window.cloudtrailApiData = null; window.cloudwatchApiData = null; window.inspectorApiData = null; window.acmApiData = null; window.computeApiData = null; window.databasesApiData = null; window.networkPoliciesApiData = null; window.connectivityApiData = null; window.playgroundApiData = null; window.allAvailableRegions = []; window.lastCloudtrailLookupResults = []; window.federationApiData = null; window.configSHApiData = null; window.configSHStatusApiData = null; window.kmsApiData = null; window.ecrApiData = null; window.codepipelineApiData = null;
     document.querySelectorAll('.view').forEach(v => v.innerHTML = '');
     document.getElementById('iam-view').innerHTML = createInitialEmptyState();
     
@@ -188,7 +190,8 @@ const runAnalysisFromInputs = async () => {
             federation: fetch('http://127.0.0.1:5001/api/run-federation-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
             config_sh_status: fetch('http://127.0.0.1:5001/api/run-config-sh-status-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
             kms: fetch('http://127.0.0.1:5001/api/run-kms-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-            connectivity: fetch('http://127.0.0.1:5001/api/run-connectivity-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            connectivity: fetch('http://127.0.0.1:5001/api/run-connectivity-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+            codepipeline: fetch('http://127.0.0.1:5001/api/run-codepipeline-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         };
         
         const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
@@ -226,6 +229,15 @@ const runAnalysisFromInputs = async () => {
         window.configSHStatusApiData = results.config_sh_status; 
         window.kmsApiData = results.kms; 
         window.connectivityApiData = results.connectivity;
+        window.codepipelineApiData = results.codepipeline;
+        
+        console.log('=== CODEPIPELINE ASSIGNMENT DEBUG ===');
+        console.log('results.codepipeline:', results.codepipeline);
+        console.log('window.codepipelineApiData after assignment:', window.codepipelineApiData);
+        console.log('Has pipelines:', window.codepipelineApiData?.results?.pipelines?.length);
+        console.log('=====================================');
+
+
         
         if (!window.iamApiData || !window.networkPoliciesApiData) { 
             throw new Error("One or more critical API calls failed. Cannot continue."); 
@@ -293,6 +305,7 @@ const buildAndRenderAllViews = () => {
         buildDatabasesView();
         buildNetworkPoliciesView();
         buildConfigSHView();
+        buildCodePipelineView();
         buildPlaygroundView();
         buildKmsView();
         buildConnectivityView();
@@ -348,7 +361,8 @@ const exportResultsToJson = () => {
                 traceroute: window.playgroundApiData?.results || null,
                 sslscan: window.playgroundApiData?.sslscan || null
             },
-            connectivity: window.connectivityApiData?.results || null
+            connectivity: window.connectivityApiData?.results || null,
+            codepipeline: window.codepipelineApiData?.results || null
         }
     };
     
@@ -413,6 +427,7 @@ const handleJsonImport = (event) => {
             window.configSHApiData = results.configAndSecurityHubDeepScan ? { metadata: metadata, results: results.configAndSecurityHubDeepScan } : null;
             window.kmsApiData = results.kms ? { metadata: metadata, results: results.kms } : null;
             window.connectivityApiData = results.connectivity ? { metadata: metadata, results: results.connectivity } : null;
+            window.codepipelineApiData = results.codepipeline ? { metadata: metadata, results: results.codepipeline } : null;
             
             const playgroundImportData = results.playground || {};
             window.playgroundApiData = {
@@ -716,3 +731,4 @@ window.openModalWithLambdaRole = openModalWithLambdaRole;
 window.openModalWithEcrPolicy = openModalWithEcrPolicy;
 window.showComplianceDetails = showComplianceDetails;
 window.copyToClipboard = copyToClipboard;
+window.buildCodePipelineView = buildCodePipelineView;
