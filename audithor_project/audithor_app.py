@@ -581,6 +581,35 @@ def run_codepipeline_audit():
     except Exception as e:
         return jsonify({"error": f"Unexpected error while collecting CodePipeline data: {str(e)}"}), 500
 
+
+@app.route('/api/get-user-assumable-roles', methods=['POST'])
+def get_user_assumable_roles_endpoint():
+    """
+    Endpoint para obtener roles asumibles de un usuario específico bajo demanda.
+    """
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    
+    data = request.get_json()
+    username = data.get('username')
+    
+    if not username:
+        return jsonify({"error": "Username is required."}), 400
+    
+    try:
+        result = iam.get_user_assumable_roles(session, username)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "username": username,
+            "error": f"Unexpected error: {str(e)}",
+            "assumable_roles": []
+        }), 500
+
+
+
 # ==============================================================================
 # EJECUCIÓN SERVIDOR
 # ==============================================================================

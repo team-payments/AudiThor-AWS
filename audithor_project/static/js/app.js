@@ -20,7 +20,8 @@ import {
     updateSecurityHubDashboard, 
     openModalWithSsoDetails, 
     openModalWithAccessKeyDetails, 
-    openModalWithUserGroups 
+    openModalWithUserGroups,
+    openModalWithUserRoles
 } from '/static/js/views/01_iam.js';
 import { buildExposureView } from '/static/js/views/02_exposure.js';
 import { buildGuarddutyView } from '/static/js/views/03_guardduty.js';
@@ -733,3 +734,4 @@ window.openModalWithEcrPolicy = openModalWithEcrPolicy;
 window.showComplianceDetails = showComplianceDetails;
 window.copyToClipboard = copyToClipboard;
 window.buildCodePipelineView = buildCodePipelineView;
+window.openModalWithUserRoles = openModalWithUserRoles;

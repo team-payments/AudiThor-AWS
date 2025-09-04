@@ -52,24 +52,10 @@ def detect_privileges(users, roles, groups, session):
         if evidence:
             group["IsPrivileged"], group["PrivilegeReasons"] = True, list(set(evidence))
 
-
 def collect_iam_data(session):
     """
-    Collects comprehensive data about IAM users, roles, groups, and the password policy.
-
-    This function gathers detailed information for each IAM user, including MFA status,
-    access keys, and policies. It also lists all roles and groups and detects
-    privileged entities.
-
-    Args:
-        session (boto3.Session): The boto3 session for creating the IAM client.
-
-    Returns:
-        dict: A dictionary containing lists of users, roles, groups, and the password policy.
-
-    Example:
-        >>> iam_report = collect_iam_data(boto3.Session())
-        >>> print(iam_report['users'][0]['UserName'])
+    Versión optimizada que NO obtiene roles asumibles durante el escaneo inicial.
+    Solo mantiene la funcionalidad de roles por tags.
     """
     client = session.client("iam")
     result_users, password_policy, result_roles, result_groups = [], {}, [], []
@@ -87,27 +73,43 @@ def collect_iam_data(session):
             "Groups": [g["GroupName"] for g in client.list_groups_for_user(UserName=username)["Groups"]],
             "AttachedPolicies": [p["PolicyName"] for p in client.list_attached_user_policies(UserName=username)["AttachedPolicies"]],
             "InlinePolicies": client.list_user_policies(UserName=username)["PolicyNames"],
-            "Roles": [], "IsPrivileged": False, "PrivilegeReasons": []
+            "Roles": [],  # Solo roles por tags
+            # Eliminamos AssumableRoles del escaneo inicial
+            "IsPrivileged": False, 
+            "PrivilegeReasons": []
         }
+        
+        # Verificar password habilitado
         try:
             client.get_login_profile(UserName=username)
             user_data["PasswordEnabled"] = True
         except client.exceptions.NoSuchEntityException:
             pass
+            
+        # Obtener access keys
         for key in client.list_access_keys(UserName=username)["AccessKeyMetadata"]:
             last_used_info = client.get_access_key_last_used(AccessKeyId=key["AccessKeyId"])["AccessKeyLastUsed"]
             user_data["AccessKeys"].append({
-                "AccessKeyId": key["AccessKeyId"], "Status": key["Status"], "CreateDate": str(key["CreateDate"]),
+                "AccessKeyId": key["AccessKeyId"], 
+                "Status": key["Status"], 
+                "CreateDate": str(key["CreateDate"]),
                 "LastUsedDate": str(last_used_info.get("LastUsedDate")) if last_used_info.get("LastUsedDate") else "N/A"
             })
+        
+        # SOLO roles por tags (rápido)
         try:
             for tag in client.list_user_tags(UserName=username)["Tags"]:
                 if tag['Key'].lower() == 'role':
-                    user_data["Roles"].append(tag['Value'])
+                    user_data["Roles"].append({
+                        'RoleName': tag['Value'],
+                        'Source': 'Tag-based'
+                    })
         except client.exceptions.NoSuchEntityException:
             pass
+        
         result_users.append(user_data)
 
+    # Resto del código igual...
     try:
         password_policy = client.get_account_password_policy()["PasswordPolicy"]
     except client.exceptions.NoSuchEntityException:
@@ -115,22 +117,114 @@ def collect_iam_data(session):
 
     for role in client.list_roles()["Roles"]:
         result_roles.append({
-            "RoleName": role["RoleName"], "CreateDate": str(role["CreateDate"]),
+            "RoleName": role["RoleName"], 
+            "CreateDate": str(role["CreateDate"]),
             "AttachedPolicies": [p["PolicyName"] for p in client.list_attached_role_policies(RoleName=role["RoleName"])["AttachedPolicies"]],
             "InlinePolicies": client.list_role_policies(RoleName=role["RoleName"])["PolicyNames"],
-            "IsPrivileged": False, "PrivilegeReasons": []
+            "IsPrivileged": False, 
+            "PrivilegeReasons": []
         })
 
     for group in client.list_groups()["Groups"]:
         result_groups.append({
-            "GroupName": group["GroupName"], "CreateDate": str(group["CreateDate"]),
+            "GroupName": group["GroupName"], 
+            "CreateDate": str(group["CreateDate"]),
             "AttachedPolicies": [p["PolicyName"] for p in client.list_attached_group_policies(GroupName=group["GroupName"])["AttachedPolicies"]],
-            "IsPrivileged": False, "PrivilegeReasons": []
+            "IsPrivileged": False, 
+            "PrivilegeReasons": []
         })
 
     detect_privileges(result_users, result_roles, result_groups, session)
     result_users = check_mfa_compliance_for_cli(session, result_users)
     return {"users": result_users, "roles": result_roles, "groups": result_groups, "password_policy": password_policy}
+
+
+def get_user_assumable_roles(session, username):
+    """
+    Nueva función que obtiene roles asumibles para UN usuario específico.
+    Se llama bajo demanda desde el frontend.
+    
+    Args:
+        session (boto3.Session): The boto3 session for creating clients.
+        username (str): Nombre del usuario específico
+        
+    Returns:
+        dict: Información de roles asumibles para el usuario
+    """
+    client = session.client("iam")
+    sts_client = session.client("sts")
+    account_id = sts_client.get_caller_identity()["Account"]
+    
+    try:
+        # Obtener roles asumibles para este usuario específico
+        assumable_roles = get_assumable_roles_for_user(client, username, account_id)
+        
+        return {
+            "status": "success",
+            "username": username,
+            "assumable_roles": assumable_roles
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "username": username,
+            "error": str(e),
+            "assumable_roles": []
+        }
+
+
+def get_assumable_roles_for_user(client, username, account_id):
+    """
+    Obtiene los roles que un usuario puede asumir basándose en las políticas que tiene asignadas.
+    
+    Args:
+        client: Cliente IAM de boto3
+        username (str): Nombre del usuario
+        account_id (str): ID de la cuenta AWS
+    
+    Returns:
+        list: Lista de roles asumibles por el usuario
+    """
+    assumable_roles = []
+    
+    try:
+        # Simular permisos para sts:AssumeRole en todos los roles de la cuenta
+        all_roles_response = client.list_roles()
+        all_roles = all_roles_response.get('Roles', [])
+        
+        # Crear lista de ARNs de roles para simular
+        role_arns = [role['Arn'] for role in all_roles]
+        
+        if role_arns:
+            user_arn = f"arn:aws:iam::{account_id}:user/{username}"
+            
+            # Simular permisos de AssumeRole para cada rol
+            for role_arn in role_arns:
+                try:
+                    response = client.simulate_principal_policy(
+                        PolicySourceArn=user_arn,
+                        ActionNames=['sts:AssumeRole'],
+                        ResourceArns=[role_arn]
+                    )
+                    
+                    for result in response.get('EvaluationResults', []):
+                        if result['EvalDecision'] == 'allowed':
+                            # Extraer nombre del rol del ARN
+                            role_name = role_arn.split('/')[-1]
+                            assumable_roles.append({
+                                'RoleName': role_name,
+                                'RoleArn': role_arn,
+                                'Source': 'Policy-based'
+                            })
+                except ClientError:
+                    # Si falla la simulación para un rol específico, continuar
+                    continue
+                    
+    except ClientError as e:
+        print(f"Error getting assumable roles for user {username}: {e}")
+    
+    return assumable_roles
 
 
 def collect_identity_center_data(session):
@@ -211,6 +305,7 @@ def collect_identity_center_data(session):
         return {"status": "Error", "message": f"Client error querying Identity Center: {str(e)}"}
     except Exception as e:
         return {"status": "General Error", "message": f"An unexpected error occurred: {str(e)}"}
+
 
 
 def check_critical_permissions(session, users):

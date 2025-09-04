@@ -203,6 +203,7 @@ const createIamUsuariosHtml = () => `
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MFA</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CLI MFA</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groups</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inline Policies</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-3/12">Access Keys</th>
@@ -212,6 +213,192 @@ const createIamUsuariosHtml = () => `
             </table>
         </div>
     </div>`;
+
+// 2. Agregar función para abrir modal con detalles de roles
+export const openModalWithUserRoles = async (username, userIndex) => {
+    const modal = document.getElementById('details-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+    
+    if (!modal || !modalTitle || !modalContent) return;
+
+    // Obtener datos del usuario desde la cache local
+    const user = window.iamApiData.results.users[userIndex];
+    const tagBasedRoles = user.Roles || [];
+
+    modalTitle.textContent = `Roles for User: ${username}`;
+    
+    // Mostrar loading state
+    modalContent.innerHTML = `
+        <div class="space-y-4">
+            <!-- Roles por tags (inmediato) -->
+            ${tagBasedRoles.length > 0 ? `
+            <div>
+                <h4 class="font-semibold text-md mb-3 text-[#204071] border-b border-gray-200 pb-2">
+                    Organizational Roles (from tags)
+                </h4>
+                <div class="space-y-2">
+                    ${tagBasedRoles.map(role => `
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-800">${role.RoleName || role}</span>
+                                <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
+                                    Tag-based
+                                </span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Roles asumibles (loading) -->
+            <div>
+                <h4 class="font-semibold text-md mb-3 text-[#204071] border-b border-gray-200 pb-2">
+                    Assumable IAM Roles
+                </h4>
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#204071]"></div>
+                    <span class="ml-3 text-gray-600">Loading assumable roles...</span>
+                </div>
+            </div>
+        </div>`;
+    
+    modal.classList.remove('hidden');
+
+    // Hacer llamada API para obtener roles asumibles
+    log(`Fetching assumable roles for user: ${username}`, 'info');
+    
+    const payload = {
+        access_key: document.getElementById('access-key-input').value.trim(),
+        secret_key: document.getElementById('secret-key-input').value.trim(),
+        session_token: document.getElementById('session-token-input').value.trim() || null,
+        username: username
+    };
+
+    try {
+        const response = await fetch('http://127.0.0.1:5001/api/get-user-assumable-roles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP error! status: ${response.status}`);
+        }
+
+        // Actualizar contenido del modal con los resultados
+        let rolesHtml = '<div class="space-y-4">';
+        
+        // Mostrar roles por tags si existen
+        if (tagBasedRoles.length > 0) {
+            rolesHtml += `
+                <div>
+                    <h4 class="font-semibold text-md mb-3 text-[#204071] border-b border-gray-200 pb-2">
+                        Organizational Roles (from tags)
+                    </h4>
+                    <div class="space-y-2">`;
+            
+            tagBasedRoles.forEach(role => {
+                rolesHtml += `
+                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-gray-800">${role.RoleName || role}</span>
+                            <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
+                                Tag-based
+                            </span>
+                        </div>
+                    </div>`;
+            });
+            
+            rolesHtml += '</div></div>';
+        }
+        
+        // Mostrar roles asumibles
+        const assumableRoles = result.assumable_roles || [];
+        rolesHtml += `
+            <div>
+                <h4 class="font-semibold text-md mb-3 text-[#204071] border-b border-gray-200 pb-2">
+                    Assumable IAM Roles
+                </h4>`;
+        
+        if (assumableRoles.length > 0) {
+            rolesHtml += '<div class="space-y-2">';
+            
+            assumableRoles.forEach(role => {
+                rolesHtml += `
+                    <div class="p-3 bg-green-50 border border-green-200 rounded-md">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-medium text-gray-800">${role.RoleName}</span>
+                            <span class="px-2 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full">
+                                Policy-based
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-600 font-mono break-all">${role.RoleArn}</p>
+                    </div>`;
+            });
+            
+            rolesHtml += '</div>';
+        } else {
+            rolesHtml += '<p class="text-center text-gray-500 py-4">No assumable roles found for this user.</p>';
+        }
+        
+        rolesHtml += '</div></div>';
+        
+        modalContent.innerHTML = rolesHtml;
+        
+        const totalRoles = tagBasedRoles.length + assumableRoles.length;
+        log(`Successfully loaded ${totalRoles} roles for user ${username} (${tagBasedRoles.length} tag-based, ${assumableRoles.length} assumable)`, 'success');
+
+    } catch (error) {
+        log(`Error fetching assumable roles: ${error.message}`, 'error');
+        
+        // Mostrar error en el modal pero mantener roles por tags
+        let errorContent = '<div class="space-y-4">';
+        
+        // Mantener roles por tags visibles
+        if (tagBasedRoles.length > 0) {
+            errorContent += `
+                <div>
+                    <h4 class="font-semibold text-md mb-3 text-[#204071] border-b border-gray-200 pb-2">
+                        Organizational Roles (from tags)
+                    </h4>
+                    <div class="space-y-2">`;
+            
+            tagBasedRoles.forEach(role => {
+                errorContent += `
+                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-gray-800">${role.RoleName || role}</span>
+                            <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
+                                Tag-based
+                            </span>
+                        </div>
+                    </div>`;
+            });
+            
+            errorContent += '</div></div>';
+        }
+        
+        // Mostrar error para roles asumibles
+        errorContent += `
+            <div>
+                <h4 class="font-semibold text-md mb-3 text-[#204071] border-b border-gray-200 pb-2">
+                    Assumable IAM Roles
+                </h4>
+                <div class="bg-red-50 text-red-700 p-3 rounded-lg">
+                    <h5 class="font-bold">Error loading assumable roles</h5>
+                    <p class="text-sm">${error.message}</p>
+                </div>
+            </div>
+        </div>`;
+        
+        modalContent.innerHTML = errorContent;
+    }
+};
+
 
 const createIamGruposHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Groups List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="groups-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
 const createIamRolesHtml = () => `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 class="font-bold text-lg mb-4 text-[#204071]">IAM Roles List</h3><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attached Policies</th></tr></thead><tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div>`;
@@ -563,12 +750,11 @@ export const updateSecurityHubDashboard = () => {
     renderFilteredFindings('ALL');
 };
 
-
 const renderUsersTable = (users) => {
     const tableBody = document.getElementById('users-table-body');
     tableBody.innerHTML = '';
     if (!users || users.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-4">No users were found.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="10" class="text-center text-gray-500 py-4">No users were found.</td></tr>`;
         return;
     }
     
@@ -584,17 +770,15 @@ const renderUsersTable = (users) => {
             const riskLevel = user.mfa_compliance.risk_level;
             
             if (riskLevel === 'none') {
-                // No hay riesgo = no necesita CLI MFA
                 cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>';
             } else if (isCompliant) {
-                // Está cumpliendo con CLI MFA
                 cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>';
             } else {
-                // NO está cumpliendo con CLI MFA (independientemente del nivel de riesgo)
                 cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">NO</span>';
             }
         }
         
+        // Groups column
         let groupsHtml = '-';
         if (user.Groups && user.Groups.length > 0) {
             groupsHtml = `<button 
@@ -603,6 +787,20 @@ const renderUsersTable = (users) => {
                               View (${user.Groups.length})
                           </button>`;
         }
+        
+        // COLUMNA ROLES: Mostrar botón siempre, carga bajo demanda
+        const tagBasedRoles = user.Roles || [];
+        let rolesButtonText = 'View';
+        
+        if (tagBasedRoles.length > 0) {
+            rolesButtonText = `View (${tagBasedRoles.length} Tag)`;
+        }
+        
+        const rolesHtml = `<button 
+                             onclick="openModalWithUserRoles('${user.UserName}', ${index})" 
+                             class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition whitespace-nowrap">
+                             ${rolesButtonText}
+                         </button>`;
 
         const attachedPolicies = user.AttachedPolicies.join(', ') || '-';
         const inlinePolicies = user.InlinePolicies.join(', ') || '-';
@@ -626,12 +824,14 @@ const renderUsersTable = (users) => {
             <td class="px-6 py-4 whitespace-nowrap text-xs">${mfaEnabled}</td> 
             <td class="px-6 py-4 whitespace-nowrap text-xs">${cliMfaCompliance}</td>
             <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${groupsHtml}</td> 
+            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">${rolesHtml}</td>
             <td class="px-6 py-4 text-xs text-gray-500 break-words">${attachedPolicies}</td> 
             <td class="px-6 py-4 text-xs text-gray-500 break-words">${inlinePolicies}</td> 
             <td class="px-6 py-4 text-xs text-gray-500 align-top">${accessKeysHtml}</td>`;
         tableBody.appendChild(row);
     });
 };
+
 
 const renderGroupsTable = (groups) => {
     const tableBody = document.getElementById('groups-table-body');
@@ -784,7 +984,8 @@ const renderIamPermissionDetails = (principal, type, searchedTerm) => {
             },
             InheritedPermissions: {
                  Groups: principal.Groups,
-                 AssumableRoles_by_Tag: principal.Roles,
+                 OrganizationalRoles_by_Tag: principal.Roles || [],
+                 AssumableRoles_by_Policy: principal.AssumableRoles || []
             }
         };
     } else if (type === 'Group') {
