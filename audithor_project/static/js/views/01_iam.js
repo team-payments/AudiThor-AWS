@@ -584,15 +584,14 @@ const renderUsersTable = (users) => {
             const riskLevel = user.mfa_compliance.risk_level;
             
             if (riskLevel === 'none') {
+                // No hay riesgo = no necesita CLI MFA
                 cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>';
             } else if (isCompliant) {
-                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Compliant</span>';
-            } else if (riskLevel === 'critical') {
-                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Critical</span>';
-            } else if (riskLevel === 'high') {
-                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">High Risk</span>';
+                // Está cumpliendo con CLI MFA
+                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">YES</span>';
             } else {
-                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Partial</span>';
+                // NO está cumpliendo con CLI MFA (independientemente del nivel de riesgo)
+                cliMfaCompliance = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">NO</span>';
             }
         }
         
