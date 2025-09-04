@@ -673,3 +673,231 @@ def check_mfa_compliance_for_cli(session, users):
        }
    
    return users
+
+def analyze_custom_policy(session, policy_name):
+    """
+    Analiza una política customer-managed específica y extrae información detallada.
+    
+    Args:
+        session (boto3.Session): The boto3 session for creating clients.
+        policy_name (str): Nombre de la política custom a analizar
+        
+    Returns:
+        dict: Análisis completo de la política custom
+    """
+    iam_client = session.client("iam")
+    sts_client = session.client("sts")
+    account_id = sts_client.get_caller_identity()["Account"]
+    
+    # Construir ARN de la política custom
+    policy_arn = f"arn:aws:iam::{account_id}:policy/{policy_name}"
+    
+    try:
+        # Obtener información de la política
+        policy_response = iam_client.get_policy(PolicyArn=policy_arn)
+        policy = policy_response['Policy']
+        
+        # Obtener el documento de la versión actual
+        policy_version_response = iam_client.get_policy_version(
+            PolicyArn=policy_arn,
+            VersionId=policy['DefaultVersionId']
+        )
+        
+        policy_document = policy_version_response['PolicyVersion']['Document']
+        
+        # Analizar el contenido de la política
+        analysis = analyze_policy_document(policy_document)
+        
+        # Obtener entidades que usan esta política
+        entities_using_policy = get_entities_using_policy(iam_client, policy_arn)
+        
+        return {
+            "status": "success",
+            "policy_name": policy_name,
+            "policy_arn": policy_arn,
+            "metadata": {
+                "policy_id": policy['PolicyId'],
+                "creation_date": policy['CreateDate'].isoformat(),
+                "update_date": policy['UpdateDate'].isoformat(),
+                "default_version_id": policy['DefaultVersionId'],
+                "attachment_count": policy['AttachmentCount'],
+                "permissions_boundary_usage_count": policy.get('PermissionsBoundaryUsageCount', 0),
+                "is_attachable": policy['IsAttachable']
+            },
+            "policy_document": policy_document,
+            "analysis": analysis,
+            "used_by": entities_using_policy
+        }
+        
+    except iam_client.exceptions.NoSuchEntityException:
+        return {
+            "status": "error",
+            "error": f"Custom policy '{policy_name}' not found. Make sure the policy name is correct and exists in this account."
+        }
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'AccessDenied':
+            return {
+                "status": "error",
+                "error": f"Access denied when trying to read policy '{policy_name}'. Check IAM permissions."
+            }
+        else:
+            return {
+                "status": "error",
+                "error": f"Error analyzing policy '{policy_name}': {str(e)}"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Unexpected error analyzing policy '{policy_name}': {str(e)}"
+        }
+
+
+def analyze_policy_document(policy_document):
+    """
+    Analiza el documento JSON de una política y extrae información útil.
+    
+    Args:
+        policy_document (dict): El documento de la política IAM
+        
+    Returns:
+        dict: Análisis del contenido de la política
+    """
+    try:
+        statements = policy_document.get('Statement', [])
+        if not isinstance(statements, list):
+            statements = [statements]
+        
+        analysis = {
+            "statement_count": len(statements),
+            "allows_statements": 0,
+            "denies_statements": 0,
+            "services_affected": set(),
+            "actions_allowed": [],
+            "actions_denied": [],
+            "resources_wildcard": False,
+            "principals_wildcard": False,
+            "has_conditions": False,
+            "privilege_level": "low",
+            "security_concerns": []
+        }
+        
+        admin_actions = {"*", "*:*"}
+        high_risk_services = {"iam", "sts", "organizations", "account"}
+        
+        for statement in statements:
+            effect = statement.get('Effect', 'Allow')
+            actions = statement.get('Action', [])
+            resources = statement.get('Resource', [])
+            principals = statement.get('Principal', [])
+            conditions = statement.get('Condition', {})
+            
+            # Normalizar a listas
+            if isinstance(actions, str):
+                actions = [actions]
+            if isinstance(resources, str):
+                resources = [resources]
+            
+            # Contar tipos de statements
+            if effect == 'Allow':
+                analysis['allows_statements'] += 1
+                analysis['actions_allowed'].extend(actions)
+            else:
+                analysis['denies_statements'] += 1
+                analysis['actions_denied'].extend(actions)
+            
+            # Analizar servicios afectados
+            for action in actions:
+                if ':' in action:
+                    service = action.split(':')[0]
+                    analysis['services_affected'].add(service)
+            
+            # Detectar wildcards peligrosos
+            if '*' in resources or any('*' in str(res) for res in resources):
+                analysis['resources_wildcard'] = True
+                
+            if principals and ('*' in str(principals)):
+                analysis['principals_wildcard'] = True
+            
+            # Detectar condiciones
+            if conditions:
+                analysis['has_conditions'] = True
+            
+            # Evaluar nivel de privilegio
+            if any(action in admin_actions for action in actions):
+                analysis['privilege_level'] = "critical"
+                analysis['security_concerns'].append("Contains administrative (*) permissions")
+            
+            # Detectar acciones de alto riesgo
+            for action in actions:
+                service = action.split(':')[0] if ':' in action else action
+                if service in high_risk_services:
+                    if analysis['privilege_level'] not in ["critical"]:
+                        analysis['privilege_level'] = "high"
+                    analysis['security_concerns'].append(f"Contains {service.upper()} permissions")
+        
+        # Convertir sets a listas para JSON serialization
+        analysis['services_affected'] = sorted(list(analysis['services_affected']))
+        analysis['security_concerns'] = list(set(analysis['security_concerns']))  # Eliminar duplicados
+        
+        # Evaluar nivel de privilegio final
+        if not analysis['security_concerns'] and analysis['resources_wildcard']:
+            analysis['privilege_level'] = "medium"
+        
+        return analysis
+        
+    except Exception as e:
+        return {
+            "error": f"Error analyzing policy document: {str(e)}",
+            "statement_count": 0,
+            "privilege_level": "unknown"
+        }
+
+
+def get_entities_using_policy(iam_client, policy_arn):
+    """
+    Obtiene qué usuarios, grupos y roles están usando esta política.
+    
+    Args:
+        iam_client: Cliente IAM de boto3
+        policy_arn (str): ARN de la política
+        
+    Returns:
+        dict: Entidades que usan la política
+    """
+    entities = {
+        "users": [],
+        "groups": [],
+        "roles": []
+    }
+    
+    try:
+        # Obtener entidades que usan la política
+        paginator = iam_client.get_paginator('list_entities_for_policy')
+        
+        for page in paginator.paginate(PolicyArn=policy_arn):
+            # Usuarios
+            for user in page.get('PolicyUsers', []):
+                entities['users'].append({
+                    'name': user['UserName'],
+                    'id': user['UserId']
+                })
+            
+            # Grupos
+            for group in page.get('PolicyGroups', []):
+                entities['groups'].append({
+                    'name': group['GroupName'],
+                    'id': group['GroupId']
+                })
+            
+            # Roles
+            for role in page.get('PolicyRoles', []):
+                entities['roles'].append({
+                    'name': role['RoleName'],
+                    'id': role['RoleId']
+                })
+                
+    except Exception as e:
+        entities['error'] = f"Error getting entities using policy: {str(e)}"
+    
+    return entities

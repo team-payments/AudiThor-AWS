@@ -52,12 +52,11 @@ export const buildIamView = () => {
     const tabsNav = container.querySelector('#iam-tabs');
     if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.iam-tab-content'));
 
-    const getDetailsBtn = document.getElementById('iam-get-details-btn');
-    if (getDetailsBtn) getDetailsBtn.addEventListener('click', getIamPermissionDetails);
+    // Event listeners para los controles de Permission Details
+    setupPermissionDetailsControls();
 
     if (window.iamApiData) updateIamDashboard();
     
-    // CAMBIO AQUÍ: Llamar updateSecurityHubDashboard si hay CUALQUIER dato de Security Hub
     if (window.securityHubApiData || window.securityHubStatusApiData) {
         updateSecurityHubDashboard();
     }
@@ -69,6 +68,78 @@ export const buildIamView = () => {
         renderFederationView();
     }
 };
+
+// 11. Función para configurar los controles de Permission Details
+const setupPermissionDetailsControls = () => {
+    // Event listener para el botón de búsqueda
+    const searchBtn = document.getElementById('iam-search-btn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', getIamPermissionDetails);
+    }
+
+    // Event listener para Enter en el input
+    const searchInput = document.getElementById('iam-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                getIamPermissionDetails();
+            }
+        });
+    }
+
+    // Event listeners para los botones de tipo de búsqueda
+    const principalBtn = document.getElementById('search-type-principal');
+    const policyBtn = document.getElementById('search-type-policy');
+    
+    if (principalBtn && policyBtn) {
+        principalBtn.addEventListener('click', () => {
+            setSearchType('principal');
+        });
+        
+        policyBtn.addEventListener('click', () => {
+            setSearchType('policy');
+        });
+    }
+};
+
+// 12. Función para cambiar el tipo de búsqueda
+const setSearchType = (type) => {
+    const principalBtn = document.getElementById('search-type-principal');
+    const policyBtn = document.getElementById('search-type-policy');
+    const searchLabel = document.getElementById('search-label');
+    const searchInput = document.getElementById('iam-search-input');
+    
+    if (!principalBtn || !policyBtn || !searchLabel || !searchInput) return;
+    
+    // Reset styles
+    [principalBtn, policyBtn].forEach(btn => {
+        btn.classList.remove('bg-[#eb3496]', 'text-white');
+        btn.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
+    });
+    
+    if (type === 'principal') {
+        principalBtn.classList.add('bg-[#eb3496]', 'text-white');
+        principalBtn.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
+        searchLabel.textContent = 'Name of User, Group, or Role';
+        searchInput.placeholder = 'E.g.: admin-user, DevelopersGroup, EC2AdminRole';
+    } else if (type === 'policy') {
+        policyBtn.classList.add('bg-[#eb3496]', 'text-white');
+        policyBtn.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
+        searchLabel.textContent = 'Name of Custom Policy';
+        searchInput.placeholder = 'E.g.: MyCustomDeveloperPolicy, CustomS3ReadOnlyAccess';
+    }
+    
+    // Clear previous results
+    const resultsContainer = document.getElementById('iam-search-results-container');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = '';
+    }
+    
+    // Clear input
+    searchInput.value = '';
+};
+
+
 
 
 // --- FUNCIONES INTERNAS DEL MÓDULO (NO SE EXPORTAN) ---
@@ -897,71 +968,56 @@ const renderPasswordPolicy = (policy) => {
 const renderIamDetailsViewHtml = () => {
     return `
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 class="font-bold text-lg mb-4 text-[#204071]">View Detailed Permissions of an IAM Principal</h3>
-            <p class="text-sm text-gray-600 mb-4">Enter the exact name of a user, group, or role to view all of its associated permission policies.</p>
+            <h3 class="font-bold text-lg mb-4 text-[#204071]">View Detailed Permissions</h3>
+            <p class="text-sm text-gray-600 mb-4">Enter the name of a principal or policy to view detailed information.</p>
+            
+            <!-- Selector de tipo -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search Type</label>
+                <div class="flex flex-wrap gap-2">
+                    <button id="search-type-principal" class="search-type-btn px-4 py-2 text-sm font-semibold rounded-md bg-[#eb3496] text-white">
+                        IAM Principal (User/Group/Role)
+                    </button>
+                    <button id="search-type-policy" class="search-type-btn px-4 py-2 text-sm font-semibold rounded-md bg-white text-gray-700 border border-gray-300 hover:bg-gray-50">
+                        Custom Policy
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Campo de búsqueda -->
             <div class="flex flex-col sm:flex-row gap-4 items-end">
                 <div class="flex-grow">
-                    <label for="iam-principal-name" class="block text-sm font-medium text-gray-700 mb-1">Name of User, Group, or Role</label>
-                    <input type="text" id="iam-principal-name" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="E.g.: admin-user, DevelopersGroup, EC2AdminRole">
+                    <label for="iam-search-input" class="block text-sm font-medium text-gray-700 mb-1">
+                        <span id="search-label">Name of User, Group, or Role</span>
+                    </label>
+                    <input type="text" id="iam-search-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="E.g.: admin-user, DevelopersGroup, EC2AdminRole">
                 </div>
-                <button id="iam-get-details-btn" class="w-full sm:w-auto bg-[#204071] text-white px-5 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition">View details</button>
+                <button id="iam-search-btn" class="w-full sm:w-auto bg-[#204071] text-white px-5 py-2.5 rounded-lg font-bold text-md hover:bg-[#1a335a] transition">
+                    <span id="search-btn-text">View Details</span>
+                </button>
             </div>
         </div>
-        <div id="iam-details-result-container" class="mt-6"></div>
+        <div id="iam-search-results-container" class="mt-6"></div>
     `;
 };
 
+
 const getIamPermissionDetails = () => {
-    log('Fetching IAM permission details...', 'info');
-    const rawInput = document.getElementById('iam-principal-name').value.trim();
-    const resultsContainer = document.getElementById('iam-details-result-container');
-    let principalNameToSearch = rawInput;
-
-    if (!rawInput) {
-        resultsContainer.innerHTML = `<p class="text-yellow-600 font-medium">Please provide a name or ARN to search.</p>`;
+    const searchType = getSelectedSearchType();
+    const searchInput = document.getElementById('iam-search-input').value.trim();
+    
+    if (!searchInput) {
+        showSearchError('Please provide a name to search.');
         return;
-    }
-
-    if (rawInput.toLowerCase().startsWith('arn:aws:iam::')) {
-        try {
-            const parts = rawInput.split('/');
-            principalNameToSearch = parts[parts.length - 1];
-            log(`ARN detected. Searching for extracted name: '${principalNameToSearch}'`, 'info');
-        } catch (e) {
-            log('Error parsing ARN. Using full value.', 'error');
-        }
-    }
-
-    if (!window.iamApiData || !window.iamApiData.results) {
-        resultsContainer.innerHTML = `<p class="text-red-600 font-medium">No IAM data loaded. Please run an analysis first.</p>`;
-        log('Attempted permission search without IAM data.', 'error');
-        return;
-    }
-
-    const { users, groups, roles } = window.iamApiData.results;
-    let foundPrincipal = null;
-    let principalType = '';
-
-    const user = users.find(u => u.UserName.toLowerCase() === principalNameToSearch.toLowerCase());
-    if (user) {
-        foundPrincipal = user;
-        principalType = 'User';
-    } else {
-        const group = groups.find(g => g.GroupName.toLowerCase() === principalNameToSearch.toLowerCase());
-        if (group) {
-            foundPrincipal = group;
-            principalType = 'Group';
-        } else {
-            const role = roles.find(r => r.RoleName.toLowerCase() === principalNameToSearch.toLowerCase());
-            if (role) {
-                foundPrincipal = role;
-                principalType = 'Role';
-            }
-        }
     }
     
-    renderIamPermissionDetails(foundPrincipal, principalType, rawInput);
+    if (searchType === 'principal') {
+        searchIamPrincipal(searchInput);
+    } else if (searchType === 'policy') {
+        analyzeCustomPolicy(searchInput);
+    }
 };
+
 
 const renderIamPermissionDetails = (principal, type, searchedTerm) => {
     const resultsContainer = document.getElementById('iam-details-result-container');
@@ -1013,5 +1069,349 @@ const renderIamPermissionDetails = (principal, type, searchedTerm) => {
     resultsContainer.innerHTML = `
         <h3 class="text-xl font-bold text-[#204071] mb-4">Showing details for ${type}: ${name}</h3>
         <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${formattedJson}</pre>
+    `;
+};
+
+const getSelectedSearchType = () => {
+    const principalBtn = document.getElementById('search-type-principal');
+    return principalBtn.classList.contains('bg-[#eb3496]') ? 'principal' : 'policy';
+};
+
+// 4. Función auxiliar para mostrar errores
+const showSearchError = (message) => {
+    const resultsContainer = document.getElementById('iam-search-results-container');
+    resultsContainer.innerHTML = `<p class="text-yellow-600 font-medium">${message}</p>`;
+};
+
+const searchIamPrincipal = (rawInput) => {
+    log('Fetching IAM principal details...', 'info');
+    const resultsContainer = document.getElementById('iam-search-results-container');
+    let principalNameToSearch = rawInput;
+
+    // Manejar ARNs
+    if (rawInput.toLowerCase().startsWith('arn:aws:iam::')) {
+        try {
+            const parts = rawInput.split('/');
+            principalNameToSearch = parts[parts.length - 1];
+            log(`ARN detected. Searching for extracted name: '${principalNameToSearch}'`, 'info');
+        } catch (e) {
+            log('Error parsing ARN. Using full value.', 'error');
+        }
+    }
+
+    if (!window.iamApiData || !window.iamApiData.results) {
+        resultsContainer.innerHTML = `<p class="text-red-600 font-medium">No IAM data loaded. Please run an analysis first.</p>`;
+        log('Attempted permission search without IAM data.', 'error');
+        return;
+    }
+
+    const { users, groups, roles } = window.iamApiData.results;
+    let foundPrincipal = null;
+    let principalType = '';
+
+    const user = users.find(u => u.UserName.toLowerCase() === principalNameToSearch.toLowerCase());
+    if (user) {
+        foundPrincipal = user;
+        principalType = 'User';
+    } else {
+        const group = groups.find(g => g.GroupName.toLowerCase() === principalNameToSearch.toLowerCase());
+        if (group) {
+            foundPrincipal = group;
+            principalType = 'Group';
+        } else {
+            const role = roles.find(r => r.RoleName.toLowerCase() === principalNameToSearch.toLowerCase());
+            if (role) {
+                foundPrincipal = role;
+                principalType = 'Role';
+            }
+        }
+    }
+    
+    renderIamPrincipalDetails(foundPrincipal, principalType, rawInput);
+};
+
+const analyzeCustomPolicy = async (policyName) => {
+    log(`Analyzing custom policy: ${policyName}`, 'info');
+    const resultsContainer = document.getElementById('iam-search-results-container');
+    const searchBtn = document.getElementById('iam-search-btn');
+    const btnText = document.getElementById('search-btn-text');
+    
+    // Mostrar loading state
+    searchBtn.disabled = true;
+    btnText.textContent = 'Analyzing...';
+    
+    resultsContainer.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#204071]"></div>
+                <span class="ml-3 text-gray-600">Analyzing custom policy...</span>
+            </div>
+        </div>`;
+
+    const payload = {
+        access_key: document.getElementById('access-key-input').value.trim(),
+        secret_key: document.getElementById('secret-key-input').value.trim(),
+        session_token: document.getElementById('session-token-input').value.trim() || null,
+        policy_name: policyName
+    };
+
+    try {
+        const response = await fetch('http://127.0.0.1:5001/api/analyze-custom-policy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP error! status: ${response.status}`);
+        }
+
+        if (result.status === 'error') {
+            throw new Error(result.error);
+        }
+
+        renderCustomPolicyAnalysis(result);
+        log(`Successfully analyzed policy: ${policyName}`, 'success');
+
+    } catch (error) {
+        log(`Error analyzing custom policy: ${error.message}`, 'error');
+        resultsContainer.innerHTML = `
+            <div class="bg-red-50 text-red-700 p-4 rounded-lg">
+                <h4 class="font-bold">Error Analyzing Policy</h4>
+                <p>${error.message}</p>
+            </div>`;
+    } finally {
+        searchBtn.disabled = false;
+        btnText.textContent = 'View Details';
+    }
+};
+
+// 7. Función para renderizar el análisis de política custom
+const renderCustomPolicyAnalysis = (result) => {
+    const resultsContainer = document.getElementById('iam-search-results-container');
+    const { policy_name, metadata, analysis, used_by, policy_document } = result;
+    
+    // Determinar color del badge de privilegio
+    const getPrivilegeBadge = (level) => {
+        const badges = {
+            'critical': 'bg-red-100 text-red-800',
+            'high': 'bg-orange-100 text-orange-800',
+            'medium': 'bg-yellow-100 text-yellow-800',
+            'low': 'bg-green-100 text-green-800',
+            'unknown': 'bg-gray-100 text-gray-800'
+        };
+        return `<span class="px-3 py-1 text-sm font-semibold rounded-full ${badges[level] || badges.unknown}">${level.toUpperCase()}</span>`;
+    };
+
+    // Crear lista de servicios
+    const servicesHtml = analysis.services_affected && analysis.services_affected.length > 0 
+        ? analysis.services_affected.map(service => 
+            `<span class="inline-block bg-blue-100 text-blue-800 text-xs font-medium mr-2 mb-2 px-2.5 py-0.5 rounded-full">${service}</span>`
+        ).join('')
+        : '<span class="text-gray-500">No services detected</span>';
+
+    // Crear lista de preocupaciones de seguridad
+    const securityConcernsHtml = analysis.security_concerns && analysis.security_concerns.length > 0
+        ? analysis.security_concerns.map(concern => 
+            `<li class="text-red-700 text-sm">• ${concern}</li>`
+        ).join('')
+        : '<li class="text-green-700 text-sm">• No obvious security concerns detected</li>';
+
+    // Crear lista de entidades que usan la política
+    const entitiesHtml = createEntitiesUsageHtml(used_by);
+
+    resultsContainer.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 class="text-xl font-bold text-[#204071] mb-4">Custom Policy Analysis: ${policy_name}</h3>
+            
+            <!-- Metadata Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-700 text-sm">Privilege Level</h4>
+                    <div class="mt-2">${getPrivilegeBadge(analysis.privilege_level)}</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-700 text-sm">Statements</h4>
+                    <p class="mt-2 text-lg font-bold text-[#204071]">${analysis.statement_count}</p>
+                    <p class="text-xs text-gray-600">${analysis.allows_statements} Allow, ${analysis.denies_statements} Deny</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-700 text-sm">Last Updated</h4>
+                    <p class="mt-2 text-sm font-mono text-gray-800">${new Date(metadata.update_date).toLocaleDateString()}</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-700 text-sm">Attachments</h4>
+                    <p class="mt-2 text-lg font-bold text-[#204071]">${metadata.attachment_count}</p>
+                </div>
+            </div>
+
+            <!-- Analysis Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <h4 class="font-semibold text-md mb-3 text-[#204071]">AWS Services Affected</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        ${servicesHtml}
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-md mb-3 text-[#204071]">Security Analysis</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <ul>
+                            ${securityConcernsHtml}
+                        </ul>
+                        ${analysis.resources_wildcard ? '<p class="text-orange-600 text-sm mt-2">⚠️ Uses wildcard (*) resources</p>' : ''}
+                        ${analysis.has_conditions ? '<p class="text-green-600 text-sm mt-2">✓ Has security conditions</p>' : ''}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Entities using this policy -->
+            ${entitiesHtml}
+
+            <!-- Policy Document -->
+            <div class="mt-6">
+                <h4 class="font-semibold text-md mb-3 text-[#204071]">Policy Document</h4>
+                <div class="bg-[#204071] text-white p-4 rounded-lg overflow-x-auto">
+                    <pre class="text-xs font-mono whitespace-pre-wrap"><code>${JSON.stringify(policy_document, null, 2)}</code></pre>
+                </div>
+            </div>
+
+            <!-- Metadata Details -->
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-md mb-3 text-[#204071]">Policy Metadata</h4>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div><strong>Policy ID:</strong> <span class="font-mono">${metadata.policy_id}</span></div>
+                        <div><strong>Version ID:</strong> <span class="font-mono">${metadata.default_version_id}</span></div>
+                        <div><strong>Created:</strong> ${new Date(metadata.creation_date).toLocaleDateString()}</div>
+                        <div><strong>Attachable:</strong> ${metadata.is_attachable ? 'Yes' : 'No'}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+// 8. Función auxiliar para crear HTML de entidades que usan la política
+const createEntitiesUsageHtml = (used_by) => {
+    if (!used_by || (used_by.users.length === 0 && used_by.groups.length === 0 && used_by.roles.length === 0)) {
+        return `
+            <div class="mb-6">
+                <h4 class="font-semibold text-md mb-3 text-[#204071]">Usage</h4>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-500">This policy is not currently attached to any users, groups, or roles.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let entitiesHtml = `
+        <div class="mb-6">
+            <h4 class="font-semibold text-md mb-3 text-[#204071]">Entities Using This Policy</h4>
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    `;
+
+    // Usuarios
+    if (used_by.users.length > 0) {
+        entitiesHtml += `
+            <div>
+                <h5 class="font-medium text-sm text-gray-700 mb-2">Users (${used_by.users.length})</h5>
+                <ul class="space-y-1">
+                    ${used_by.users.map(user => `<li class="text-sm font-mono text-gray-600">• ${user.name}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // Grupos
+    if (used_by.groups.length > 0) {
+        entitiesHtml += `
+            <div>
+                <h5 class="font-medium text-sm text-gray-700 mb-2">Groups (${used_by.groups.length})</h5>
+                <ul class="space-y-1">
+                    ${used_by.groups.map(group => `<li class="text-sm font-mono text-gray-600">• ${group.name}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // Roles
+    if (used_by.roles.length > 0) {
+        entitiesHtml += `
+            <div>
+                <h5 class="font-medium text-sm text-gray-700 mb-2">Roles (${used_by.roles.length})</h5>
+                <ul class="space-y-1">
+                    ${used_by.roles.map(role => `<li class="text-sm font-mono text-gray-600">• ${role.name}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    entitiesHtml += `
+                </div>
+            </div>
+        </div>
+    `;
+
+    return entitiesHtml;
+};
+
+// 9. Función original renombrada
+const renderIamPrincipalDetails = (principal, type, searchedTerm) => {
+    const resultsContainer = document.getElementById('iam-search-results-container');
+    if (!principal) {
+        resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Not Found</h4><p>Could not find any user, group, or role with the name or ARN '${searchedTerm}'.</p></div>`;
+        log(`IAM Principal '${searchedTerm}' not found.`, 'error');
+        return;
+    }
+
+    let detailsToShow = {};
+    const name = type === 'User' ? principal.UserName : (type === 'Group' ? principal.GroupName : principal.RoleName);
+
+    if (type === 'User') {
+        detailsToShow = {
+            Type: 'User',
+            Name: principal.UserName,
+            DirectPermissions: {
+                AttachedPolicies: principal.AttachedPolicies,
+                InlinePolicies: principal.InlinePolicies,
+            },
+            InheritedPermissions: {
+                 Groups: principal.Groups,
+                 OrganizationalRoles_by_Tag: principal.Roles || [],
+                 AssumableRoles_by_Policy: principal.AssumableRoles || []
+            }
+        };
+    } else if (type === 'Group') {
+         detailsToShow = {
+            Type: 'Group',
+            Name: principal.GroupName,
+            Permissions: {
+                AttachedPolicies: principal.AttachedPolicies,
+            }
+        };
+    } else if (type === 'Role') {
+         detailsToShow = {
+            Type: 'Role',
+            Name: principal.RoleName,
+            Permissions: {
+                AttachedPolicies: principal.AttachedPolicies,
+                InlinePolicies: principal.InlinePolicies
+            }
+        };
+    }
+    
+    const formattedJson = JSON.stringify(detailsToShow, null, 2);
+    log(`Showing details for ${type}: ${name}`, 'success');
+
+    resultsContainer.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 class="text-xl font-bold text-[#204071] mb-4">Details for ${type}: ${name}</h3>
+            <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${formattedJson}</pre>
+        </div>
     `;
 };

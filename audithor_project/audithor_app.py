@@ -608,7 +608,29 @@ def get_user_assumable_roles_endpoint():
             "assumable_roles": []
         }), 500
 
-
+@app.route('/api/analyze-custom-policy', methods=['POST'])
+def analyze_custom_policy_endpoint():
+    """
+    Endpoint para analizar una política custom específica.
+    """
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    
+    data = request.get_json()
+    policy_name = data.get('policy_name')
+    
+    if not policy_name:
+        return jsonify({"error": "Policy name is required."}), 400
+    
+    try:
+        result = iam.analyze_custom_policy(session, policy_name)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": f"Unexpected error analyzing custom policy: {str(e)}"
+        }), 500
 
 # ==============================================================================
 # EJECUCIÓN SERVIDOR
