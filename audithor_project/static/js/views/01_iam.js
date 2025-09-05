@@ -973,8 +973,6 @@ const renderRolesTable = (roles) => {
 };
 
 
-
-
 const renderPasswordPolicy = (policy) => {
     const container = document.getElementById('password-policy-container');
     container.innerHTML = '';
@@ -1019,7 +1017,7 @@ const renderPasswordPolicy = (policy) => {
     });
     checksHtml += `</tbody></table></div>`;
     
-    // NUEVA SECCIÓN: Root MFA Status
+    // NUEVA FUNCIONALIDAD: Verificar MFA del usuario root con detección de hardware
     let rootMfaHtml = '';
     if (policy.RootMFAStatus) {
         const rootMfaStatus = policy.RootMFAStatus;
@@ -1046,7 +1044,7 @@ const renderPasswordPolicy = (policy) => {
                                <td class="px-4 py-2 text-sm text-gray-500 break-words">${rootMfaStatus.error}</td>
                             </tr>`;
         } else {
-            // Mostrar estado del MFA del root
+            // Fila 1: Estado del MFA del root
             const mfaStatusIcon = rootMfaStatus.root_mfa_enabled ? 
                 '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">ENABLED</span>' : 
                 '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">DISABLED</span>';
@@ -1060,18 +1058,81 @@ const renderPasswordPolicy = (policy) => {
                                <td class="px-4 py-2 whitespace-nowrap text-sm">${mfaStatusIcon}</td>
                                <td class="px-4 py-2 text-sm text-gray-500 break-words">${mfaDetails}</td>
                             </tr>`;
+            
+            // Fila 2: Tipo de MFA (solo si MFA está habilitado)
+            if (rootMfaStatus.root_mfa_enabled && rootMfaStatus.iam6_check_available) {
+                let hardwareStatusIcon, hardwareDetails;
+                
+                if (rootMfaStatus.mfa_is_hardware === true) {
+                    hardwareStatusIcon = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">HARDWARE</span>';
+                    hardwareDetails = rootMfaStatus.iam6_finding_details || 'Hardware MFA detected via Security Hub compliance';
+                } else if (rootMfaStatus.mfa_is_hardware === false) {
+                    hardwareStatusIcon = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">VIRTUAL</span>';
+                    hardwareDetails = rootMfaStatus.iam6_finding_details || 'Virtual MFA detected - consider upgrading to hardware';
+                } else {
+                    hardwareStatusIcon = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">UNKNOWN</span>';
+                    hardwareDetails = rootMfaStatus.iam6_finding_details || 'Unable to determine MFA type via Security Hub';
+                }
+                
+                rootMfaHtml += `<tr>
+                                   <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">Root MFA Type</td>
+                                   <td class="px-4 py-2 whitespace-nowrap text-sm">${hardwareStatusIcon}</td>
+                                   <td class="px-4 py-2 text-sm text-gray-500 break-words">${hardwareDetails}</td>
+                                </tr>`;
+            } else if (rootMfaStatus.root_mfa_enabled && !rootMfaStatus.iam6_check_available) {
+                // MFA habilitado pero no se pudo verificar el tipo
+                rootMfaHtml += `<tr>
+                                   <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">Root MFA Type</td>
+                                   <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                       <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">UNKNOWN</span>
+                                   </td>
+                                   <td class="px-4 py-2 text-sm text-gray-500 break-words">Security Hub check not available - unable to determine hardware vs virtual</td>
+                                </tr>`;
+            }
         }
         
         rootMfaHtml += `</tbody></table></div>`;
         
-        // Añadir recomendación de seguridad si MFA no está habilitado
+        // Alertas de seguridad solo para casos que requieren acción
         if (rootMfaStatus.root_mfa_enabled === false) {
             rootMfaHtml += `<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                               <h5 class="text-red-800 font-semibold mb-2">⚠️ Critical Security Recommendation</h5>
+                               <h5 class="text-red-800 font-semibold mb-2">Critical Security Recommendation</h5>
                                <p class="text-red-700 text-sm">
                                    The root user does not have MFA enabled. This represents a significant security risk. 
                                    Enable MFA for the root user immediately through the AWS Console Security Credentials section.
                                </p>
+                           </div>`;
+        } else if (rootMfaStatus.root_mfa_enabled && rootMfaStatus.mfa_is_hardware === false) {
+            rootMfaHtml += `<div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                               <h5 class="text-orange-800 font-semibold mb-2">Security Enhancement Recommendation</h5>
+                               <p class="text-orange-700 text-sm">
+                                   While the root user has MFA enabled, it appears to be using a virtual device. 
+                                   For enhanced security, consider upgrading to a hardware MFA device (AWS Security Hub finding IAM.6).
+                               </p>
+                           </div>`;
+        }
+        
+        // Detectar inconsistencia entre IAM y Security Hub
+        if (rootMfaStatus.root_mfa_enabled && 
+            rootMfaStatus.iam6_check_available && 
+            rootMfaStatus.virtual_mfa_devices > 0 && 
+            rootMfaStatus.mfa_is_hardware === true) {
+            
+            rootMfaHtml += `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                               <h5 class="text-yellow-800 font-semibold mb-2">Potential Data Inconsistency Detected</h5>
+                               <div class="text-yellow-700 text-sm space-y-2">
+                                   <p><strong>Issue:</strong> IAM reports ${rootMfaStatus.virtual_mfa_devices} virtual MFA device(s) for the root user, but Security Hub indicates hardware MFA is enabled.</p>
+                                   
+                                   <p><strong>Possible causes:</strong></p>
+                                   <ul class="list-disc list-inside ml-4 space-y-1">
+                                       <li>Security Hub findings may take 12-24 hours to update after configuration changes</li>
+                                       <li>An IAM.6 finding may have been manually suppressed or resolved in Security Hub</li>
+                                       <li>AWS Config may not be properly evaluating the IAM.6 rule</li>
+                                       <li>There may be multiple MFA devices configured (both virtual and hardware)</li>
+                                   </ul>
+                                   
+                                   <p><strong>Recommendation:</strong> Manually verify the root user's MFA configuration in the AWS Console → IAM → Dashboard → Security Credentials to confirm the actual MFA type.</p>
+                               </div>
                            </div>`;
         }
     }
@@ -1084,8 +1145,6 @@ const renderPasswordPolicy = (policy) => {
     
     container.innerHTML = checksHtml + rootMfaHtml + rawJsonHtml;
 };
-
-
 
 const renderIamDetailsViewHtml = () => {
     return `

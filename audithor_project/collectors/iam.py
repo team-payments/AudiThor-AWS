@@ -910,16 +910,18 @@ def get_entities_using_policy(iam_client, policy_arn):
 
 def check_root_mfa_status(session):
     """
-    Verifica si el usuario root tiene MFA habilitado.
+    Verifica si el usuario root tiene MFA habilitado y si es hardware.
     
     Args:
         session (boto3.Session): The boto3 session for creating clients.
         
     Returns:
-        dict: Estado del MFA del usuario root
+        dict: Estado del MFA del usuario root incluyendo tipo (hardware/virtual)
     """
     try:
         iam_client = session.client("iam")
+        sts_client = session.client("sts")
+        account_id = sts_client.get_caller_identity()["Account"]
         
         # Obtener resumen de la cuenta para verificar MFA del root
         account_summary = iam_client.get_account_summary()['SummaryMap']
@@ -929,17 +931,48 @@ def check_root_mfa_status(session):
         
         # Obtener información adicional sobre dispositivos MFA virtuales
         virtual_mfa_devices = iam_client.list_virtual_mfa_devices()
-        root_virtual_mfa_devices = [
-            device for device in virtual_mfa_devices['VirtualMFADevices']
-            if device.get('User', {}).get('UserName') == 'root' or 
-               device.get('SerialNumber', '').endswith(':root')
-        ]
         
-        return {
+        # LÓGICA CORREGIDA para detectar dispositivos MFA virtuales del root
+        root_virtual_mfa_devices = []
+        for device in virtual_mfa_devices['VirtualMFADevices']:
+            user_info = device.get('User', {})
+            serial_number = device.get('SerialNumber', '')
+            
+            # Verificar múltiples condiciones para identificar dispositivos del root
+            is_root_device = (
+                user_info.get('Arn') == f'arn:aws:iam::{account_id}:root' or
+                user_info.get('UserId') == account_id or
+                serial_number.endswith(':root') or
+                'root' in serial_number.lower()
+            )
+            
+            if is_root_device:
+                root_virtual_mfa_devices.append(device)
+        
+        # NUEVA: Verificar tipo de MFA mediante Security Hub
+        hardware_mfa_status = check_iam6_finding(session) if root_mfa_enabled else None
+        
+        result = {
             "root_mfa_enabled": root_mfa_enabled,
             "virtual_mfa_devices": len(root_virtual_mfa_devices),
             "account_summary_available": True
         }
+        
+        # Añadir información de hardware MFA si está disponible
+        if hardware_mfa_status is not None:
+            result.update({
+                "mfa_is_hardware": hardware_mfa_status.get('is_hardware'),
+                "iam6_finding_details": hardware_mfa_status.get('details', ''),
+                "iam6_check_available": True
+            })
+        else:
+            result.update({
+                "mfa_is_hardware": None,
+                "iam6_finding_details": 'Hardware MFA check skipped - root MFA not enabled',
+                "iam6_check_available": False
+            })
+        
+        return result
         
     except ClientError as e:
         error_code = e.response['Error']['Code']
@@ -947,20 +980,139 @@ def check_root_mfa_status(session):
             return {
                 "root_mfa_enabled": None,
                 "virtual_mfa_devices": 0,
+                "mfa_is_hardware": None,
                 "account_summary_available": False,
+                "iam6_check_available": False,
                 "error": "Access denied to check root MFA status. This requires iam:GetAccountSummary and iam:ListVirtualMFADevices permissions."
             }
         else:
             return {
                 "root_mfa_enabled": None,
                 "virtual_mfa_devices": 0,
+                "mfa_is_hardware": None,
                 "account_summary_available": False,
+                "iam6_check_available": False,
                 "error": f"Error checking root MFA: {str(e)}"
             }
     except Exception as e:
         return {
             "root_mfa_enabled": None,
             "virtual_mfa_devices": 0,
+            "mfa_is_hardware": None,
             "account_summary_available": False,
+            "iam6_check_available": False,
             "error": f"Unexpected error checking root MFA: {str(e)}"
+        }
+
+def check_iam6_finding(session):
+    """
+    Verifica específicamente el finding IAM.6 de Security Hub para determinar
+    si el usuario root tiene hardware MFA configurado.
+    
+    Args:
+        session (boto3.Session): The boto3 session for creating clients.
+        
+    Returns:
+        dict: Estado del hardware MFA basado en Security Hub finding IAM.6
+    """
+    try:
+        # Obtener todas las regiones disponibles
+        all_regions = get_all_aws_regions(session)
+        
+        for region in all_regions:
+            try:
+                securityhub_client = session.client('securityhub', region_name=region)
+                
+                # Verificar que Security Hub esté habilitado en esta región
+                try:
+                    securityhub_client.describe_hub()
+                except ClientError as e:
+                    if e.response['Error']['Code'] in ['InvalidAccessException', 'SubscriptionRequiredException']:
+                        continue  # Security Hub no está habilitado en esta región
+                    raise
+                
+                # Buscar findings IAM.6 activos (que indican problema)
+                response = securityhub_client.get_findings(
+                    Filters={
+                        'ComplianceStatus': [
+                            {'Value': 'FAILED', 'Comparison': 'EQUALS'}
+                        ],
+                        'WorkflowStatus': [
+                            {'Value': 'NEW', 'Comparison': 'EQUALS'},
+                            {'Value': 'NOTIFIED', 'Comparison': 'EQUALS'}
+                        ],
+                        'Title': [
+                            {'Value': 'Hardware MFA should be enabled for the root user', 'Comparison': 'EQUALS'}
+                        ]
+                    },
+                    MaxResults=10
+                )
+                
+                findings = response.get('Findings', [])
+                
+                # También buscar por generador específico como fallback
+                if not findings:
+                    response_fallback = securityhub_client.get_findings(
+                        Filters={
+                            'GeneratorId': [
+                                {'Value': 'aws-config', 'Comparison': 'EQUALS'}
+                            ],
+                            'ComplianceStatus': [
+                                {'Value': 'FAILED', 'Comparison': 'EQUALS'}
+                            ],
+                            'WorkflowStatus': [
+                                {'Value': 'NEW', 'Comparison': 'EQUALS'},
+                                {'Value': 'NOTIFIED', 'Comparison': 'EQUALS'}
+                            ]
+                        },
+                        MaxResults=50  # Más resultados para filtrar
+                    )
+                    
+                    # Filtrar manualmente por findings relacionados con root MFA
+                    potential_findings = response_fallback.get('Findings', [])
+                    findings = [
+                        f for f in potential_findings 
+                        if f.get('Title', '').lower().find('root') != -1 and 
+                           f.get('Title', '').lower().find('mfa') != -1 and
+                           (f.get('Title', '').lower().find('hardware') != -1 or
+                            f.get('Description', '').lower().find('hardware') != -1)
+                    ]
+                
+                if findings:
+                    # Si hay findings activos de IAM.6, significa que NO tiene hardware MFA
+                    finding = findings[0]  # Tomar el primer finding
+                    return {
+                        'is_hardware': False,
+                        'details': f"Active Security Hub finding: {finding.get('Title', 'Root user should use hardware MFA')}",
+                        'finding_region': region,
+                        'compliance_status': finding.get('Compliance', {}).get('Status', 'FAILED')
+                    }
+                    
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                if error_code in ['InvalidAccessException', 'SubscriptionRequiredException']:
+                    continue  # Security Hub no está disponible en esta región
+                elif error_code == 'AccessDeniedException':
+                    continue  # Sin permisos para Security Hub en esta región
+                else:
+                    print(f"Error checking Security Hub in {region}: {e}")
+                    continue
+            except Exception as e:
+                print(f"Unexpected error checking Security Hub in {region}: {e}")
+                continue
+        
+        # Si no encontramos findings activos en ninguna región, asumimos que tiene hardware MFA
+        return {
+            'is_hardware': True,
+            'details': 'No active IAM.6 findings found - root user likely has hardware MFA enabled',
+            'finding_region': None,
+            'compliance_status': 'PASSED'
+        }
+        
+    except Exception as e:
+        return {
+            'is_hardware': None,
+            'details': f'Unable to check IAM.6 finding via Security Hub: {str(e)}',
+            'finding_region': None,
+            'compliance_status': 'UNKNOWN'
         }

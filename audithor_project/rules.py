@@ -1015,6 +1015,58 @@ def check_root_user_console_login(audit_data):
     
     return failing_resources
 
+def check_root_mfa_disabled(audit_data):
+    """
+    Verifica si el usuario root no tiene MFA habilitado.
+    """
+    failing_resources = []
+    password_policy = audit_data.get("iam", {}).get("password_policy", {})
+    
+    # Verificar si hay información de estado del MFA del root
+    root_mfa_status = password_policy.get("RootMFAStatus", {})
+    
+    # Si hay un error al verificar, no podemos determinar el estado
+    if root_mfa_status.get("error"):
+        return failing_resources
+    
+    # Si el MFA del root está deshabilitado, es un hallazgo crítico
+    if root_mfa_status.get("root_mfa_enabled") is False:
+        failing_resources.append({
+            "resource": "Root User Account",
+            "region": "Global"
+        })
+    
+    return failing_resources
+
+
+def check_root_mfa_not_hardware(audit_data):
+    """
+    Verifica si el usuario root tiene MFA habilitado pero no es hardware.
+    Solo evalúa cuando el MFA está habilitado.
+    """
+    failing_resources = []
+    password_policy = audit_data.get("iam", {}).get("password_policy", {})
+    
+    # Verificar si hay información de estado del MFA del root
+    root_mfa_status = password_policy.get("RootMFAStatus", {})
+    
+    # Si hay un error al verificar o MFA está deshabilitado, no evaluar esta regla
+    if root_mfa_status.get("error") or not root_mfa_status.get("root_mfa_enabled"):
+        return failing_resources
+    
+    # Solo verificar el tipo si el check de IAM.6 está disponible
+    if not root_mfa_status.get("iam6_check_available"):
+        return failing_resources
+    
+    # Si el MFA está habilitado pero no es hardware, es un hallazgo medio
+    if root_mfa_status.get("mfa_is_hardware") is False:
+        failing_resources.append({
+            "resource": "Root User MFA Configuration",
+            "region": "Global"
+        })
+    
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -1064,6 +1116,24 @@ RULES_TO_CHECK = [
         "description": "An IAM user with active access keys (CLI/programmatic access) does not properly comply with MFA requirements. This could be because the user lacks an MFA device entirely, or because there are no IAM policies enforcing MFA authentication for API calls. Without proper MFA enforcement for CLI access, the account is vulnerable to credential theft and unauthorized programmatic access.",
         "remediation": "For users without MFA devices: Enable MFA in the IAM console under 'Security credentials'. For users without MFA enforcement policies: Create or attach an IAM policy that includes a condition requiring 'aws:MultiFactorAuthPresent' to be true for sensitive actions. Consider using STS GetSessionToken with MFA for temporary credentials in CLI workflows.",
         "check_function": check_cli_mfa_non_compliance
+    },
+    {
+        "rule_id": "IAM_006",
+        "section": "Identity & Access",
+        "name": "Root user does not have MFA enabled",
+        "severity": SEVERITY["CRITICAL"],
+        "description": "The root user account does not have Multi-Factor Authentication (MFA) enabled. The root user has complete access to all AWS services and resources in the account. Without MFA, if the root user credentials are compromised, an attacker would have unrestricted access to the entire AWS account, potentially leading to complete account takeover, data breaches, and significant financial losses.",
+        "remediation": "Immediately enable MFA for the root user account. Go to the AWS Console, sign in as root, navigate to 'My Security Credentials', and assign an MFA device. Use a hardware MFA device for the highest level of security. After enabling MFA, avoid using the root user for daily operations - create IAM users with appropriate permissions instead.",
+        "check_function": check_root_mfa_disabled
+    },
+    {
+        "rule_id": "IAM_007",
+        "section": "Identity & Access", 
+        "name": "Root user MFA is not hardware-based",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "The root user has MFA enabled, but it appears to be using a virtual MFA device rather than a hardware-based device. While virtual MFA provides good security, hardware MFA devices offer additional protection against sophisticated attacks such as SIM swapping, malware on mobile devices, or social engineering attacks targeting virtual MFA applications. For the root user, which has the highest level of access, hardware MFA provides the strongest possible authentication.",
+        "remediation": "Replace the current virtual MFA device with a hardware MFA device. Purchase a compatible hardware MFA device (such as a FIDO2/WebAuthn security key or an OATH-TOTP hardware token), then go to the AWS Console root user security credentials section to remove the current virtual MFA device and configure the new hardware device.",
+        "check_function": check_root_mfa_not_hardware
     },
     {
         "rule_id": "GUARDDUTY_001",
