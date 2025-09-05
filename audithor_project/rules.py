@@ -978,6 +978,44 @@ def check_ecr_no_scan_on_push_but_inspector_ok(audit_data):
             failing_resources.append({"resource": repo.get("RepositoryName"), "region": repo.get("Region")})
     return failing_resources
 
+
+def check_root_user_console_login(audit_data):
+    """
+    Verifica si se han detectado eventos de ConsoleLogin con el usuario root en los últimos eventos de CloudTrail.
+    El usuario root nunca debería usarse para actividades rutinarias, solo para tareas específicas que requieren acceso root.
+    """
+    failing_resources = []
+    
+    # Obtener los eventos de CloudTrail
+    cloudtrail_events = audit_data.get("cloudtrail", {}).get("events", [])
+    
+    if not cloudtrail_events:
+        return failing_resources
+    
+    # Buscar eventos de ConsoleLogin donde el usuario sea "root"
+    root_login_events = []
+    for event in cloudtrail_events:
+        if (event.get("EventName") == "ConsoleLogin" and 
+            event.get("Username") == "root"):
+            root_login_events.append(event)
+    
+    # Si encontramos eventos de login del root, añadirlos a los recursos fallidos
+    for event in root_login_events:
+        event_time = event.get("EventTime", "Unknown time")
+        source_ip = event.get("SourceIPAddress", "Unknown IP")
+        region = event.get("EventRegion", "Unknown region")
+        
+        # Crear un identificador único para el evento
+        event_identifier = f"Root login at {event_time} from IP {source_ip}"
+        
+        failing_resources.append({
+            "resource": event_identifier,
+            "region": region
+        })
+    
+    return failing_resources
+
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -1179,6 +1217,15 @@ RULES_TO_CHECK = [
         "description": "A CloudTrail trail has been detected that does not have a CloudWatch Logs destination configured. This prevents the ability to create metric filters and alarms for real-time monitoring of critical API calls, such as root user logins, security group changes, or unauthorized API activity.",
         "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the 'CloudWatch Logs' section, enable the option and either create a new log group or select an existing one to send the logs to.",
         "check_function": check_cloudtrail_cloudwatch_destination_disabled
+    },
+    {
+        "rule_id": "CLOUDTRAIL_005",
+        "section": "Identity & Access",
+        "name": "Root user console login detected",
+        "severity": SEVERITY["HIGH"],
+        "description": "Console login events have been detected using the AWS root user account. The root user has complete access to all AWS services and resources in the account and should only be used for specific account management tasks that require root access. Regular use of the root user for daily operations represents a significant security risk and violates AWS security best practices.",
+        "remediation": "Investigate the necessity of the root user login. If it was for legitimate account management tasks, ensure MFA is enabled for the root user. For regular operations, create IAM users with appropriate permissions instead. Consider implementing CloudWatch alarms for root user activity monitoring and establish processes that minimize root user usage.",
+        "check_function": check_root_user_console_login
     },
     {
         "rule_id": "CONNECTIVITY_001",

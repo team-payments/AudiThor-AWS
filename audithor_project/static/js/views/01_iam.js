@@ -22,6 +22,12 @@ export const buildIamView = () => {
         <header class="flex justify-between items-center mb-6">
             <div><h2 class="text-2xl font-bold text-[#204071]">Identity & Access</h2><p class="text-sm text-gray-500 scan-info"></p></div>
         </header>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="text-sm font-semibold text-blue-800 mb-2">Audit Guidance</h3>
+            <p class="text-sm text-blue-700">Review Identity and Access Management components to ensure proper access controls, compliance with least privilege principle, and adequate security measures. Each tab provides specific audit considerations for different IAM components.</p>
+        </div>
+        
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex flex-wrap space-x-6" id="iam-tabs">
                 <a href="#" data-tab="resumen-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
@@ -37,16 +43,43 @@ export const buildIamView = () => {
             </nav>
         </div>
         <div id="iam-tab-content-container">
-            <div id="resumen-content" class="iam-tab-content">${createIamResumenHtml()}</div>
-            <div id="usuarios-content" class="iam-tab-content hidden">${createIamUsuariosHtml()}</div>
-            <div id="grupos-content" class="iam-tab-content hidden">${createIamGruposHtml()}</div>
-            <div id="roles-content" class="iam-tab-content hidden">${createIamRolesHtml()}</div>
-            <div id="politicas-content" class="iam-tab-content hidden">${createIamPoliticasHtml()}</div>
-            <div id="access-analyzer-content" class="iam-tab-content hidden"></div>
-            <div id="securityhub-content" class="iam-tab-content hidden">${createSecurityHubHtml()}</div>
-            <div id="detalle-permisos-content" class="iam-tab-content hidden">${renderIamDetailsViewHtml()}</div>
-            <div id="critical-perms-content" class="iam-tab-content hidden"></div>
-            <div id="federation-content" class="iam-tab-content hidden"></div>
+            <div id="resumen-content" class="iam-tab-content">
+                ${renderServiceDescription(serviceDescriptions.summary)}
+                ${createIamResumenHtml()}
+            </div>
+            <div id="usuarios-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.users)}
+                ${createIamUsuariosHtml()}
+            </div>
+            <div id="grupos-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.groups)}
+                ${createIamGruposHtml()}
+            </div>
+            <div id="roles-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.roles)}
+                ${createIamRolesHtml()}
+            </div>
+            <div id="politicas-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.policies)}
+                ${createIamPoliticasHtml()}
+            </div>
+            <div id="access-analyzer-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.accessAnalyzer)}
+            </div>
+            <div id="securityhub-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.securityHub)}
+                ${createSecurityHubHtml()}
+            </div>
+            <div id="detalle-permisos-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.permissionDetails)}
+                ${renderIamDetailsViewHtml()}
+            </div>
+            <div id="critical-perms-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.criticalPermissions)}
+            </div>
+            <div id="federation-content" class="iam-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.federation)}
+            </div>
         </div>`;
 
     const tabsNav = container.querySelector('#iam-tabs');
@@ -68,6 +101,7 @@ export const buildIamView = () => {
         renderFederationView();
     }
 };
+
 
 // 11. Función para configurar los controles de Permission Details
 const setupPermissionDetailsControls = () => {
@@ -938,13 +972,19 @@ const renderRolesTable = (roles) => {
     });
 };
 
+
+
+
 const renderPasswordPolicy = (policy) => {
     const container = document.getElementById('password-policy-container');
     container.innerHTML = '';
+    
     if (policy.Error) {
         container.innerHTML = `<p class="text-red-600 font-medium">There is no password policy configured for this account.</p>`;
         return;
     }
+    
+    // Verificaciones de política de contraseñas
     const checks = [
         { desc: "Minimum length >= 12", ok: (policy.MinimumPasswordLength || 0) >= 12, val: policy.MinimumPasswordLength },
         { desc: "Requires uppercase", ok: policy.RequireUppercaseCharacters, val: policy.RequireUppercaseCharacters },
@@ -953,17 +993,99 @@ const renderPasswordPolicy = (policy) => {
         { desc: "Requires symbols", ok: policy.RequireSymbols, val: policy.RequireSymbols },
         { desc: "Expiration ≤ 90 days", ok: policy.MaxPasswordAge && policy.MaxPasswordAge <= 90, val: policy.MaxPasswordAge },
         { desc: "Reuse ≥ 4 passwords", ok: (policy.PasswordReusePrevention || 0) >= 4, val: policy.PasswordReusePrevention },
-        { desc: "Forced expiration after failure", ok: policy.HardExpiry, val: policy.HardExpiry },
     ];
-    let checksHtml = `<h4 class="font-semibold text-md mb-2">Compliance Checks</h4><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 mb-6"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configured Value</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
+    
+    let checksHtml = `<h4 class="font-semibold text-md mb-2">Password Policy Compliance</h4>
+                      <div class="overflow-x-auto">
+                          <table class="min-w-full divide-y divide-gray-200 mb-6">
+                              <thead class="bg-gray-50">
+                                  <tr>
+                                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check</th>
+                                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configured Value</th>
+                                  </tr>
+                              </thead>
+                              <tbody class="bg-white divide-y divide-gray-200">`;
+    
     checks.forEach(({ desc, ok, val }) => {
-        const statusIcon = ok ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">OK</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">KO</span>';
-        checksHtml += `<tr><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${desc}</td><td class="px-4 py-2 whitespace-nowrap text-sm">${statusIcon}</td><td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${val === undefined ? 'Not defined' : val}</td></tr>`;
+        const statusIcon = ok ? 
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">OK</span>' : 
+            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">KO</span>';
+        checksHtml += `<tr>
+                          <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${desc}</td>
+                          <td class="px-4 py-2 whitespace-nowrap text-sm">${statusIcon}</td>
+                          <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${val === undefined ? 'Not defined' : val}</td>
+                       </tr>`;
     });
     checksHtml += `</tbody></table></div>`;
-    const rawJsonHtml = `<h4 class="font-semibold text-md mb-2 mt-6">API Raw Response</h4><pre class="bg-[#204071] text-white p-4 rounded-lg text-sm overflow-x-auto"><code>${JSON.stringify(policy, null, 2)}</code></pre>`;
-    container.innerHTML = checksHtml + rawJsonHtml;
+    
+    // NUEVA SECCIÓN: Root MFA Status
+    let rootMfaHtml = '';
+    if (policy.RootMFAStatus) {
+        const rootMfaStatus = policy.RootMFAStatus;
+        
+        rootMfaHtml = `<h4 class="font-semibold text-md mb-2 mt-6">Root User Security</h4>
+                       <div class="overflow-x-auto">
+                           <table class="min-w-full divide-y divide-gray-200 mb-6">
+                               <thead class="bg-gray-50">
+                                   <tr>
+                                       <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Security Check</th>
+                                       <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                       <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                   </tr>
+                               </thead>
+                               <tbody class="bg-white divide-y divide-gray-200">`;
+        
+        if (rootMfaStatus.error) {
+            // Mostrar error si no se pudo verificar
+            rootMfaHtml += `<tr>
+                               <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">Root MFA Enabled</td>
+                               <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">UNKNOWN</span>
+                               </td>
+                               <td class="px-4 py-2 text-sm text-gray-500 break-words">${rootMfaStatus.error}</td>
+                            </tr>`;
+        } else {
+            // Mostrar estado del MFA del root
+            const mfaStatusIcon = rootMfaStatus.root_mfa_enabled ? 
+                '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">ENABLED</span>' : 
+                '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">DISABLED</span>';
+            
+            const mfaDetails = rootMfaStatus.root_mfa_enabled ? 
+                `MFA is properly configured for the root user${rootMfaStatus.virtual_mfa_devices > 0 ? ` (${rootMfaStatus.virtual_mfa_devices} virtual device(s))` : ''}` :
+                'Root user does not have MFA enabled - CRITICAL SECURITY RISK';
+            
+            rootMfaHtml += `<tr>
+                               <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">Root MFA Enabled</td>
+                               <td class="px-4 py-2 whitespace-nowrap text-sm">${mfaStatusIcon}</td>
+                               <td class="px-4 py-2 text-sm text-gray-500 break-words">${mfaDetails}</td>
+                            </tr>`;
+        }
+        
+        rootMfaHtml += `</tbody></table></div>`;
+        
+        // Añadir recomendación de seguridad si MFA no está habilitado
+        if (rootMfaStatus.root_mfa_enabled === false) {
+            rootMfaHtml += `<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                               <h5 class="text-red-800 font-semibold mb-2">⚠️ Critical Security Recommendation</h5>
+                               <p class="text-red-700 text-sm">
+                                   The root user does not have MFA enabled. This represents a significant security risk. 
+                                   Enable MFA for the root user immediately through the AWS Console Security Credentials section.
+                               </p>
+                           </div>`;
+        }
+    }
+    
+    // JSON raw de la política
+    const rawJsonHtml = `<h4 class="font-semibold text-md mb-2 mt-6">API Raw Response</h4>
+                         <pre class="bg-[#204071] text-white p-4 rounded-lg text-sm overflow-x-auto">
+                             <code>${JSON.stringify(policy, null, 2)}</code>
+                         </pre>`;
+    
+    container.innerHTML = checksHtml + rootMfaHtml + rawJsonHtml;
 };
+
+
 
 const renderIamDetailsViewHtml = () => {
     return `
@@ -1414,4 +1536,89 @@ const renderIamPrincipalDetails = (principal, type, searchedTerm) => {
             <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${formattedJson}</pre>
         </div>
     `;
+};
+
+const renderServiceDescription = (serviceInfo) => {
+    return `
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">${serviceInfo.title}</h3>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Definition:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.description}</p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-1">Common Use Cases:</h4>
+                    <p class="text-sm text-gray-600">${serviceInfo.useCases}</p>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+                    <h4 class="text-sm font-medium text-yellow-800 mb-1">Audit Considerations:</h4>
+                    <p class="text-sm text-yellow-700">${serviceInfo.auditConsiderations}</p>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+const serviceDescriptions = {
+    summary: {
+        title: "IAM Summary Overview",
+        description: "The summary provides a high-level view of Identity and Access Management components including users, groups, roles, and security compliance metrics.",
+        useCases: "Initial security assessment, compliance reporting, identifying privilege escalation risks, monitoring MFA adoption and password policy compliance.",
+        auditConsiderations: "Focus on privileged user counts, MFA compliance rates, and critical findings. Look for accounts with elevated privileges that may indicate over-permissioned access or potential insider threats."
+    },
+    users: {
+        title: "IAM Users",
+        description: "IAM Users represent individual identities that can authenticate to AWS and perform actions based on attached policies. Each user has unique security credentials.",
+        useCases: "Individual developer access, service accounts, cross-account access, emergency break-glass procedures, human user authentication.",
+        auditConsiderations: "Verify users follow least privilege principle, check for unused or dormant accounts, ensure MFA is enabled for privileged users, and review access key age and usage patterns."
+    },
+    groups: {
+        title: "IAM Groups",
+        description: "IAM Groups are collections of users that inherit the same permissions. Groups simplify permission management by allowing batch policy assignments.",
+        useCases: "Team-based access control, role-based permissions (developers, admins, auditors), department-specific access, temporary project access.",
+        auditConsiderations: "Review group memberships for appropriate segregation of duties, ensure no overly broad permissions, and verify that group purposes align with business functions."
+    },
+    roles: {
+        title: "IAM Roles",
+        description: "IAM Roles are assumable identities with specific permissions, designed for temporary access by users, applications, or AWS services.",
+        useCases: "Cross-account access, EC2 instance permissions, Lambda function execution, federated user access, service-to-service communication.",
+        auditConsiderations: "Examine trust policies for overly permissive assumptions, review role session durations, and ensure roles follow least privilege with appropriate conditions and restrictions."
+    },
+    policies: {
+        title: "Password Policies",
+        description: "Account password policies define complexity requirements, expiration rules, and reuse restrictions for IAM user passwords.",
+        useCases: "Compliance with organizational security standards, meeting regulatory requirements, preventing weak password usage, enforcing password rotation.",
+        auditConsiderations: "Verify policy meets industry standards (minimum 12 characters, complexity requirements, rotation), check for proper enforcement, and ensure alignment with compliance frameworks."
+    },
+    accessAnalyzer: {
+        title: "Access Analyzer",
+        description: "IAM Access Analyzer identifies resources shared with external entities and helps validate that resource-based policies provide intended access.",
+        useCases: "External access discovery, unintended resource sharing detection, policy validation, compliance monitoring for data exposure.",
+        auditConsiderations: "Review all external access findings for business justification, ensure public access is intentional, and verify that cross-account access follows approved patterns."
+    },
+    permissionDetails: {
+        title: "Permission Details",
+        description: "Detailed analysis of specific IAM principals or policies, showing exact permissions, inheritance chains, and effective access rights.",
+        useCases: "Troubleshooting access issues, privilege escalation analysis, policy impact assessment, detailed security reviews.",
+        auditConsiderations: "Focus on high-privilege users and custom policies, trace permission inheritance paths, and identify potential privilege escalation vectors through policy combinations."
+    },
+    criticalPermissions: {
+        title: "Critical Permissions",
+        description: "Users with permissions to critical AWS services like networking, logging, databases, and security controls that could impact overall security posture.",
+        useCases: "Identifying high-risk access, privileged user monitoring, compliance reporting, security control validation.",
+        auditConsiderations: "Verify business justification for critical permissions, ensure proper approval processes, monitor usage patterns, and implement additional controls like MFA and logging."
+    },
+    federation: {
+        title: "Federation & SSO",
+        description: "Identity federation allows external identity providers to grant access to AWS resources, including SAML, OIDC, and AWS SSO integrations.",
+        useCases: "Corporate directory integration, single sign-on implementation, external contractor access, multi-account management.",
+        auditConsiderations: "Review trust relationships with identity providers, validate attribute mappings, ensure proper session controls, and verify that federated access follows least privilege principles."
+    },
+    securityHub: {
+        title: "Security Hub IAM Findings",
+        description: "Security Hub aggregates IAM-related security findings from various AWS security services, providing centralized visibility into identity and access issues.",
+        useCases: "Centralized security monitoring, compliance dashboard, automated finding correlation, security posture assessment.",
+        auditConsiderations: "Prioritize critical and high severity findings, track remediation progress, ensure findings align with security policies, and validate that automated detection rules are appropriate."
+    }
 };

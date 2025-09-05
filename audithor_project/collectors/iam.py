@@ -52,10 +52,12 @@ def detect_privileges(users, roles, groups, session):
         if evidence:
             group["IsPrivileged"], group["PrivilegeReasons"] = True, list(set(evidence))
 
+
 def collect_iam_data(session):
     """
     Versión optimizada que NO obtiene roles asumibles durante el escaneo inicial.
     Solo mantiene la funcionalidad de roles por tags.
+    Ahora incluye verificación del MFA del usuario root.
     """
     client = session.client("iam")
     result_users, password_policy, result_roles, result_groups = [], {}, [], []
@@ -74,7 +76,6 @@ def collect_iam_data(session):
             "AttachedPolicies": [p["PolicyName"] for p in client.list_attached_user_policies(UserName=username)["AttachedPolicies"]],
             "InlinePolicies": client.list_user_policies(UserName=username)["PolicyNames"],
             "Roles": [],  # Solo roles por tags
-            # Eliminamos AssumableRoles del escaneo inicial
             "IsPrivileged": False, 
             "PrivilegeReasons": []
         }
@@ -109,12 +110,17 @@ def collect_iam_data(session):
         
         result_users.append(user_data)
 
-    # Resto del código igual...
+    # Obtener política de contraseñas
     try:
         password_policy = client.get_account_password_policy()["PasswordPolicy"]
     except client.exceptions.NoSuchEntityException:
         password_policy = {"Error": "No password policy configured"}
 
+    # NUEVA FUNCIONALIDAD: Verificar MFA del usuario root
+    root_mfa_status = check_root_mfa_status(session)
+    password_policy["RootMFAStatus"] = root_mfa_status
+
+    # Resto del código igual...
     for role in client.list_roles()["Roles"]:
         result_roles.append({
             "RoleName": role["RoleName"], 
@@ -901,3 +907,60 @@ def get_entities_using_policy(iam_client, policy_arn):
         entities['error'] = f"Error getting entities using policy: {str(e)}"
     
     return entities
+
+def check_root_mfa_status(session):
+    """
+    Verifica si el usuario root tiene MFA habilitado.
+    
+    Args:
+        session (boto3.Session): The boto3 session for creating clients.
+        
+    Returns:
+        dict: Estado del MFA del usuario root
+    """
+    try:
+        iam_client = session.client("iam")
+        
+        # Obtener resumen de la cuenta para verificar MFA del root
+        account_summary = iam_client.get_account_summary()['SummaryMap']
+        
+        # Verificar si el root tiene MFA habilitado
+        root_mfa_enabled = account_summary.get('AccountMFAEnabled', 0) == 1
+        
+        # Obtener información adicional sobre dispositivos MFA virtuales
+        virtual_mfa_devices = iam_client.list_virtual_mfa_devices()
+        root_virtual_mfa_devices = [
+            device for device in virtual_mfa_devices['VirtualMFADevices']
+            if device.get('User', {}).get('UserName') == 'root' or 
+               device.get('SerialNumber', '').endswith(':root')
+        ]
+        
+        return {
+            "root_mfa_enabled": root_mfa_enabled,
+            "virtual_mfa_devices": len(root_virtual_mfa_devices),
+            "account_summary_available": True
+        }
+        
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'AccessDenied':
+            return {
+                "root_mfa_enabled": None,
+                "virtual_mfa_devices": 0,
+                "account_summary_available": False,
+                "error": "Access denied to check root MFA status. This requires iam:GetAccountSummary and iam:ListVirtualMFADevices permissions."
+            }
+        else:
+            return {
+                "root_mfa_enabled": None,
+                "virtual_mfa_devices": 0,
+                "account_summary_available": False,
+                "error": f"Error checking root MFA: {str(e)}"
+            }
+    except Exception as e:
+        return {
+            "root_mfa_enabled": None,
+            "virtual_mfa_devices": 0,
+            "account_summary_available": False,
+            "error": f"Unexpected error checking root MFA: {str(e)}"
+        }
