@@ -194,47 +194,29 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
 def run_trailguard_analysis(session, trails_list):
     """
     Analyzes CloudTrail configurations to map the data flow for each trail.
-
-    This function traces the path of CloudTrail logs from the trail to its
-    destinations (S3 and CloudWatch Logs). For CloudWatch Logs, it calls a
-    specialized helper function to find all downstream destinations, including
-    both subscription filters and metric filters.
-
-    Args:
-        session (boto3.Session): The Boto3 session object for AWS credentials.
-        trails_list (list): A de-duplicated list of trail detail dictionaries.
-
-    Returns:
-        list: A list of dictionaries, where each dictionary represents the
-              data flow pipeline for a single CloudTrail trail.
-
-    Example:
-        >>> import boto3
-        >>>
-        >>> # Assume trails_list was previously generated
-        >>> trails = [{"Name": "org-trail", "HomeRegion": "us-east-1", "CloudWatchLogsLogGroupArn": "arn:aws:logs:..."}]
-        >>> aws_session = boto3.Session()
-        >>> flow = run_trailguard_analysis(aws_session, trails)
-        >>> print(flow)
+    Incluye análisis determinístico de EventBridge.
     """
     all_trails_flow = []
+    
     for trail in trails_list:
         region = trail.get("HomeRegion")
         if not region:
-            continue  # Skip if the trail lacks a home region
+            continue
 
         flow_data = {
             "TrailName": trail.get("Name"),
             "TrailArn": trail.get("TrailARN"),
             "Region": region,
             "S3Destination": None,
-            "CloudWatchDestination": None
+            "CloudWatchDestination": None,
+            "EventBridgeFlow": None  # NUEVO
         }
 
-        # --- 1. Analyze S3 Destination and its notifications ---
+        # --- 1. Analyze S3 Destination ---
         if trail.get("S3BucketName"):
             bucket_name = trail["S3BucketName"]
             s3_dest = {"BucketName": bucket_name, "Notifications": []}
+            
             try:
                 s3_client = session.client("s3", region_name=region)
                 notif_config = s3_client.get_bucket_notification_configuration(Bucket=bucket_name)
@@ -246,25 +228,222 @@ def run_trailguard_analysis(session, trails_list):
                 for config in notif_config.get('TopicConfigurations', []):
                     s3_dest["Notifications"].append({"Type": "SNS", "Target": config.get('TopicArn')})
             except ClientError:
-                # Could not get notifications, but still record the bucket
                 pass
+            
             flow_data["S3Destination"] = s3_dest
+            
+            # --- NUEVO: Verificar EventBridge ---
+            eventbridge_config = check_s3_eventbridge_configuration(session, bucket_name, region)
+            
+            if eventbridge_config["enabled"]:
+                eventbridge_rules = find_eventbridge_rules_for_s3_bucket(session, bucket_name, region)
+                
+                sns_notifications = []
+                for rule in eventbridge_rules:
+                    sns_targets = find_sns_targets_in_rule(rule)
+                    sns_notifications.extend(sns_targets)
+                
+                flow_data["EventBridgeFlow"] = {
+                    "S3EventBridgeEnabled": True,
+                    "Rules": eventbridge_rules,
+                    "SNSNotifications": sns_notifications,
+                    "CompleteFlow": len(sns_notifications) > 0
+                }
+            else:
+                flow_data["EventBridgeFlow"] = {
+                    "S3EventBridgeEnabled": False,
+                    "Reason": "EventBridge not enabled for S3 bucket"
+                }
 
-        # --- 2. Analyze CloudWatch Logs Destination using a helper function ---
+        # --- 2. Analyze CloudWatch Logs Destination ---
         if trail.get("CloudWatchLogsLogGroupArn"):
             log_group_arn = trail["CloudWatchLogsLogGroupArn"]
             log_group_name = log_group_arn.split(':')[6]
             
-            # Call the centralized function to get all destinations for the log group
             destinations = get_log_group_destinations(session, log_group_arn)
             
             cw_dest = {
                 "LogGroupName": log_group_name,
                 "Subscriptions": destinations.get("subscriptions", []),
-                "MetricFilters": destinations.get("metric_filters", []) # Also include metric filters
+                "MetricFilters": destinations.get("metric_filters", [])
             }
             flow_data["CloudWatchDestination"] = cw_dest
         
         all_trails_flow.append(flow_data)
             
     return all_trails_flow
+
+
+
+def check_s3_eventbridge_configuration(session, bucket_name, region):
+    """Verifica si EventBridge está habilitado para un bucket S3."""
+    try:
+        s3_client = session.client("s3", region_name=region)
+        notif_config = s3_client.get_bucket_notification_configuration(Bucket=bucket_name)
+        
+        if 'EventBridgeConfiguration' in notif_config:
+            return {"enabled": True, "method": "explicit_configuration"}
+        
+        return {"enabled": False, "method": "not_configured"}
+        
+    except ClientError:
+        return {"enabled": False, "method": "error"}
+
+
+def find_eventbridge_rules_for_s3_bucket(session, bucket_name, region):
+    """Encuentra reglas de EventBridge que procesan eventos de este bucket específico."""
+    try:
+        events_client = session.client('events', region_name=region)
+        matching_rules = []
+        
+        paginator = events_client.get_paginator('list_rules')
+        for page in paginator.paginate():
+            for rule in page.get('Rules', []):
+                if rule.get('State') == 'ENABLED':
+                    try:
+                        rule_detail = events_client.describe_rule(Name=rule['Name'])
+                        event_pattern = rule_detail.get('EventPattern')
+                        
+                        if event_pattern and is_rule_for_specific_s3_bucket(event_pattern, bucket_name):
+                            targets_response = events_client.list_targets_by_rule(Rule=rule['Name'])
+                            
+                            matching_rules.append({
+                                "Name": rule['Name'],
+                                "EventPattern": event_pattern,
+                                "Targets": targets_response.get('Targets', []),
+                                "Description": rule_detail.get('Description', '')
+                            })
+                            
+                    except ClientError:
+                        continue
+        
+        return matching_rules
+        
+    except ClientError:
+        return []
+
+
+def is_rule_for_specific_s3_bucket(event_pattern, bucket_name):
+    """Verifica si una regla procesa eventos de un bucket específico."""
+    try:
+        import json
+        pattern = json.loads(event_pattern) if isinstance(event_pattern, str) else event_pattern
+        
+        # Verificar si es un evento S3
+        source = pattern.get('source', [])
+        if not ('aws.s3' in source if isinstance(source, list) else source == 'aws.s3'):
+            return False
+        
+        # Verificar si especifica exactamente nuestro bucket
+        detail = pattern.get('detail', {})
+        if isinstance(detail, dict):
+            bucket_info = detail.get('bucket', {})
+            if isinstance(bucket_info, dict):
+                rule_bucket = bucket_info.get('name')
+                
+                if isinstance(rule_bucket, list):
+                    return bucket_name in rule_bucket
+                elif isinstance(rule_bucket, str):
+                    return rule_bucket == bucket_name
+        
+        return False
+        
+    except (json.JSONDecodeError, Exception):
+        return False
+
+
+def find_sns_targets_in_rule(rule):
+    """Encuentra targets SNS en una regla de EventBridge."""
+    sns_targets = []
+    
+    for target in rule.get('Targets', []):
+        target_arn = target.get('Arn', '')
+        if ':sns:' in target_arn:
+            sns_targets.append({
+                "TopicArn": target_arn,
+                "TargetId": target.get('Id'),
+                "RuleName": rule.get('Name')
+            })
+    
+    return sns_targets
+
+    """
+    Obtiene los detalles completos de SNS para una alarma específica.
+    Incluye topics y sus subscriptions (emails, etc.)
+    """
+    try:
+        cloudwatch_client = session.client('cloudwatch', region_name=region)
+        sns_client = session.client('sns', region_name=region)
+        
+        # Obtener detalles de la alarma - USAR describe_alarms en lugar de describe_alarms_for_metric
+        alarms = cloudwatch_client.describe_alarms(AlarmNames=[alarm_name])
+        if not alarms.get('MetricAlarms'):
+            return None
+        
+        alarm = alarms['MetricAlarms'][0]
+        
+        # CORREGIDO: Obtener todas las acciones SNS (AlarmActions, OKActions, InsufficientDataActions)
+        all_actions = []
+        all_actions.extend(alarm.get('AlarmActions', []))
+        all_actions.extend(alarm.get('OKActions', []))
+        all_actions.extend(alarm.get('InsufficientDataActions', []))
+        
+        sns_details = []
+        
+        for action_arn in all_actions:
+            if ':sns:' in action_arn:
+                # Es un topic SNS
+                topic_name = action_arn.split(':')[-1]
+                
+                try:
+                    # Obtener subscriptions del topic
+                    subscriptions_response = sns_client.list_subscriptions_by_topic(TopicArn=action_arn)
+                    subscriptions = subscriptions_response.get('Subscriptions', [])
+                    
+                    # Obtener atributos del topic
+                    topic_attrs = sns_client.get_topic_attributes(TopicArn=action_arn)
+                    display_name = topic_attrs.get('Attributes', {}).get('DisplayName', topic_name)
+                    
+                    # Formatear subscriptions
+                    formatted_subscriptions = []
+                    for sub in subscriptions:
+                        protocol = sub.get('Protocol', '')
+                        endpoint = sub.get('Endpoint', '')
+                        status = sub.get('SubscriptionArn', 'PendingConfirmation')
+                        
+                        # NO enmascarar emails para debugging - puedes cambiar esto después
+                        # if protocol == 'email' and '@' in endpoint:
+                        #     parts = endpoint.split('@')
+                        #     masked_email = f"{parts[0][:2]}***@{parts[1]}"
+                        #     endpoint = masked_email
+                        
+                        formatted_subscriptions.append({
+                            'Protocol': protocol,
+                            'Endpoint': endpoint,
+                            'Status': 'Confirmed' if status.startswith('arn:') else 'Pending'
+                        })
+                    
+                    sns_details.append({
+                        'TopicArn': action_arn,
+                        'TopicName': topic_name,
+                        'DisplayName': display_name,
+                        'Subscriptions': formatted_subscriptions,
+                        'SubscriptionCount': len(formatted_subscriptions)
+                    })
+                    
+                except ClientError as e:
+                    # Si no podemos obtener detalles del topic, al menos registramos que existe
+                    sns_details.append({
+                        'TopicArn': action_arn,
+                        'TopicName': topic_name,
+                        'DisplayName': topic_name,
+                        'Subscriptions': [],
+                        'SubscriptionCount': 0,
+                        'Error': f'Could not retrieve topic details: {str(e)}'
+                    })
+        
+        return sns_details if sns_details else None
+        
+    except ClientError as e:
+        print(f"Error getting alarm SNS details for {alarm_name}: {str(e)}")  # Debug
+        return None

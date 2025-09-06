@@ -100,6 +100,7 @@ def collect_cloudwatch_data(session):
 
     return {"alarms": result_alarms, "topics": result_topics}
 
+
 def get_log_group_destinations(session, log_group_arn):
     """
     Inspects a CloudWatch Log Group to find all its downstream consumers.
@@ -108,23 +109,6 @@ def get_log_group_destinations(session, log_group_arn):
     1. Subscription Filters: Direct data streams to services like Lambda, Kinesis, etc.
     2. Metric Filters: Rules that create CloudWatch Metrics from log data, including
        any CloudWatch Alarms configured to watch those metrics.
-
-    Args:
-        session (boto3.Session): The Boto3 session object for AWS credentials.
-        log_group_arn (str): The full ARN of the CloudWatch Log Group to inspect.
-
-    Returns:
-        dict: A dictionary containing two keys: 'subscriptions' (a list of data
-              stream destinations) and 'metric_filters' (a list of metric filters
-              and their associated alarms).
-
-    Example:
-        >>> import boto3
-        >>>
-        >>> aws_session = boto3.Session()
-        >>> arn = "arn:aws:logs:us-east-1:123456789012:log-group:my-app-logs:*"
-        >>> destinations = get_log_group_destinations(aws_session, arn)
-        >>> print(destinations['metric_filters'])
     """
     destinations = {
         "subscriptions": [],
@@ -164,17 +148,127 @@ def get_log_group_destinations(session, log_group_arn):
             
             # If the filter defines a valid metric, check for alarms on it
             if mf_data["MetricName"] and mf_data["Namespace"]:
-                alarms = cw_client.describe_alarms_for_metric(
-                    MetricName=mf_data["MetricName"],
-                    Namespace=mf_data["Namespace"]
-                )
-                for alarm in alarms.get('MetricAlarms', []):
-                    mf_data["Alarms"].append(alarm.get('AlarmName'))
+                # CORREGIDO: Usar describe_alarms en lugar de describe_alarms_for_metric
+                try:
+                    # Obtener todas las alarmas y filtrar las que coincidan con nuestra métrica
+                    paginator = cw_client.get_paginator('describe_alarms')
+                    for page in paginator.paginate():
+                        for alarm in page.get('MetricAlarms', []):
+                            # Verificar si esta alarma usa nuestra métrica
+                            if (alarm.get('MetricName') == mf_data["MetricName"] and 
+                                alarm.get('Namespace') == mf_data["Namespace"]):
+                                
+                                alarm_name = alarm.get('AlarmName')
+                                
+                                # DEBUG: Imprimir información de la alarma
+                                print(f"Found alarm: {alarm_name}")
+                                print(f"  AlarmActions: {alarm.get('AlarmActions', [])}")
+                                print(f"  OKActions: {alarm.get('OKActions', [])}")
+                                print(f"  InsufficientDataActions: {alarm.get('InsufficientDataActions', [])}")
+                                
+                                # Obtener detalles de SNS para cada alarma
+                                sns_details = get_alarm_sns_details(session, alarm_name, log_region)
+                                
+                                alarm_data = {
+                                    "AlarmName": alarm_name,
+                                    "AlarmDescription": alarm.get('AlarmDescription', ''),
+                                    "State": alarm.get('StateValue', 'UNKNOWN'),
+                                    "SNSTopics": sns_details or []
+                                }
+                                
+                                mf_data["Alarms"].append(alarm_data)
+                                
+                except ClientError as e:
+                    print(f"Error getting alarms for metric {mf_data['MetricName']}: {str(e)}")
+                    pass
             
             destinations["metric_filters"].append(mf_data)
 
-    except (ClientError, IndexError):
-        # If anything fails (e.g., permissions, parsing ARN), return whatever was collected.
+    except (ClientError, IndexError) as e:
+        print(f"Error in get_log_group_destinations: {str(e)}")  # Debug
         pass
         
     return destinations
+
+
+def get_alarm_sns_details(session, alarm_name, region):
+    """
+    Obtiene los detalles completos de SNS para una alarma específica.
+    Incluye topics y sus subscriptions (emails, etc.)
+    """
+    try:
+        cloudwatch_client = session.client('cloudwatch', region_name=region)
+        sns_client = session.client('sns', region_name=region)
+        
+        # Obtener detalles de la alarma - USAR describe_alarms en lugar de describe_alarms_for_metric
+        alarms = cloudwatch_client.describe_alarms(AlarmNames=[alarm_name])
+        if not alarms.get('MetricAlarms'):
+            return None
+        
+        alarm = alarms['MetricAlarms'][0]
+        
+        # CORREGIDO: Obtener todas las acciones SNS (AlarmActions, OKActions, InsufficientDataActions)
+        all_actions = []
+        all_actions.extend(alarm.get('AlarmActions', []))
+        all_actions.extend(alarm.get('OKActions', []))
+        all_actions.extend(alarm.get('InsufficientDataActions', []))
+        
+        sns_details = []
+        
+        for action_arn in all_actions:
+            if ':sns:' in action_arn:
+                # Es un topic SNS
+                topic_name = action_arn.split(':')[-1]
+                
+                try:
+                    # Obtener subscriptions del topic
+                    subscriptions_response = sns_client.list_subscriptions_by_topic(TopicArn=action_arn)
+                    subscriptions = subscriptions_response.get('Subscriptions', [])
+                    
+                    # Obtener atributos del topic
+                    topic_attrs = sns_client.get_topic_attributes(TopicArn=action_arn)
+                    display_name = topic_attrs.get('Attributes', {}).get('DisplayName', topic_name)
+                    
+                    # Formatear subscriptions
+                    formatted_subscriptions = []
+                    for sub in subscriptions:
+                        protocol = sub.get('Protocol', '')
+                        endpoint = sub.get('Endpoint', '')
+                        status = sub.get('SubscriptionArn', 'PendingConfirmation')
+                        
+                        # NO enmascarar emails para debugging - puedes cambiar esto después
+                        # if protocol == 'email' and '@' in endpoint:
+                        #     parts = endpoint.split('@')
+                        #     masked_email = f"{parts[0][:2]}***@{parts[1]}"
+                        #     endpoint = masked_email
+                        
+                        formatted_subscriptions.append({
+                            'Protocol': protocol,
+                            'Endpoint': endpoint,
+                            'Status': 'Confirmed' if status.startswith('arn:') else 'Pending'
+                        })
+                    
+                    sns_details.append({
+                        'TopicArn': action_arn,
+                        'TopicName': topic_name,
+                        'DisplayName': display_name,
+                        'Subscriptions': formatted_subscriptions,
+                        'SubscriptionCount': len(formatted_subscriptions)
+                    })
+                    
+                except ClientError as e:
+                    # Si no podemos obtener detalles del topic, al menos registramos que existe
+                    sns_details.append({
+                        'TopicArn': action_arn,
+                        'TopicName': topic_name,
+                        'DisplayName': topic_name,
+                        'Subscriptions': [],
+                        'SubscriptionCount': 0,
+                        'Error': f'Could not retrieve topic details: {str(e)}'
+                    })
+        
+        return sns_details if sns_details else None
+        
+    except ClientError as e:
+        print(f"Error getting alarm SNS details for {alarm_name}: {str(e)}")  # Debug
+        return None
