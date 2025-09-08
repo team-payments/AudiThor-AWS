@@ -591,7 +591,8 @@ export const showCloudtrailEventDetails = (eventId) => {
     }
 };
 
-// === FUNCIONES TRAILALERTS (NUEVAS) ===
+// === FUNCIONES TRAILALERTS ===
+
 
 const renderTrailAlertsView = () => {
     const currentDate = new Date();
@@ -662,9 +663,15 @@ const renderTrailAlertsView = () => {
                     <div id="analyze-events-spinner" class="spinner hidden"></div>
                 </button>
                 
-                <p class="text-xs text-gray-500 mt-2">
-                    Analysis will be performed on <span id="events-count">${window.cloudtrailApiData?.results?.events?.length || 0}</span> CloudTrail events
-                </p>
+                <!-- NUEVA SECCIÓN MEJORADA -->
+                <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                    <p id="analysis-description" class="text-sm text-gray-600">
+                        Analysis will be performed on <span id="events-count" class="font-medium text-[#204071]">--</span> CloudTrail events <span id="analysis-method-text" class="text-gray-500">from cached events</span>
+                    </p>
+                    <div id="events-info" class="text-xs text-gray-500 mt-1">
+                        <span id="date-range-info">Using default cached events from the last 7 days</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Resultados del análisis -->
@@ -685,6 +692,13 @@ const initializeTrailAlertsEventListeners = () => {
     if (analyzeBtn) {
         analyzeBtn.addEventListener('click', runTrailAlertsAnalysis);
     }
+    
+    // NUEVO: Configurar listeners para cambios de fecha y conteo inicial
+    setupDateChangeListeners();
+    
+    // Inicializar el conteo de eventos con los datos actuales
+    const initialEventsCount = window.cloudtrailApiData?.results?.events?.length || 0;
+    updateEventsCount(initialEventsCount, 'cached');
 };
 
 const loadRulesStatus = async () => {
@@ -798,7 +812,6 @@ const updateSigmaRules = async () => {
     }
 };
 
-
 const runTrailAlertsAnalysis = async () => {
     const btn = document.getElementById('analyze-events-btn');
     const btnText = document.getElementById('analyze-events-text');
@@ -883,7 +896,20 @@ const runTrailAlertsAnalysis = async () => {
             window.trailAlertsData = data;
             renderTrailAlertsResults(data);
             
-            const method = data.metadata.analysis_method === 'dynamic_lookup' ? 'dynamic CloudTrail lookup' : 'cached events';
+            // NUEVO: Actualizar el conteo con los eventos realmente analizados
+            const actualEventsAnalyzed = data.metadata.events_analyzed;
+            const analysisMethod = data.metadata.analysis_method || 'cached_events';
+            
+            updateEventsCount(actualEventsAnalyzed, analysisMethod);
+            updateAnalysisDescription(`Analysis completed on <span id="events-count" class="font-medium text-green-600">${actualEventsAnalyzed}</span> CloudTrail events <span id="analysis-method-text" class="text-gray-500">${analysisMethod === 'dynamic_lookup' ? 'via dynamic CloudTrail search' : 'from cached events'}</span>`);
+            
+            // Actualizar información de rango de fechas post-análisis
+            const dateRangeInfo = document.getElementById('date-range-info');
+            if (dateRangeInfo) {
+                dateRangeInfo.textContent = `Found ${data.results.alerts.length} security alerts`;
+            }
+            
+            const method = analysisMethod === 'dynamic_lookup' ? 'dynamic CloudTrail lookup' : 'cached events';
             log(`Analysis completed using ${method}. Found ${data.results.alerts.length} security alerts.`, 'success');
         } else {
             throw new Error(data.error || 'Analysis failed');
@@ -1083,4 +1109,113 @@ const filterEventsByDateRange = (events, startDate, endDate) => {
             return true;
         }
     });
+};
+
+// Funciones auxiliares - AÑADIR AL FINAL DE 06_cloudtrail.js ANTES de las exportaciones
+
+// Actualizar el conteo de eventos dinámicamente
+const updateEventsCount = (count, method = 'cached') => {
+    const eventsCountSpan = document.getElementById('events-count');
+    const methodText = document.getElementById('analysis-method-text');
+    
+    if (eventsCountSpan) {
+        eventsCountSpan.textContent = count;
+    }
+    
+    if (methodText) {
+        const methodDescription = method === 'dynamic_lookup' ? 
+            'via dynamic CloudTrail search' : 
+            'from cached events';
+        methodText.textContent = methodDescription;
+    }
+};
+
+// Calcular eventos disponibles según el rango de fechas
+const calculateAvailableEvents = (startDate, endDate) => {
+    const allEvents = window.cloudtrailApiData?.results?.events || [];
+    
+    if (!startDate && !endDate) {
+        return allEvents.length;
+    }
+    
+    try {
+        const filteredEvents = filterEventsByDateRange(allEvents, startDate, endDate);
+        return filteredEvents.length;
+    } catch (error) {
+        console.error('Error calculating available events:', error);
+        return allEvents.length;
+    }
+};
+
+// Actualizar la descripción del análisis
+const updateAnalysisDescription = (description) => {
+    const descriptionElement = document.getElementById('analysis-description');
+    if (descriptionElement) {
+        descriptionElement.innerHTML = description;
+    }
+};
+
+// Actualizar información del rango de fechas
+const updateDateRangeInfo = (startDate, endDate, useDynamicLookup) => {
+    const dateRangeInfo = document.getElementById('date-range-info');
+    if (!dateRangeInfo) return;
+    
+    if (!startDate && !endDate) {
+        dateRangeInfo.textContent = 'Using default cached events from the last 7 days';
+    } else if (useDynamicLookup) {
+        const start = startDate ? new Date(startDate).toLocaleDateString() : 'earliest';
+        const end = endDate ? new Date(endDate).toLocaleDateString() : 'latest';
+        dateRangeInfo.textContent = `Will search CloudTrail from ${start} to ${end}`;
+    } else {
+        const start = startDate ? new Date(startDate).toLocaleDateString() : 'earliest';
+        const end = endDate ? new Date(endDate).toLocaleDateString() : 'latest';
+        dateRangeInfo.textContent = `Using cached events from ${start} to ${end}`;
+    }
+};
+
+// Configurar listeners para cambios de fecha
+const setupDateChangeListeners = () => {
+    const startDateInput = document.getElementById('ta-start-date');
+    const endDateInput = document.getElementById('ta-end-date');
+    
+    if (startDateInput && endDateInput) {
+        const handleDateChange = () => {
+            const startDate = startDateInput.value ? `${startDateInput.value}T00:00:00Z` : null;
+            const endDate = endDateInput.value ? `${endDateInput.value}T23:59:59Z` : null;
+            
+            // Determinar si necesitamos lookup dinámico
+            const allEvents = window.cloudtrailApiData?.results?.events || [];
+            let useDynamicLookup = false;
+            
+            if (startDate && endDate && allEvents.length > 0) {
+                const oldestEvent = new Date(Math.min(...allEvents.map(e => new Date(e.EventTime))));
+                const newestEvent = new Date(Math.max(...allEvents.map(e => new Date(e.EventTime))));
+                const requestedStart = new Date(startDate);
+                const requestedEnd = new Date(endDate);
+                
+                if (requestedStart < oldestEvent || requestedEnd > newestEvent) {
+                    useDynamicLookup = true;
+                }
+            } else if (startDate || endDate) {
+                useDynamicLookup = true;
+            }
+            
+            if (useDynamicLookup) {
+                updateEventsCount('TBD', 'dynamic_lookup');
+                updateAnalysisDescription(`Analysis will search CloudTrail for <span id="events-count" class="font-medium text-[#204071]">TBD</span> events <span id="analysis-method-text" class="text-gray-500">via dynamic CloudTrail search</span>`);
+            } else {
+                const availableEvents = calculateAvailableEvents(startDate, endDate);
+                updateEventsCount(availableEvents, 'cached');
+                updateAnalysisDescription(`Analysis will be performed on <span id="events-count" class="font-medium text-[#204071]">${availableEvents}</span> CloudTrail events <span id="analysis-method-text" class="text-gray-500">from cached events</span>`);
+            }
+            
+            updateDateRangeInfo(startDate, endDate, useDynamicLookup);
+        };
+        
+        startDateInput.addEventListener('change', handleDateChange);
+        endDateInput.addEventListener('change', handleDateChange);
+        
+        // Ejecutar una vez al cargar para inicializar
+        setTimeout(handleDateChange, 100);
+    }
 };

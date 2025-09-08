@@ -363,7 +363,8 @@ const exportResultsToJson = () => {
                 sslscan: window.playgroundApiData?.sslscan || null
             },
             connectivity: window.connectivityApiData?.results || null,
-            codepipeline: window.codepipelineApiData?.results || null
+            codepipeline: window.codepipelineApiData?.results || null,
+            trailAlerts: window.trailAlertsData || null
         }
     };
     
@@ -436,6 +437,8 @@ const handleJsonImport = (event) => {
                 results: playgroundImportData.traceroute || null,
                 sslscan: playgroundImportData.sslscan || null
             };
+            window.trailAlertsData = results.trailAlerts || null;
+
 
             window.allAvailableRegions = window.networkPoliciesApiData?.results?.all_regions || [];
 

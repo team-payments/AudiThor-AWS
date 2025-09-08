@@ -288,9 +288,25 @@ def analyze_events_against_rules(events: List[Dict], start_date: Optional[str] =
         # Ordenar alertas por risk score descendente
         alerts.sort(key=lambda x: x["risk_score"], reverse=True)
         
+        # Calcular resumen de alertas por severidad
+        severity_counts = {}
+        for alert in alerts:
+            severity = alert["severity"]
+            severity_counts[severity] = severity_counts.get(severity, 0) + 1
+        
+        summary = {
+            "total_alerts": len(alerts),
+            "critical_alerts": severity_counts.get("critical", 0),
+            "high_alerts": severity_counts.get("high", 0),
+            "medium_alerts": severity_counts.get("medium", 0),
+            "low_alerts": severity_counts.get("low", 0),
+            "info_alerts": severity_counts.get("info", 0)
+        }
+        
         return {
             "status": "success",
             "alerts": alerts,
+            "summary": summary,
             "events_analyzed": len(filtered_events),
             "rules_loaded": len(rules),
             "analysis_timeframe": {
@@ -307,6 +323,7 @@ def analyze_events_against_rules(events: List[Dict], start_date: Optional[str] =
             "events_analyzed": 0,
             "rules_loaded": 0
         }
+
 
 def filter_events_by_date(events: List[Dict], start_date: Optional[str], end_date: Optional[str]) -> List[Dict]:
     """
@@ -380,7 +397,6 @@ def filter_events_by_date(events: List[Dict], start_date: Optional[str], end_dat
     print(f"DEBUG: Filtered events count: {len(filtered)}")
     return filtered
 
-
 def evaluate_event_against_rule(event: Dict, rule: Dict) -> bool:
     """
     Evalúa si un evento coincide con una regla específica.
@@ -412,31 +428,108 @@ def evaluate_event_against_rule(event: Dict, rule: Dict) -> bool:
         print(f"Error evaluating event against rule {rule.get('rule_id', 'unknown')}: {e}")
         return False
 
+
 def get_nested_field_value(event: Dict, field_path: str) -> Any:
     """
     Obtiene el valor de un campo anidado en el evento.
-    
-    Args:
-        event: Evento de CloudTrail
-        field_path: Ruta del campo (ej: "responseElements.ConsoleLogin")
-        
-    Returns:
-        Any: Valor del campo o None si no existe
     """
     try:
-        # Para eventos de CloudTrail, convertir algunos campos especiales
+        # Parsear el CloudTrailEvent JSON si está disponible
+        cloudtrail_data = None
+        if 'CloudTrailEvent' in event:
+            try:
+                import json
+                cloudtrail_data = json.loads(event['CloudTrailEvent'])
+            except (json.JSONDecodeError, TypeError):
+                cloudtrail_data = None
+        
+        # Para eventos de CloudTrail, buscar primero en CloudTrailEvent JSON
         if field_path == "eventSource":
-            return event.get("RequestParameters", {}).get("eventSource") or event.get("EventSource")
+            # Primero intentar desde CloudTrailEvent JSON
+            if cloudtrail_data:
+                value = cloudtrail_data.get("eventSource")
+                if value:
+                    return value
+            
+            # Fallback a los métodos anteriores
+            value = event.get("RequestParameters", {}).get("eventSource") or event.get("EventSource")
+            return value
+            
         elif field_path == "eventName":
+            # Primero CloudTrailEvent, luego fallback
+            if cloudtrail_data:
+                value = cloudtrail_data.get("eventName")
+                if value:
+                    return value
             return event.get("EventName")
+            
         elif field_path == "sourceIPAddress":
+            # Primero CloudTrailEvent, luego fallback
+            if cloudtrail_data:
+                value = cloudtrail_data.get("sourceIPAddress")
+                if value:
+                    return value
             return event.get("SourceIPAddress")
+            
         elif field_path == "userIdentity.type":
+            # Buscar en CloudTrailEvent JSON
+            if cloudtrail_data:
+                value = cloudtrail_data.get("userIdentity", {}).get("type")
+                if value:
+                    return value
+            
+            # Fallback
             return event.get("RequestParameters", {}).get("userIdentity", {}).get("type")
+            
+        elif field_path == "Username":
+            # Primero intentar desde CloudTrailEvent
+            if cloudtrail_data:
+                # Para eventos de signin, el userName está en userIdentity
+                user_identity = cloudtrail_data.get("userIdentity", {})
+                if isinstance(user_identity, dict):
+                    cloudtrail_username = user_identity.get("userName")
+                    if cloudtrail_username:
+                        return cloudtrail_username
+                
+                # También intentar directamente
+                direct_username = cloudtrail_data.get("userName")
+                if direct_username:
+                    return direct_username
+            
+            # Probar diferentes campos donde podría estar el username en el evento plano
+            possible_fields = [
+                event.get("Username"),
+                event.get("UserName"), 
+                event.get("userName"),
+                event.get("userIdentity", {}).get("userName") if isinstance(event.get("userIdentity"), dict) else None,
+                event.get("RequestParameters", {}).get("userName") if isinstance(event.get("RequestParameters"), dict) else None,
+                event.get("ResponseElements", {}).get("userName") if isinstance(event.get("ResponseElements"), dict) else None
+            ]
+            
+            # Devolver el primer valor no None
+            for field_value in possible_fields:
+                if field_value is not None:
+                    return field_value
+            
+            return None
         
         # Para campos anidados, navegar por la estructura
         if '.' in field_path:
             parts = field_path.split('.')
+            
+            # Primero intentar en CloudTrailEvent
+            if cloudtrail_data:
+                value = cloudtrail_data
+                for part in parts:
+                    if isinstance(value, dict):
+                        value = value.get(part)
+                    else:
+                        value = None
+                        break
+                if value is not None:
+                    return value
+            
+            # Fallback al evento plano
             value = event
             for part in parts:
                 if isinstance(value, dict):
@@ -445,6 +538,9 @@ def get_nested_field_value(event: Dict, field_path: str) -> Any:
                     return None
             return value
         else:
+            # Primero CloudTrailEvent, luego evento plano
+            if cloudtrail_data and field_path in cloudtrail_data:
+                return cloudtrail_data.get(field_path)
             return event.get(field_path)
             
     except Exception:
