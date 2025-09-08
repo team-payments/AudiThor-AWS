@@ -7,6 +7,9 @@
 import { handleTabClick, renderSecurityHubFindings, log } from '../utils.js';
 
 
+window.trailAlertsData = null;
+window.rulesStatus = null;
+
 // --- FUNCIÓN PRINCIPAL DE LA VISTA (EXPORTADA) ---
 export const buildCloudtrailView = () => {
     const container = document.getElementById('cloudtrail-view');
@@ -29,6 +32,7 @@ export const buildCloudtrailView = () => {
                 <a href="#" data-tab="ct-trails-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Trails (${trails.length})</a>
                 <a href="#" data-tab="ct-events-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Events (${events.length})</a>
                 <a href="#" data-tab="ct-trailguard-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">TrailGuard</a>
+                <a href="#" data-tab="ct-trailalerts-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">TrailAlerts</a>
                 <a href="#" data-tab="ct-lookup-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Log Finder</a>
                 <a href="#" data-tab="ct-sh-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Hub (${cloudtrailFindings.length})</a>
             </nav>
@@ -38,6 +42,7 @@ export const buildCloudtrailView = () => {
             <div id="ct-trails-content" class="cloudtrail-tab-content hidden">${renderCloudtrailTrailsView(trails)}</div>
             <div id="ct-events-content" class="cloudtrail-tab-content hidden">${renderCloudtrailEventsTable(events)}</div>
             <div id="ct-trailguard-content" class="cloudtrail-tab-content hidden"></div>
+            <div id="ct-trailalerts-content" class="cloudtrail-tab-content hidden"></div>
             <div id="ct-lookup-content" class="cloudtrail-tab-content hidden"></div>
             <div id="ct-sh-content" class="cloudtrail-tab-content hidden">${createCloudtrailSecurityHubHtml()}</div>
         </div>`;
@@ -56,6 +61,11 @@ export const buildCloudtrailView = () => {
 
     const tabsNav = container.querySelector('#cloudtrail-tabs'); 
     if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.cloudtrail-tab-content'));
+
+    const trailAlertsContainer = document.getElementById('ct-trailalerts-content');
+    trailAlertsContainer.innerHTML = renderTrailAlertsView();
+    initializeTrailAlertsEventListeners();
+    loadRulesStatus();
 };
 
 
@@ -579,4 +589,498 @@ export const showCloudtrailEventDetails = (eventId) => {
         log('Error al parsear el JSON del evento.', 'error');
         detailContainer.innerHTML = `<p class="text-red-500">The event details could not be displayed.</p>`;
     }
+};
+
+// === FUNCIONES TRAILALERTS (NUEVAS) ===
+
+const renderTrailAlertsView = () => {
+    const currentDate = new Date();
+    const defaultEndDate = currentDate.toISOString().split('T')[0];
+    const defaultStartDate = new Date(currentDate.setDate(currentDate.getDate() - 30)).toISOString().split('T')[0];
+
+    return `
+        <div class="space-y-6">
+            <!-- Header con info de reglas -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="font-bold text-lg text-[#204071]">Sigma Rules Database</h3>
+                        <p class="text-sm text-gray-500">MITRE ATT&CK mapped detection rules</p>
+                    </div>
+                    <div id="rules-status-indicator" class="text-right">
+                        <div class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
+                            <div class="animate-spin h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full mr-2"></div>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="rules-status-details" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 hidden">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-[#204071]" id="rules-count">--</div>
+                        <div class="text-sm text-gray-500">Available Rules</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-sm font-medium text-gray-700" id="last-update">--</div>
+                        <div class="text-xs text-gray-500">Last Updated</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-sm font-medium text-gray-700" id="rules-source">TrailAlerts</div>
+                        <div class="text-xs text-gray-500">Source</div>
+                    </div>
+                </div>
+                
+                <button id="update-rules-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition flex items-center space-x-2">
+                    <span id="update-rules-text">Update Rules Database</span>
+                    <div id="update-rules-spinner" class="spinner hidden"></div>
+                </button>
+            </div>
+
+            <!-- Panel de análisis -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-lg mb-4 text-[#204071]">Security Event Analysis</h3>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                    <p class="text-sm text-blue-700">
+                        <strong>Threat Detection:</strong> Analyzes CloudTrail events against Sigma rules mapped to MITRE ATT&CK techniques to identify potential security threats and suspicious activities.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="ta-start-date" class="block text-sm font-medium text-gray-700 mb-1">Analysis Start Date</label>
+                        <input type="date" id="ta-start-date" value="${defaultStartDate}" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
+                    </div>
+                    <div>
+                        <label for="ta-end-date" class="block text-sm font-medium text-gray-700 mb-1">Analysis End Date</label>
+                        <input type="date" id="ta-end-date" value="${defaultEndDate}" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5">
+                    </div>
+                </div>
+
+                <button id="analyze-events-btn" class="bg-[#eb3496] text-white px-6 py-2.5 rounded-lg font-bold text-md hover:bg-[#d12b7e] transition flex items-center space-x-2" disabled>
+                    <span id="analyze-events-text">Analyze Security Events</span>
+                    <div id="analyze-events-spinner" class="spinner hidden"></div>
+                </button>
+                
+                <p class="text-xs text-gray-500 mt-2">
+                    Analysis will be performed on <span id="events-count">${window.cloudtrailApiData?.results?.events?.length || 0}</span> CloudTrail events
+                </p>
+            </div>
+
+            <!-- Resultados del análisis -->
+            <div id="trailalerts-results-container"></div>
+        </div>
+    `;
+};
+
+const initializeTrailAlertsEventListeners = () => {
+    // Botón actualizar reglas
+    const updateBtn = document.getElementById('update-rules-btn');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', updateSigmaRules);
+    }
+
+    // Botón analizar eventos
+    const analyzeBtn = document.getElementById('analyze-events-btn');
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', runTrailAlertsAnalysis);
+    }
+};
+
+const loadRulesStatus = async () => {
+    try {
+        const response = await fetch('http://127.0.0.1:5001/api/get-sigma-rules-status');
+        const data = await response.json();
+        
+        window.rulesStatus = data;
+        updateRulesStatusDisplay(data);
+        
+        // Habilitar botón de análisis si hay reglas disponibles
+        const analyzeBtn = document.getElementById('analyze-events-btn');
+        if (analyzeBtn && data.rules_available) {
+            analyzeBtn.disabled = false;
+        }
+        
+    } catch (error) {
+        log('Error loading Sigma rules status', 'error');
+        updateRulesStatusDisplay({ 
+            status: 'error', 
+            rules_available: false, 
+            rules_count: 0 
+        });
+    }
+};
+
+const updateRulesStatusDisplay = (status) => {
+    const indicator = document.getElementById('rules-status-indicator');
+    const details = document.getElementById('rules-status-details');
+    const rulesCount = document.getElementById('rules-count');
+    const lastUpdate = document.getElementById('last-update');
+    
+    if (!indicator) return;
+
+    if (status.rules_available) {
+        indicator.innerHTML = `
+            <div class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                ${status.rules_count} rules loaded
+            </div>
+        `;
+        
+        if (details) details.classList.remove('hidden');
+        if (rulesCount) rulesCount.textContent = status.rules_count;
+        if (lastUpdate && status.last_update) {
+            const date = new Date(status.last_update);
+            lastUpdate.textContent = date.toLocaleDateString();
+        }
+    } else {
+        indicator.innerHTML = `
+            <div class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-red-100 text-red-800">
+                <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                No rules available
+            </div>
+        `;
+        if (details) details.classList.add('hidden');
+    }
+};
+
+const updateSigmaRules = async () => {
+    const btn = document.getElementById('update-rules-btn');
+    const btnText = document.getElementById('update-rules-text');
+    const spinner = document.getElementById('update-rules-spinner');
+    
+    if (!btn || !btnText || !spinner) return;
+
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    btnText.textContent = 'Downloading...';
+    
+    try {
+        log('Downloading Sigma rules from TrailAlerts repository...', 'info');
+        
+        const response = await fetch('http://127.0.0.1:5001/api/update-sigma-rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'success') {
+            log(`Rules updated successfully: ${data.message}`, 'success');
+            
+            // Actualizar display
+            await loadRulesStatus();
+            
+            // Habilitar botón de análisis
+            const analyzeBtn = document.getElementById('analyze-events-btn');
+            if (analyzeBtn) analyzeBtn.disabled = false;
+            
+        } else {
+            throw new Error(data.message || 'Failed to update rules');
+        }
+        
+    } catch (error) {
+        log(`Error updating rules: ${error.message}`, 'error');
+        
+        const resultsContainer = document.getElementById('trailalerts-results-container');
+        if (resultsContainer) {
+            resultsContainer.innerHTML = `
+                <div class="bg-red-50 text-red-700 p-4 rounded-lg">
+                    <h4 class="font-bold">Update Failed</h4>
+                    <p>${error.message}</p>
+                </div>
+            `;
+        }
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Update Rules Database';
+    }
+};
+
+
+const runTrailAlertsAnalysis = async () => {
+    const btn = document.getElementById('analyze-events-btn');
+    const btnText = document.getElementById('analyze-events-text');
+    const spinner = document.getElementById('analyze-events-spinner');
+    const resultsContainer = document.getElementById('trailalerts-results-container');
+    
+    if (!btn || !btnText || !spinner || !resultsContainer) return;
+
+    // Obtener fechas
+    const startDateInput = document.getElementById('ta-start-date')?.value;
+    const endDateInput = document.getElementById('ta-end-date')?.value;
+    
+    // Verificar credenciales para lookup dinámico
+    const accessKeyInput = document.getElementById('access-key-input');
+    const secretKeyInput = document.getElementById('secret-key-input');
+    const sessionTokenInput = document.getElementById('session-token-input');
+    
+    if (!accessKeyInput?.value || !secretKeyInput?.value) {
+        resultsContainer.innerHTML = `
+            <div class="bg-red-50 text-red-700 p-4 rounded-lg">
+                <h4 class="font-bold">Credentials Required</h4>
+                <p>Please enter AWS credentials in the header to perform TrailAlerts analysis.</p>
+            </div>
+        `;
+        return;
+    }
+
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    btnText.textContent = 'Analyzing...';
+    resultsContainer.innerHTML = '';
+    
+    try {
+        // Determinar si usar lookup dinámico o eventos en memoria
+        const allEvents = window.cloudtrailApiData?.results?.events || [];
+        let useDynamicLookup = false;
+        let analysisMessage = `Starting TrailAlerts analysis...`;
+        
+        // Usar lookup dinámico si:
+        // 1. Hay fechas personalizadas
+        // 2. Las fechas están fuera del rango de eventos en memoria
+        if (startDateInput && endDateInput && allEvents.length > 0) {
+            const oldestEvent = new Date(Math.min(...allEvents.map(e => new Date(e.EventTime))));
+            const newestEvent = new Date(Math.max(...allEvents.map(e => new Date(e.EventTime))));
+            const requestedStart = new Date(startDateInput);
+            const requestedEnd = new Date(endDateInput);
+            
+            if (requestedStart < oldestEvent || requestedEnd > newestEvent) {
+                useDynamicLookup = true;
+                analysisMessage = `Searching CloudTrail across all regions for custom date range...`;
+            }
+        } else if (startDateInput || endDateInput) {
+            useDynamicLookup = true;
+            analysisMessage = `Searching CloudTrail across all regions for custom date range...`;
+        }
+        
+        log(analysisMessage, 'info');
+        
+        const payload = {
+            access_key: accessKeyInput.value.trim(),
+            secret_key: secretKeyInput.value.trim(),
+            session_token: sessionTokenInput.value.trim() || null,
+            start_date: startDateInput ? `${startDateInput}T00:00:00Z` : null,
+            end_date: endDateInput ? `${endDateInput}T23:59:59Z` : null,
+            use_dynamic_lookup: useDynamicLookup
+        };
+        
+        // Solo incluir eventos en memoria si no usamos lookup dinámico
+        if (!useDynamicLookup) {
+            payload.events = allEvents;
+        }
+        
+        const response = await fetch('http://127.0.0.1:5001/api/run-trailalerts-analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            window.trailAlertsData = data;
+            renderTrailAlertsResults(data);
+            
+            const method = data.metadata.analysis_method === 'dynamic_lookup' ? 'dynamic CloudTrail lookup' : 'cached events';
+            log(`Analysis completed using ${method}. Found ${data.results.alerts.length} security alerts.`, 'success');
+        } else {
+            throw new Error(data.error || 'Analysis failed');
+        }
+        
+    } catch (error) {
+        log(`TrailAlerts analysis error: ${error.message}`, 'error');
+        resultsContainer.innerHTML = `
+            <div class="bg-red-50 text-red-700 p-4 rounded-lg">
+                <h4 class="font-bold">Analysis Failed</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Analyze Security Events';
+    }
+};
+
+
+const renderTrailAlertsResults = (data) => {
+    const container = document.getElementById('trailalerts-results-container');
+    if (!container || !data.results) return;
+
+    const { alerts, summary } = data.results;
+    const { events_analyzed, rules_loaded } = data.metadata;
+
+    let resultsHtml = `
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="text-2xl font-bold text-[#204071]">${summary.total_alerts}</div>
+                <div class="text-sm text-gray-500">Total Alerts</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="text-2xl font-bold text-red-600">${summary.critical_alerts + summary.high_alerts}</div>
+                <div class="text-sm text-gray-500">High Risk</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="text-2xl font-bold text-[#204071]">${events_analyzed}</div>
+                <div class="text-sm text-gray-500">Events Analyzed</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="text-2xl font-bold text-[#204071]">${rules_loaded}</div>
+                <div class="text-sm text-gray-500">Rules Applied</div>
+            </div>
+        </div>
+    `;
+
+    if (alerts.length === 0) {
+        resultsHtml += `
+            <div class="bg-green-50 text-green-700 p-6 rounded-lg text-center">
+                <div class="text-green-600 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-shield-fill-check mx-auto" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.465 9.99a11.8 11.8 0 0 0 2.517 2.453c.386.273.744.482 1.048.625.28.132.581.24.829.24s.548-.108.829-.24a7 7 0 0 0 1.048-.625 11.8 11.8 0 0 0 2.517-2.453c1.678-2.195 3.061-5.513 2.465-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m2.146 5.146a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793z"/>
+                    </svg>
+                </div>
+                <h4 class="font-bold text-lg">No Security Threats Detected</h4>
+                <p>All ${events_analyzed} CloudTrail events passed security analysis.</p>
+            </div>
+        `;
+    } else {
+        resultsHtml += `
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h4 class="font-bold text-lg mb-4 text-[#204071]">Security Alerts Found</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alert</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">MITRE ATT&CK</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+        `;
+
+        alerts.forEach((alert, index) => {
+            const severityClass = getSeverityClass(alert.severity);
+            const mitreTag = alert.mitre_tags[0] || 'No tag';
+            const eventTime = new Date(alert.matched_event.EventTime).toLocaleString();
+            
+            resultsHtml += `
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="showAlertDetails(${index})">
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${severityClass}">
+                            ${alert.severity.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="px-4 py-4">
+                        <div class="text-sm font-medium text-gray-900">${alert.title}</div>
+                        <div class="text-sm text-gray-500 truncate" style="max-width: 300px;">${alert.description}</div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                        ${mitreTag.replace('attack.', '').toUpperCase()}
+                    </td>
+                    <td class="px-4 py-4">
+                        <div class="text-sm text-gray-900">${alert.matched_event.EventName}</div>
+                        <div class="text-sm text-gray-500">${alert.matched_event.Username}</div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${eventTime}
+                    </td>
+                </tr>
+            `;
+        });
+
+        resultsHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = resultsHtml;
+};
+
+const getSeverityClass = (severity) => {
+    const classes = {
+        'critical': 'bg-red-100 text-red-800',
+        'high': 'bg-orange-100 text-orange-800',
+        'medium': 'bg-yellow-100 text-yellow-800',
+        'low': 'bg-blue-100 text-blue-800',
+        'info': 'bg-gray-100 text-gray-800'
+    };
+    return classes[severity.toLowerCase()] || classes['info'];
+};
+
+// Función global para mostrar detalles de alerta
+window.showAlertDetails = (alertIndex) => {
+    if (!window.trailAlertsData?.results?.alerts?.[alertIndex]) return;
+    
+    const alert = window.trailAlertsData.results.alerts[alertIndex];
+    const modal = document.getElementById('generic-modal');
+    const modalTitle = document.getElementById('generic-modal-title');
+    const modalBody = document.getElementById('generic-modal-body');
+    
+    if (!modal || !modalTitle || !modalBody) return;
+    
+    modalTitle.textContent = `Security Alert: ${alert.title}`;
+    
+    modalBody.innerHTML = `
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Severity</label>
+                    <div><span class="px-2 py-1 text-xs font-semibold rounded-full ${getSeverityClass(alert.severity)}">${alert.severity.toUpperCase()}</span></div>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Risk Score</label>
+                    <div class="text-lg font-bold">${alert.risk_score}/100</div>
+                </div>
+            </div>
+            
+            <div>
+                <label class="text-sm font-medium text-gray-500">Description</label>
+                <p class="text-gray-700">${alert.description}</p>
+            </div>
+            
+            <div>
+                <label class="text-sm font-medium text-gray-500">MITRE ATT&CK Techniques</label>
+                <div class="flex flex-wrap gap-2">
+                    ${alert.mitre_tags.map(tag => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">${tag}</span>`).join('')}
+                </div>
+            </div>
+            
+            <div>
+                <label class="text-sm font-medium text-gray-500">Matched CloudTrail Event</label>
+                <pre class="bg-gray-100 p-3 rounded text-xs overflow-x-auto">${JSON.stringify(alert.matched_event, null, 2)}</pre>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+};
+
+const filterEventsByDateRange = (events, startDate, endDate) => {
+    if (!startDate && !endDate) return events;
+    
+    const startDateTime = startDate ? new Date(`${startDate}T00:00:00Z`) : null;
+    const endDateTime = endDate ? new Date(`${endDate}T23:59:59Z`) : null;
+    
+    return events.filter(event => {
+        try {
+            const eventTime = new Date(event.EventTime);
+            
+            if (startDateTime && eventTime < startDateTime) return false;
+            if (endDateTime && eventTime > endDateTime) return false;
+            
+            return true;
+        } catch (error) {
+            // Si no se puede parsear la fecha, incluir el evento
+            return true;
+        }
+    });
 };
