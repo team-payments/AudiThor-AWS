@@ -46,21 +46,61 @@ def check_iam_access_key_age(audit_data):
     return failing_resources
 
 def check_password_policy_strength(audit_data):
+    """
+    Verifica la fortaleza de la política de contraseñas y devuelve detalles específicos
+    de los requisitos que no se cumplen.
+    """
     policy = audit_data.get("iam", {}).get("password_policy", {})
+    
     if policy.get("Error"):
-        return ["Account Password Policy"]
-    checks = [
-        policy.get("MinimumPasswordLength", 0) >= 12,
-        policy.get("RequireUppercaseCharacters") is True,
-        policy.get("RequireLowercaseCharacters") is True,
-        policy.get("RequireNumbers") is True,
-        policy.get("RequireSymbols") is True,
-        policy.get("MaxPasswordAge") is not None and policy.get("MaxPasswordAge") <= 90,
-        policy.get("PasswordReusePrevention", 0) >= 4,
-    ]
-    if not all(checks):
-        return ["Account Password Policy"]
+        return [{"resource": "Account Password Policy - Not configured", "region": "Global"}]
+    
+    # Lista de verificaciones con sus detalles específicos
+    failed_checks = []
+    
+    # Verificación de longitud mínima
+    min_length = policy.get("MinimumPasswordLength", 0)
+    if min_length < 12:
+        failed_checks.append(f"Minimum length: {min_length} (required: ≥12)")
+    
+    # Verificación de mayúsculas
+    if not policy.get("RequireUppercaseCharacters"):
+        failed_checks.append("Missing requirement: Uppercase letters")
+    
+    # Verificación de minúsculas
+    if not policy.get("RequireLowercaseCharacters"):
+        failed_checks.append("Missing requirement: Lowercase letters")
+    
+    # Verificación de números
+    if not policy.get("RequireNumbers"):
+        failed_checks.append("Missing requirement: Numbers")
+    
+    # Verificación de símbolos
+    if not policy.get("RequireSymbols"):
+        failed_checks.append("Missing requirement: Symbols")
+    
+    # Verificación de expiración
+    max_age = policy.get("MaxPasswordAge")
+    if not max_age or max_age > 90:
+        if max_age:
+            failed_checks.append(f"Password expiration: {max_age} days (required: ≤90)")
+        else:
+            failed_checks.append("Password expiration: Not set (required: ≤90 days)")
+    
+    # Verificación de reutilización
+    reuse_prevention = policy.get("PasswordReusePrevention", 0)
+    if reuse_prevention < 4:
+        failed_checks.append(f"Password reuse prevention: {reuse_prevention} (required: ≥4)")
+    
+    # Si hay verificaciones fallidas, devolver los detalles específicos
+    if failed_checks:
+        # Crear un mensaje detallado con todos los problemas
+        detailed_message = "Account Password Policy - Issues: " + "; ".join(failed_checks)
+        return [{"resource": detailed_message, "region": "Global"}]
+    
     return []
+
+
 
 def check_guardduty_disabled(audit_data):
     """Verifica si GuardDuty está deshabilitado o suspendido."""
