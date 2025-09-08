@@ -66,7 +66,13 @@ export const buildCloudtrailView = () => {
     trailAlertsContainer.innerHTML = renderTrailAlertsView();
     initializeTrailAlertsEventListeners();
     loadRulesStatus();
+    
+    // NUEVO: Restaurar datos de TrailAlerts si existen datos importados
+    setTimeout(() => {
+        restoreTrailAlertsFromImport();
+    }, 100); // Pequeño delay para asegurar que el DOM está listo
 };
+
 
 
 // --- FUNCIONES INTERNAS DEL MÓDULO (NO SE EXPORTAN) ---
@@ -1407,4 +1413,33 @@ const setupDateChangeListeners = () => {
         // Ejecutar una vez al cargar para inicializar
         setTimeout(handleDateChange, 100);
     }
+};
+
+const restoreTrailAlertsFromImport = () => {
+    if (!window.trailAlertsData) return;
+    
+    const trailAlertsContainer = document.getElementById('ct-trailalerts-content');
+    if (!trailAlertsContainer) return;
+    
+    // Verificar si ya hay datos renderizados para evitar duplicación
+    const existingResults = trailAlertsContainer.querySelector('#trailalerts-results-container');
+    if (existingResults && existingResults.innerHTML.trim() !== '') {
+        // Ya hay datos renderizados, no hacer nada
+        return;
+    }
+    
+    // Verificar si la vista ya está renderizada
+    if (trailAlertsContainer.innerHTML.trim() === '') {
+        // Renderizar la vista base si no existe
+        trailAlertsContainer.innerHTML = renderTrailAlertsView();
+        initializeTrailAlertsEventListeners();
+        loadRulesStatus();
+    }
+    
+    // Renderizar los resultados importados solo si no están ya renderizados
+    renderTrailAlertsResults(window.trailAlertsData);
+    
+    // Solo mostrar el mensaje una vez
+    const alertsCount = window.trailAlertsData.results?.alerts?.length || 0;
+    log(`TrailAlerts data restored: ${alertsCount} security alerts from import`, 'success');
 };

@@ -79,6 +79,7 @@ window.kmsApiData = null;
 window.allAvailableRegions = [];
 window.lastCloudtrailLookupResults = [];
 window.lastHealthyStatusFindings = [];
+window.trailAlertsData = null;
 
 // 3. SELECTORES
 let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
@@ -364,6 +365,7 @@ const exportResultsToJson = () => {
             },
             connectivity: window.connectivityApiData?.results || null,
             codepipeline: window.codepipelineApiData?.results || null,
+            // MODIFICACIÓN: Incluir datos completos de TrailAlerts
             trailAlerts: window.trailAlertsData || null
         }
     };
@@ -437,20 +439,31 @@ const handleJsonImport = (event) => {
                 results: playgroundImportData.traceroute || null,
                 sslscan: playgroundImportData.sslscan || null
             };
+            
+            // Importar datos completos de TrailAlerts
             window.trailAlertsData = results.trailAlerts || null;
-
+            
+            // Log sobre TrailAlerts solo una vez aquí
+            if (window.trailAlertsData) {
+                const alertsCount = window.trailAlertsData.results?.alerts?.length || 0;
+                log(`Imported TrailAlerts data with ${alertsCount} security alerts`, 'success');
+            }
 
             window.allAvailableRegions = window.networkPoliciesApiData?.results?.all_regions || [];
 
             log('Data imported into the application state.', 'success');
             
             // 1. Construir el contenido de todas las vistas en segundo plano
+            // NOTA: buildCloudtrailView() ya se ejecuta aquí y manejará los datos de TrailAlerts automáticamente
             buildAndRenderAllViews();
             
             // 2. Ejecutar lógicas adicionales que puedan ser necesarias
             runAndDisplayHealthyStatus();
 
-            // 3. (LA CORRECCIÓN FINAL) - Asegurarse de que se muestra la vista correcta
+            // 3. ELIMINADO: Ya no necesitamos llamar buildCloudtrailView() por segunda vez
+            // porque ya se ejecuta en buildAndRenderAllViews() y manejará los datos importados
+
+            // 4. Asegurarse de que se muestra la vista correcta
             log('Activating the Identity & Access view post-import...', 'info');
 
             // Ocultar todas las vistas
@@ -491,6 +504,8 @@ const handleJsonImport = (event) => {
     reader.readAsText(file);
     event.target.value = '';
 };
+
+
 
 const displayHealthyStatus = (selectedRegion) => {
     // Placeholder - necesitarías implementar esta función
