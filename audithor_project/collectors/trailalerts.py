@@ -267,19 +267,35 @@ def analyze_events_against_rules(events: List[Dict], start_date: Optional[str] =
         for event in filtered_events:
             for rule in rules:
                 if evaluate_event_against_rule(event, rule):
+                    # Preparar matched_event con todos los datos disponibles
+                    matched_event = {
+                        "EventName": event.get("EventName"),
+                        "EventTime": event.get("EventTime"),
+                        "Username": event.get("Username"),
+                        "SourceIPAddress": event.get("SourceIPAddress"),
+                        "EventRegion": event.get("EventRegion")
+                    }
+                    
+                    # Añadir campos adicionales si están disponibles
+                    if event.get("EventId"):
+                        matched_event["EventId"] = event.get("EventId")
+                    
+                    if event.get("CloudTrailEvent"):
+                        matched_event["CloudTrailEvent"] = event.get("CloudTrailEvent")
+                    
+                    if event.get("RequestParameters"):
+                        matched_event["RequestParameters"] = event.get("RequestParameters")
+                    
+                    # Guardar el evento completo como respaldo
+                    matched_event["full_event"] = event
+                    
                     alert = {
                         "rule_id": rule["rule_id"],
                         "title": rule["title"],
                         "description": rule["description"],
                         "severity": rule["severity"],
                         "mitre_tags": rule["mitre_tags"],
-                        "matched_event": {
-                            "EventName": event.get("EventName"),
-                            "EventTime": event.get("EventTime"),
-                            "Username": event.get("Username"),
-                            "SourceIPAddress": event.get("SourceIPAddress"),
-                            "EventRegion": event.get("EventRegion")
-                        },
+                        "matched_event": matched_event,
                         "timestamp": datetime.now(pytz.utc).isoformat(),
                         "risk_score": calculate_risk_score(rule["severity"], rule["mitre_tags"])
                     }

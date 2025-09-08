@@ -930,7 +930,6 @@ const runTrailAlertsAnalysis = async () => {
     }
 };
 
-
 const renderTrailAlertsResults = (data) => {
     const container = document.getElementById('trailalerts-results-container');
     if (!container || !data.results) return;
@@ -963,7 +962,7 @@ const renderTrailAlertsResults = (data) => {
     if (alerts.length === 0) {
         resultsHtml += `
             <div class="bg-green-50 text-green-700 p-6 rounded-lg text-center">
-                <div class="text-green-600 mb-2">
+                <div class="flex justify-center mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-shield-fill-check mx-auto" viewBox="0 0 16 16">
                         <path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.465 9.99a11.8 11.8 0 0 0 2.517 2.453c.386.273.744.482 1.048.625.28.132.581.24.829.24s.548-.108.829-.24a7 7 0 0 0 1.048-.625 11.8 11.8 0 0 0 2.517-2.453c1.678-2.195 3.061-5.513 2.465-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m2.146 5.146a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793z"/>
                     </svg>
@@ -996,7 +995,7 @@ const renderTrailAlertsResults = (data) => {
             const eventTime = new Date(alert.matched_event.EventTime).toLocaleString();
             
             resultsHtml += `
-                <tr class="hover:bg-gray-50 cursor-pointer" onclick="showAlertDetails(${index})">
+                <tr class="hover:bg-blue-50 cursor-pointer transition-colors" onclick="showTrailAlertEventDetails(${index})" title="Click to view full event details">
                     <td class="px-4 py-4 whitespace-nowrap">
                         <span class="px-2 py-1 text-xs font-semibold rounded-full ${severityClass}">
                             ${alert.severity.toUpperCase()}
@@ -1015,6 +1014,7 @@ const renderTrailAlertsResults = (data) => {
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                         ${eventTime}
+                        <div class="text-xs text-blue-600 mt-1">Click for details →</div>
                     </td>
                 </tr>
             `;
@@ -1028,8 +1028,197 @@ const renderTrailAlertsResults = (data) => {
         `;
     }
 
+    // Añadir contenedor para mostrar detalles del evento
+    resultsHtml += `<div id="trailalerts-event-detail-container" class="mt-6"></div>`;
+
     container.innerHTML = resultsHtml;
 };
+
+window.showTrailAlertEventDetails = (alertIndex) => {
+    if (!window.trailAlertsData?.results?.alerts?.[alertIndex]) {
+        console.error('Alert not found at index:', alertIndex);
+        return;
+    }
+    
+    const alert = window.trailAlertsData.results.alerts[alertIndex];
+    const detailContainer = document.getElementById('trailalerts-event-detail-container');
+    
+    if (!detailContainer) {
+        console.error('Detail container not found');
+        return;
+    }
+
+    // Highlight de la fila seleccionada
+    const table = detailContainer.parentElement.querySelector('table');
+    if (table) {
+        table.querySelectorAll('tr.bg-blue-100').forEach(row => {
+            row.classList.remove('bg-blue-100');
+            row.classList.add('hover:bg-blue-50');
+        });
+        
+        const rows = table.querySelectorAll('tbody tr');
+        if (rows[alertIndex]) {
+            rows[alertIndex].classList.add('bg-blue-100');
+            rows[alertIndex].classList.remove('hover:bg-blue-50');
+        }
+    }
+
+    // Determinar qué datos del evento tenemos disponibles
+    let eventData = null;
+    let eventId = 'unknown';
+    let dataSource = 'limited';
+    
+    // 1. Prioridad: evento completo desde full_event (nuevo backend)
+    if (alert.matched_event.full_event) {
+        eventData = alert.matched_event.full_event;
+        eventId = eventData.EventId || alert.matched_event.EventId || 'unknown';
+        dataSource = 'complete';
+    }
+    // 2. Si tenemos CloudTrailEvent JSON
+    else if (alert.matched_event.CloudTrailEvent) {
+        eventData = {
+            EventId: alert.matched_event.EventId || 'unknown',
+            CloudTrailEvent: alert.matched_event.CloudTrailEvent,
+            EventName: alert.matched_event.EventName,
+            EventTime: alert.matched_event.EventTime,
+            Username: alert.matched_event.Username
+        };
+        eventId = alert.matched_event.EventId || 'unknown';
+        dataSource = 'json_available';
+    }
+    // 3. Fallback: datos básicos solamente
+    else {
+        eventData = {
+            EventId: 'limited-data',
+            CloudTrailEvent: JSON.stringify(alert.matched_event),
+            EventName: alert.matched_event.EventName,
+            EventTime: alert.matched_event.EventTime,
+            Username: alert.matched_event.Username
+        };
+        dataSource = 'limited';
+    }
+
+    // Header con información de la alerta
+    const alertHeaderHtml = `
+        <div class="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg p-4 mb-4">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-red-800 mb-2 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.464 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                        Security Alert Triggered
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="font-medium text-red-700">Rule:</span>
+                            <span class="ml-2 text-red-900">${alert.title}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-red-700">Severity:</span>
+                            <span class="ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getSeverityClass(alert.severity)}">
+                                ${alert.severity.toUpperCase()}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-red-700">Risk Score:</span>
+                            <span class="ml-2 font-bold text-lg text-red-600">${alert.risk_score}/100</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-red-700">MITRE ATT&CK:</span>
+                            <div class="ml-2 mt-1">
+                                ${alert.mitre_tags.map(tag => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1 mb-1">${tag}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <span class="font-medium text-red-700">Description:</span>
+                        <p class="mt-1 text-red-800">${alert.description}</p>
+                    </div>
+                </div>
+                <button onclick="closeTrailAlertDetails()" 
+                        class="ml-4 text-red-400 hover:text-red-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Crear el HTML del evento
+    let eventDetailHtml = '';
+    
+    try {
+        const parsedEvent = JSON.parse(eventData.CloudTrailEvent);
+        const formattedJson = JSON.stringify(parsedEvent, null, 2);
+        
+        // Indicador de calidad de datos
+        const dataIndicators = {
+            'complete': '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">✓ Complete Event Data</span>',
+            'json_available': '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">✓ Full CloudTrail JSON</span>',
+            'limited': '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">⚠ Limited Data</span>'
+        };
+        
+        eventDetailHtml = `
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-[#204071]">Event Detail: ${eventId}</h3>
+                ${dataIndicators[dataSource]}
+            </div>
+            <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${formattedJson}</pre>
+        `;
+        
+    } catch (e) {
+        console.error('Error parsing CloudTrail event JSON:', e);
+        eventDetailHtml = `
+            <h3 class="text-xl font-bold text-[#204071] mb-4">Event Detail: ${eventId}</h3>
+            <p class="text-red-500">The event details could not be displayed due to JSON parsing error.</p>
+        `;
+    }
+
+    // Combinar y mostrar
+    detailContainer.innerHTML = alertHeaderHtml + eventDetailHtml;
+    
+    // Scroll suave hacia el detalle
+    detailContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+
+
+// Mantener la función de cerrar igual
+window.closeTrailAlertDetails = () => {
+    const detailContainer = document.getElementById('trailalerts-event-detail-container');
+    if (detailContainer) {
+        detailContainer.innerHTML = '';
+        
+        // Remover highlight de las filas
+        const table = detailContainer.parentElement.querySelector('table');
+        if (table) {
+            table.querySelectorAll('tr.bg-blue-100').forEach(row => {
+                row.classList.remove('bg-blue-100');
+                row.classList.add('hover:bg-blue-50');
+            });
+        }
+    }
+};
+
+
+window.closeTrailAlertDetails = () => {
+    const detailContainer = document.getElementById('trailalerts-event-detail-container');
+    if (detailContainer) {
+        detailContainer.innerHTML = '';
+        
+        // Remover highlight de las filas
+        const table = detailContainer.parentElement.querySelector('table');
+        if (table) {
+            table.querySelectorAll('tr.bg-blue-100').forEach(row => {
+                row.classList.remove('bg-blue-100');
+                row.classList.add('hover:bg-blue-50');
+            });
+        }
+    }
+};
+
 
 const getSeverityClass = (severity) => {
     const classes = {
