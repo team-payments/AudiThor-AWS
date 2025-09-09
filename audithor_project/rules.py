@@ -1129,6 +1129,122 @@ def check_s3_public_buckets(audit_data):
     
     return failing_resources
 
+def check_secrets_rotation_disabled(audit_data):
+    """
+    Verifica secretos sin rotación automática habilitada, especialmente crítico para credenciales de base de datos.
+    """
+    failing_resources = []
+    secrets = audit_data.get("secretsManager", {}).get("secrets", [])
+    
+    for secret in secrets:
+        if secret.get("Error"):
+            continue
+        if not secret.get("RotationEnabled"):
+            failing_resources.append({
+                "resource": secret.get("Name"),
+                "region": secret.get("Region")
+            })
+    return failing_resources
+
+def check_secrets_aws_managed_kms(audit_data):
+    """
+    Verifica secretos que usan claves KMS gestionadas por AWS en lugar de claves gestionadas por el cliente.
+    """
+    failing_resources = []
+    secrets = audit_data.get("secretsManager", {}).get("secrets", [])
+    
+    for secret in secrets:
+        if secret.get("Error"):
+            continue
+        kms_key = secret.get("KmsKeyId", "")
+        if not kms_key or "alias/aws/secretsmanager" in kms_key:
+            failing_resources.append({
+                "resource": secret.get("Name"),
+                "region": secret.get("Region")
+            })
+    return failing_resources
+
+def check_secrets_public_resource_policy(audit_data):
+    """
+    Verifica secretos con políticas de recursos que permiten acceso público o demasiado permisivo.
+    """
+    failing_resources = []
+    secrets = audit_data.get("secretsManager", {}).get("secrets", [])
+    
+    for secret in secrets:
+        if secret.get("Error"):
+            continue
+        
+        resource_policy = secret.get("ResourcePolicy")
+        if resource_policy and isinstance(resource_policy, dict):
+            for statement in resource_policy.get("Statement", []):
+                principal = statement.get("Principal", {})
+                if principal == "*" or (isinstance(principal, dict) and principal.get("AWS") == "*"):
+                    failing_resources.append({
+                        "resource": secret.get("Name"),
+                        "region": secret.get("Region")
+                    })
+                    break
+    return failing_resources
+
+def check_secrets_no_replication(audit_data):
+    """
+    Verifica secretos críticos sin replicación para recuperación ante desastres.
+    """
+    failing_resources = []
+    secrets = audit_data.get("secretsManager", {}).get("secrets", [])
+    
+    for secret in secrets:
+        if secret.get("Error"):
+            continue
+        
+        replication_status = secret.get("ReplicationStatus", [])
+        if not replication_status:
+            failing_resources.append({
+                "resource": secret.get("Name"),
+                "region": secret.get("Region")
+            })
+    return failing_resources
+
+def check_secrets_no_tags(audit_data):
+    """
+    Verifica secretos sin etiquetas para clasificación y gobierno.
+    """
+    failing_resources = []
+    secrets = audit_data.get("secretsManager", {}).get("secrets", [])
+    
+    for secret in secrets:
+        if secret.get("Error"):
+            continue
+        if not secret.get("Tags"):
+            failing_resources.append({
+                "resource": secret.get("Name"),
+                "region": secret.get("Region")
+            })
+    return failing_resources
+
+def check_secrets_long_rotation_interval(audit_data):
+    """
+    Verifica secretos con intervalos de rotación excesivamente largos (>90 días).
+    """
+    failing_resources = []
+    secrets = audit_data.get("secretsManager", {}).get("secrets", [])
+    
+    for secret in secrets:
+        if secret.get("Error"):
+            continue
+        if not secret.get("RotationEnabled"):
+            continue
+            
+        rotation_rules = secret.get("RotationRules", {})
+        interval = rotation_rules.get("AutomaticallyAfterDays", 0)
+        if interval > 90:
+            failing_resources.append({
+                "resource": f"{secret.get('Name')} ({interval} days)",
+                "region": secret.get("Region")
+            })
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -1583,5 +1699,59 @@ RULES_TO_CHECK = [
         "description": "An S3 bucket has been detected that allows public access via ACLs or bucket policies. This exposes the bucket contents to the internet, potentially allowing unauthorized users to read, and in some cases modify, the stored data. Public S3 buckets represent a significant security risk as they can lead to data breaches if sensitive information is inadvertently stored without proper access controls.",
         "remediation": "Navigate to the S3 console, select the affected bucket, and review its permissions. Enable 'Block all public access' in the bucket's permissions tab unless public access is absolutely necessary. If public access is required, ensure that only the specific objects that need to be public are accessible, and consider using CloudFront for better control over content distribution.",
         "check_function": check_s3_public_buckets
+    },
+    {
+    "rule_id": "SECRETS_001",
+    "section": "Data Protection", 
+    "name": "Secret without automatic rotation enabled",
+    "severity": SEVERITY["HIGH"],
+    "description": "A secret in AWS Secrets Manager does not have automatic rotation enabled. Without rotation, compromised credentials could remain valid indefinitely, increasing security risk. This is especially critical for database credentials and API keys.",
+    "remediation": "Navigate to AWS Secrets Manager, select the affected secret, and configure automatic rotation. For database credentials, use AWS managed Lambda functions. For other secrets, create custom rotation functions.",
+    "check_function": check_secrets_rotation_disabled
+    },
+    {
+        "rule_id": "SECRETS_002",
+        "section": "Data Protection",
+        "name": "Secret encrypted with AWS managed KMS key",
+        "severity": SEVERITY["MEDIUM"], 
+        "description": "A secret is using an AWS managed KMS key instead of a customer managed key (CMK). Customer managed keys provide better control over encryption, key rotation policies, and access logging.",
+        "remediation": "Create a customer managed KMS key and update the secret to use it. Navigate to Secrets Manager, edit the secret's encryption configuration, and select your CMK.",
+        "check_function": check_secrets_aws_managed_kms
+    },
+    {
+        "rule_id": "SECRETS_003",
+        "section": "Identity & Access",
+        "name": "Secret with overly permissive resource policy", 
+        "severity": SEVERITY["CRITICAL"],
+        "description": "A secret has a resource policy that allows public access or uses wildcard principals. This could allow unauthorized access to sensitive credentials from anywhere on the internet.",
+        "remediation": "Navigate to Secrets Manager, select the secret, and review its resource policy. Remove any statements with Principal '*' and restrict access to specific IAM roles or users that require it.",
+        "check_function": check_secrets_public_resource_policy
+    },
+    {
+        "rule_id": "SECRETS_004",
+        "section": "Business Continuity",
+        "name": "Critical secret not replicated for disaster recovery",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "A secret is not replicated to other regions, creating a single point of failure. If the primary region becomes unavailable, applications dependent on this secret could fail.",
+        "remediation": "Enable cross-region replication for critical secrets. In Secrets Manager, select the secret and configure replication to at least one other region.",
+        "check_function": check_secrets_no_replication
+    },
+    {
+        "rule_id": "SECRETS_005", 
+        "section": "Governance",
+        "name": "Secret without tags for classification",
+        "severity": SEVERITY["LOW"],
+        "description": "A secret has no tags assigned. Tags are essential for governance, cost allocation, and security classification of sensitive credentials.",
+        "remediation": "Add appropriate tags to classify the secret. Consider tags like Environment, Owner, Sensitivity, and Purpose to improve governance and cost tracking.",
+        "check_function": check_secrets_no_tags
+    },
+    {
+        "rule_id": "SECRETS_006",
+        "section": "Data Protection", 
+        "name": "Secret with excessive rotation interval",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "A secret has automatic rotation enabled but with an interval exceeding 90 days. Long rotation intervals reduce the effectiveness of credential rotation as a security control.",
+        "remediation": "Navigate to Secrets Manager, select the secret, and modify the rotation configuration to use an interval of 90 days or less for enhanced security.",
+        "check_function": check_secrets_long_rotation_interval
     }
 ]
