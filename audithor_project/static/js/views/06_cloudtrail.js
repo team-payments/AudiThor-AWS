@@ -1037,8 +1037,21 @@ const renderTrailAlertsResults = (data) => {
     // Añadir contenedor para mostrar detalles del evento
     resultsHtml += `<div id="trailalerts-event-detail-container" class="mt-6"></div>`;
 
+    // Footer con reconocimiento
+    const footerHtml = `
+        <div class="mt-8 text-center text-xs text-gray-400">
+            <p>Advanced threat detection using Sigma rules mapped to MITRE ATT&CK framework for comprehensive CloudTrail security analysis.</p>
+            <p class="mt-1">Inspired by <a href="https://github.com/adanalvarez/TrailAlerts" target="_blank" class="text-blue-400 hover:underline">adanalvarez/TrailAlerts</a>.</p>
+        </div>
+    `;
+
+    // Añadir el footer al HTML
+    resultsHtml += footerHtml;
+
     container.innerHTML = resultsHtml;
 };
+
+
 
 window.showTrailAlertEventDetails = (alertIndex) => {
     if (!window.trailAlertsData?.results?.alerts?.[alertIndex]) {
