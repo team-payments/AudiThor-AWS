@@ -312,7 +312,6 @@ def check_s3_eventbridge_configuration(session, bucket_name, region):
     except ClientError:
         return {"enabled": False, "method": "error"}
 
-
 def find_eventbridge_rules_for_s3_bucket(session, bucket_name, region):
     """Encuentra reglas de EventBridge que procesan eventos de este bucket específico."""
     try:
@@ -334,7 +333,13 @@ def find_eventbridge_rules_for_s3_bucket(session, bucket_name, region):
                                 "Name": rule['Name'],
                                 "EventPattern": event_pattern,
                                 "Targets": targets_response.get('Targets', []),
-                                "Description": rule_detail.get('Description', '')
+                                "Description": rule_detail.get('Description', ''),
+                                # Agregar detalles de SNS
+                                "SNSTargets": find_sns_targets_in_rule(
+                                    {"Name": rule['Name'], "Targets": targets_response.get('Targets', [])},
+                                    session,
+                                    region
+                                )
                             })
                             
                     except ClientError:
@@ -375,107 +380,33 @@ def is_rule_for_specific_s3_bucket(event_pattern, bucket_name):
         return False
 
 
-def find_sns_targets_in_rule(rule):
-    """Encuentra targets SNS en una regla de EventBridge."""
+def find_sns_targets_in_rule(rule, session=None, region=None):
+    """Encuentra targets SNS en una regla de EventBridge con detalles completos."""
     sns_targets = []
     
     for target in rule.get('Targets', []):
         target_arn = target.get('Arn', '')
         if ':sns:' in target_arn:
-            sns_targets.append({
+            sns_target = {
                 "TopicArn": target_arn,
                 "TargetId": target.get('Id'),
                 "RuleName": rule.get('Name')
-            })
+            }
+            
+            # Si tenemos sesión y región, obtener detalles completos
+            if session and region:
+                sns_details = get_sns_topic_details(session, target_arn, region)
+                sns_target.update(sns_details)
+            
+            sns_targets.append(sns_target)
     
     return sns_targets
 
-    """
-    Obtiene los detalles completos de SNS para una alarma específica.
-    Incluye topics y sus subscriptions (emails, etc.)
-    """
-    try:
-        cloudwatch_client = session.client('cloudwatch', region_name=region)
-        sns_client = session.client('sns', region_name=region)
-        
-        # Obtener detalles de la alarma - USAR describe_alarms en lugar de describe_alarms_for_metric
-        alarms = cloudwatch_client.describe_alarms(AlarmNames=[alarm_name])
-        if not alarms.get('MetricAlarms'):
-            return None
-        
-        alarm = alarms['MetricAlarms'][0]
-        
-        # CORREGIDO: Obtener todas las acciones SNS (AlarmActions, OKActions, InsufficientDataActions)
-        all_actions = []
-        all_actions.extend(alarm.get('AlarmActions', []))
-        all_actions.extend(alarm.get('OKActions', []))
-        all_actions.extend(alarm.get('InsufficientDataActions', []))
-        
-        sns_details = []
-        
-        for action_arn in all_actions:
-            if ':sns:' in action_arn:
-                # Es un topic SNS
-                topic_name = action_arn.split(':')[-1]
-                
-                try:
-                    # Obtener subscriptions del topic
-                    subscriptions_response = sns_client.list_subscriptions_by_topic(TopicArn=action_arn)
-                    subscriptions = subscriptions_response.get('Subscriptions', [])
-                    
-                    # Obtener atributos del topic
-                    topic_attrs = sns_client.get_topic_attributes(TopicArn=action_arn)
-                    display_name = topic_attrs.get('Attributes', {}).get('DisplayName', topic_name)
-                    
-                    # Formatear subscriptions
-                    formatted_subscriptions = []
-                    for sub in subscriptions:
-                        protocol = sub.get('Protocol', '')
-                        endpoint = sub.get('Endpoint', '')
-                        status = sub.get('SubscriptionArn', 'PendingConfirmation')
-                        
-                        # NO enmascarar emails para debugging - puedes cambiar esto después
-                        # if protocol == 'email' and '@' in endpoint:
-                        #     parts = endpoint.split('@')
-                        #     masked_email = f"{parts[0][:2]}***@{parts[1]}"
-                        #     endpoint = masked_email
-                        
-                        formatted_subscriptions.append({
-                            'Protocol': protocol,
-                            'Endpoint': endpoint,
-                            'Status': 'Confirmed' if status.startswith('arn:') else 'Pending'
-                        })
-                    
-                    sns_details.append({
-                        'TopicArn': action_arn,
-                        'TopicName': topic_name,
-                        'DisplayName': display_name,
-                        'Subscriptions': formatted_subscriptions,
-                        'SubscriptionCount': len(formatted_subscriptions)
-                    })
-                    
-                except ClientError as e:
-                    # Si no podemos obtener detalles del topic, al menos registramos que existe
-                    sns_details.append({
-                        'TopicArn': action_arn,
-                        'TopicName': topic_name,
-                        'DisplayName': topic_name,
-                        'Subscriptions': [],
-                        'SubscriptionCount': 0,
-                        'Error': f'Could not retrieve topic details: {str(e)}'
-                    })
-        
-        return sns_details if sns_details else None
-        
-    except ClientError as e:
-        print(f"Error getting alarm SNS details for {alarm_name}: {str(e)}")  # Debug
-        return None
-    
 
 def check_cloudtrail_eventbridge_configuration(session, trail_name, region):
     """
     Verifica si hay reglas de EventBridge que procesen eventos de CloudTrail.
-    MODIFICADO: Busca en todas las regiones, no solo en la región del trail.
+    MODIFICADO: Busca en todas las regiones y obtiene detalles completos de SNS.
     """
     try:
         # Obtener todas las regiones disponibles
@@ -510,7 +441,13 @@ def check_cloudtrail_eventbridge_configuration(session, trail_name, region):
                                         "Targets": targets_response.get('Targets', []),
                                         "Description": rule_detail.get('Description', ''),
                                         "Arn": rule_detail.get('Arn', ''),
-                                        "Region": search_region  # NUEVO: incluir región
+                                        "Region": search_region,
+                                        # AGREGAR DETALLES COMPLETOS DE SNS
+                                        "SNSTargets": find_sns_targets_in_rule(
+                                            {"Name": rule['Name'], "Targets": targets_response.get('Targets', [])},
+                                            session,
+                                            search_region
+                                        )
                                     }
                                     all_cloudtrail_rules.append(rule_info)
                                     
@@ -539,6 +476,8 @@ def check_cloudtrail_eventbridge_configuration(session, trail_name, region):
     except Exception as e:
         print(f"[DEBUG] Error in multi-region CloudTrail EventBridge check: {e}")
         return {"enabled": False, "method": "error"}
+
+
 
 def is_rule_for_cloudtrail_events(event_pattern):
     """
@@ -581,7 +520,6 @@ def is_rule_for_cloudtrail_events(event_pattern):
         print(f"[DEBUG] Error parsing CloudTrail event pattern: {e}")
         return False
 
-
 def find_cloudtrail_sns_targets_in_rules(rules):
     """
     Encuentra targets SNS en reglas de EventBridge para CloudTrail.
@@ -600,3 +538,52 @@ def find_cloudtrail_sns_targets_in_rules(rules):
                 })
     
     return sns_targets
+
+
+def get_sns_topic_details(session, topic_arn, region):
+    """
+    Obtiene los detalles completos de un topic SNS incluyendo subscripciones.
+    """
+    try:
+        sns_client = session.client('sns', region_name=region)
+        
+        topic_name = topic_arn.split(':')[-1]
+        
+        # Obtener subscriptions del topic
+        subscriptions_response = sns_client.list_subscriptions_by_topic(TopicArn=topic_arn)
+        subscriptions = subscriptions_response.get('Subscriptions', [])
+        
+        # Obtener atributos del topic
+        topic_attrs = sns_client.get_topic_attributes(TopicArn=topic_arn)
+        display_name = topic_attrs.get('Attributes', {}).get('DisplayName', topic_name)
+        
+        # Formatear subscriptions
+        formatted_subscriptions = []
+        for sub in subscriptions:
+            protocol = sub.get('Protocol', '')
+            endpoint = sub.get('Endpoint', '')
+            status = sub.get('SubscriptionArn', 'PendingConfirmation')
+            
+            formatted_subscriptions.append({
+                'Protocol': protocol,
+                'Endpoint': endpoint,
+                'Status': 'Confirmed' if status.startswith('arn:') else 'Pending'
+            })
+        
+        return {
+            'TopicArn': topic_arn,
+            'TopicName': topic_name,
+            'DisplayName': display_name,
+            'Subscriptions': formatted_subscriptions,
+            'SubscriptionCount': len(formatted_subscriptions)
+        }
+        
+    except ClientError as e:
+        return {
+            'TopicArn': topic_arn,
+            'TopicName': topic_arn.split(':')[-1],
+            'DisplayName': topic_arn.split(':')[-1],
+            'Subscriptions': [],
+            'SubscriptionCount': 0,
+            'Error': f'Could not retrieve topic details: {str(e)}'
+        }

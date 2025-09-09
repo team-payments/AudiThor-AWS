@@ -74,6 +74,73 @@ export const buildCloudtrailView = () => {
 };
 
 
+const renderSNSDetails = (snsTargets, context = 'eventbridge') => {
+    if (!snsTargets || snsTargets.length === 0) {
+        return '<p class="text-xs text-gray-500 italic">No SNS targets configured</p>';
+    }
+    
+    let html = `<div class="mt-4 p-3 bg-green-100 border border-green-300 rounded">
+        <h5 class="font-semibold text-sm text-green-800 mb-2">
+            SNS Notifications (${snsTargets.length})
+        </h5>
+        <div class="space-y-3">`;
+    
+    snsTargets.forEach(sns => {
+        const topicName = sns.TopicName || sns.TopicArn?.split(':').pop() || 'Unknown';
+        
+        html += `<div class="bg-green-50 border border-green-200 rounded p-2">
+            <p class="text-xs font-semibold text-green-800">
+                ${sns.DisplayName && sns.DisplayName !== topicName ? 
+                    `${sns.DisplayName} (${topicName})` : 
+                    `Topic: ${topicName}`
+                }
+            </p>`;
+        
+        if (sns.RuleName) {
+            html += `<p class="text-xs text-gray-600 italic">via rule: ${sns.RuleName}</p>`;
+        }
+        
+        // Mostrar subscripciones si están disponibles
+        if (sns.Subscriptions && sns.Subscriptions.length > 0) {
+            html += `<div class="mt-2 space-y-1">
+                <p class="text-xs font-medium text-gray-700">
+                    Subscriptions (${sns.SubscriptionCount}):
+                </p>`;
+            
+            sns.Subscriptions.forEach(subscription => {
+                const statusColor = subscription.Status === 'Confirmed' ? 'text-green-600' : 'text-orange-600';
+                
+                html += `<div class="ml-2 text-xs">
+                    <span class="font-mono bg-gray-100 px-1 rounded">
+                        ${subscription.Protocol}
+                    </span>
+                    <span class="ml-1 text-gray-700">${subscription.Endpoint}</span>
+                    <span class="ml-1 ${statusColor} font-medium">
+                        (${subscription.Status})
+                    </span>
+                </div>`;
+            });
+            
+            html += `</div>`;
+        } else if (sns.SubscriptionCount === 0) {
+            html += `<p class="text-xs text-gray-500 mt-1 italic">
+                No subscriptions or unable to retrieve
+            </p>`;
+        }
+        
+        if (sns.Error) {
+            html += `<p class="text-xs text-red-600 mt-1">
+                Error: ${sns.Error}
+            </p>`;
+        }
+        
+        html += `</div>`;
+    });
+    
+    html += `</div></div>`;
+    return html;
+};
+
 
 // --- FUNCIONES INTERNAS DEL MÓDULO (NO SE EXPORTAN) ---
 
@@ -104,7 +171,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
     });
 
     // SECCIÓN 1: REGLAS EVENTBRIDGE (INDEPENDIENTES)
-    const hasAnyEventBridgeRules = Object.keys(eventBridgeRulesByRegion).length > 0;
+const hasAnyEventBridgeRules = Object.keys(eventBridgeRulesByRegion).length > 0;
     
     if (hasAnyEventBridgeRules) {
         diagramHtml += `
@@ -118,10 +185,11 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
 
         // Mostrar reglas por región
         Object.entries(eventBridgeRulesByRegion).forEach(([region, rules]) => {
-            const totalSNSTargets = rules.reduce((acc, rule) => {
-                const snsTargets = (rule.Targets || []).filter(target => target.Arn.includes(':sns:')).length;
-                return acc + snsTargets;
-            }, 0);
+            // Calcular SNS targets usando los nuevos detalles completos
+            const allSNSTargets = rules.reduce((acc, rule) => {
+                const ruleSNSTargets = rule.SNSTargets || [];
+                return acc.concat(ruleSNSTargets);
+            }, []);
 
             diagramHtml += `
                 <div class="mb-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -129,7 +197,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
                         <h4 class="text-lg font-semibold text-purple-800">
                             Region: ${region} (${rules.length} rules)
                         </h4>
-                        ${totalSNSTargets > 0 ? 
+                        ${allSNSTargets.length > 0 ? 
                             `<div class="flex items-center space-x-2">
                                 <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                                 <span class="text-green-700 text-sm font-medium">Alert Flow Active</span>
@@ -145,7 +213,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
             `;
 
             rules.forEach(rule => {
-                const snsTargets = (rule.Targets || []).filter(target => target.Arn.includes(':sns:'));
+                const snsTargets = rule.SNSTargets || []; // USAR NUEVOS DETALLES COMPLETOS
                 
                 diagramHtml += `
                     <div class="bg-purple-100 border border-purple-300 rounded p-3">
@@ -173,6 +241,11 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
                         </div>`;
                     });
                     diagramHtml += `</div>`;
+                }
+
+                // AGREGAR DETALLES COMPLETOS DE SNS
+                if (snsTargets.length > 0) {
+                    diagramHtml += renderSNSDetails(snsTargets, 'eventbridge_independent');
                 }
 
                 diagramHtml += `</div>`;
@@ -281,7 +354,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
             diagramHtml += '<div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-center"><p class="text-xs text-gray-400">No S3 destination</p></div>';
         }
 
-        // CloudWatch Destination (VERSIÓN COMPLETA RESTAURADA)
+        // CloudWatch Destination (sin cambios - ya funciona bien)
         if (trail.CloudWatchDestination) {
             const cw = trail.CloudWatchDestination;
             diagramHtml += `
@@ -331,7 +404,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
                                </p>`;
                            }
                            
-                           // Mostrar SNS Topics y subscriptions - PARTE RESTAURADA
+                           // Mostrar SNS Topics y subscriptions
                            if (snsTopics && snsTopics.length > 0) {
                                snsTopics.forEach(snsDetail => {
                                    diagramHtml += `<div class="ml-4 mt-2 p-2 bg-green-50 border border-green-200 rounded">
@@ -399,7 +472,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
 
         diagramHtml += `</div>`; // Cierra grid
 
-        // EventBridge S3 section (si hay)
+        // EventBridge S3 section (MODIFICADA)
         if (hasS3EventBridgeFlow) {
             const eb = trail.EventBridgeFlow;
             diagramHtml += `
@@ -411,6 +484,8 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
             `;
 
             eb.Rules.forEach(rule => {
+                const ruleSNSTargets = rule.SNSTargets || []; // USAR DETALLES COMPLETOS
+                
                 diagramHtml += `
                     <div class="bg-orange-100 border border-orange-300 rounded p-3">
                         <p class="font-semibold text-gray-800 text-sm">Rule: ${rule.Name}</p>
@@ -432,31 +507,13 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
                     diagramHtml += `</div>`;
                 }
 
+                // AGREGAR DETALLES COMPLETOS DE SNS PARA S3 EVENTBRIDGE TAMBIÉN
+                if (ruleSNSTargets.length > 0) {
+                    diagramHtml += renderSNSDetails(ruleSNSTargets, 'eventbridge_s3');
+                }
+
                 diagramHtml += `</div>`;
             });
-
-            // Mostrar SNS finales si los hay
-            if (eb.SNSNotifications && eb.SNSNotifications.length > 0) {
-                diagramHtml += `
-                    <div class="mt-4 p-3 bg-green-100 border border-green-300 rounded">
-                        <h5 class="font-semibold text-sm text-green-800 mb-2">
-                            Final SNS Notifications (${eb.SNSNotifications.length})
-                        </h5>
-                        <div class="space-y-1">
-                `;
-
-                eb.SNSNotifications.forEach(sns => {
-                    const topicName = sns.TopicArn.split(':').pop();
-                    diagramHtml += `
-                        <div class="text-xs text-gray-700">
-                            <span class="font-medium">${topicName}</span>
-                            <span class="text-gray-500 ml-2">(via ${sns.RuleName})</span>
-                        </div>
-                    `;
-                });
-
-                diagramHtml += `</div></div>`;
-            }
 
             diagramHtml += `</div></div>`;
         }
