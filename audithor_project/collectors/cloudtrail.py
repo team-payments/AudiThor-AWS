@@ -191,10 +191,11 @@ def lookup_cloudtrail_events(session, region, event_name, start_time, end_time):
     
     return {"events": found_events}
 
+
 def run_trailguard_analysis(session, trails_list):
     """
-    Analyzes CloudTrail configurations to map the data flow for each trail.
-    Incluye análisis determinístico de EventBridge.
+    Analiza CloudTrail configurations para mapear el flujo de datos.
+    CORREGIDO: Ahora incluye análisis de EventBridge para eventos de CloudTrail.
     """
     all_trails_flow = []
     
@@ -209,10 +210,11 @@ def run_trailguard_analysis(session, trails_list):
             "Region": region,
             "S3Destination": None,
             "CloudWatchDestination": None,
-            "EventBridgeFlow": None  # NUEVO
+            "EventBridgeFlow": None,
+            "DirectCloudTrailEventBridge": None  # NUEVO
         }
 
-        # --- 1. Analyze S3 Destination ---
+        # --- 1. Analyze S3 Destination (código original S3) ---
         if trail.get("S3BucketName"):
             bucket_name = trail["S3BucketName"]
             s3_dest = {"BucketName": bucket_name, "Notifications": []}
@@ -232,12 +234,11 @@ def run_trailguard_analysis(session, trails_list):
             
             flow_data["S3Destination"] = s3_dest
             
-            # --- NUEVO: Verificar EventBridge ---
+            # Verificar EventBridge para S3 (código original)
             eventbridge_config = check_s3_eventbridge_configuration(session, bucket_name, region)
             
             if eventbridge_config["enabled"]:
                 eventbridge_rules = find_eventbridge_rules_for_s3_bucket(session, bucket_name, region)
-                
                 sns_notifications = []
                 for rule in eventbridge_rules:
                     sns_targets = find_sns_targets_in_rule(rule)
@@ -255,7 +256,30 @@ def run_trailguard_analysis(session, trails_list):
                     "Reason": "EventBridge not enabled for S3 bucket"
                 }
 
-        # --- 2. Analyze CloudWatch Logs Destination ---
+        # --- NUEVO: 2. Analyze Direct CloudTrail → EventBridge ---
+        print(f"[DEBUG] Checking CloudTrail EventBridge for trail: {trail.get('Name')} in region: {region}")
+        cloudtrail_eb_config = check_cloudtrail_eventbridge_configuration(session, trail.get("Name"), region)
+        
+        if cloudtrail_eb_config["enabled"]:
+            cloudtrail_rules = cloudtrail_eb_config.get("rules", [])
+            cloudtrail_sns_targets = find_cloudtrail_sns_targets_in_rules(cloudtrail_rules)
+            
+            flow_data["DirectCloudTrailEventBridge"] = {
+                "CloudTrailEventBridgeEnabled": True,
+                "Rules": cloudtrail_rules,
+                "SNSTargets": cloudtrail_sns_targets,
+                "CompleteFlow": len(cloudtrail_sns_targets) > 0,
+                "FlowType": "CloudTrail → EventBridge → SNS"
+            }
+            print(f"[DEBUG] ✓ Found {len(cloudtrail_rules)} CloudTrail EventBridge rules with {len(cloudtrail_sns_targets)} SNS targets")
+        else:
+            flow_data["DirectCloudTrailEventBridge"] = {
+                "CloudTrailEventBridgeEnabled": False,
+                "Reason": cloudtrail_eb_config.get("method", "No CloudTrail EventBridge rules found")
+            }
+            print(f"[DEBUG] ✗ No CloudTrail EventBridge rules found: {cloudtrail_eb_config.get('method')}")
+
+        # --- 3. Analyze CloudWatch Logs Destination (sin cambios) ---
         if trail.get("CloudWatchLogsLogGroupArn"):
             log_group_arn = trail["CloudWatchLogsLogGroupArn"]
             log_group_name = log_group_arn.split(':')[6]
@@ -272,7 +296,6 @@ def run_trailguard_analysis(session, trails_list):
         all_trails_flow.append(flow_data)
             
     return all_trails_flow
-
 
 
 def check_s3_eventbridge_configuration(session, bucket_name, region):
@@ -447,3 +470,133 @@ def find_sns_targets_in_rule(rule):
     except ClientError as e:
         print(f"Error getting alarm SNS details for {alarm_name}: {str(e)}")  # Debug
         return None
+    
+
+def check_cloudtrail_eventbridge_configuration(session, trail_name, region):
+    """
+    Verifica si hay reglas de EventBridge que procesen eventos de CloudTrail.
+    MODIFICADO: Busca en todas las regiones, no solo en la región del trail.
+    """
+    try:
+        # Obtener todas las regiones disponibles
+        from .utils import get_all_aws_regions
+        all_regions = get_all_aws_regions(session)
+        
+        print(f"[DEBUG] Searching EventBridge rules for CloudTrail events across ALL regions")
+        
+        all_cloudtrail_rules = []
+        
+        # Buscar en todas las regiones
+        for search_region in all_regions:
+            try:
+                events_client = session.client('events', region_name=search_region)
+                print(f"[DEBUG] Checking region: {search_region}")
+                
+                paginator = events_client.get_paginator('list_rules')
+                
+                for page in paginator.paginate():
+                    for rule in page.get('Rules', []):
+                        if rule.get('State') == 'ENABLED':
+                            try:
+                                rule_detail = events_client.describe_rule(Name=rule['Name'])
+                                event_pattern = rule_detail.get('EventPattern')
+                                
+                                if event_pattern and is_rule_for_cloudtrail_events(event_pattern):
+                                    targets_response = events_client.list_targets_by_rule(Rule=rule['Name'])
+                                    
+                                    rule_info = {
+                                        "Name": rule['Name'],
+                                        "EventPattern": event_pattern,
+                                        "Targets": targets_response.get('Targets', []),
+                                        "Description": rule_detail.get('Description', ''),
+                                        "Arn": rule_detail.get('Arn', ''),
+                                        "Region": search_region  # NUEVO: incluir región
+                                    }
+                                    all_cloudtrail_rules.append(rule_info)
+                                    
+                                    print(f"[DEBUG] ✓ Found CloudTrail rule: {rule['Name']} in region {search_region}")
+                                    
+                            except ClientError as e:
+                                print(f"[DEBUG] Error checking rule {rule['Name']} in {search_region}: {e}")
+                                continue
+                                
+            except ClientError as e:
+                print(f"[DEBUG] Error accessing EventBridge in region {search_region}: {e}")
+                continue
+        
+        if all_cloudtrail_rules:
+            return {
+                "enabled": True, 
+                "method": "multi_region_cloudtrail_eventbridge",
+                "rules": all_cloudtrail_rules
+            }
+        else:
+            return {
+                "enabled": False, 
+                "method": "no_cloudtrail_rules_in_any_region"
+            }
+        
+    except Exception as e:
+        print(f"[DEBUG] Error in multi-region CloudTrail EventBridge check: {e}")
+        return {"enabled": False, "method": "error"}
+
+def is_rule_for_cloudtrail_events(event_pattern):
+    """
+    Verifica si una regla procesa eventos de CloudTrail.
+    """
+    try:
+        import json
+        
+        # Parsear el event pattern si es string
+        if isinstance(event_pattern, str):
+            pattern = json.loads(event_pattern)
+        else:
+            pattern = event_pattern
+            
+        print(f"[DEBUG] Checking CloudTrail pattern: {pattern}")
+        
+        # 1. Verificar si es un evento de CloudTrail
+        source = pattern.get('source', [])
+        if isinstance(source, list):
+            is_cloudtrail_event = 'aws.cloudtrail' in source
+        else:
+            is_cloudtrail_event = source == 'aws.cloudtrail'
+            
+        if not is_cloudtrail_event:
+            print(f"[DEBUG] Not a CloudTrail event. Source: {source}")
+            return False
+        
+        # 2. Verificar detail-type para CloudTrail
+        detail_type = pattern.get('detail-type', [])
+        if isinstance(detail_type, list):
+            has_cloudtrail_detail = 'AWS API Call via CloudTrail' in detail_type
+        else:
+            has_cloudtrail_detail = detail_type == 'AWS API Call via CloudTrail'
+            
+        print(f"[DEBUG] CloudTrail event: {is_cloudtrail_event}, Has detail-type: {has_cloudtrail_detail}")
+        
+        return is_cloudtrail_event and has_cloudtrail_detail
+        
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"[DEBUG] Error parsing CloudTrail event pattern: {e}")
+        return False
+
+
+def find_cloudtrail_sns_targets_in_rules(rules):
+    """
+    Encuentra targets SNS en reglas de EventBridge para CloudTrail.
+    """
+    sns_targets = []
+    
+    for rule in rules:
+        rule_name = rule.get('Name', 'Unknown')
+        for target in rule.get('Targets', []):
+            target_arn = target.get('Arn', '')
+            if ':sns:' in target_arn:
+                sns_targets.append({
+                    "TopicArn": target_arn,
+                    "TargetId": target.get('Id'),
+                    "RuleName": rule_name
+                })
+    
+    return sns_targets

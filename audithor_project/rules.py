@@ -1107,6 +1107,28 @@ def check_root_mfa_not_hardware(audit_data):
     
     return failing_resources
 
+def check_s3_public_buckets(audit_data):
+    """
+    Verifica si existen buckets de S3 que son públicamente accesibles.
+    """
+    failing_resources = []
+    
+    # Obtener los datos de exposición donde están los buckets públicos
+    exposure_data = audit_data.get("exposure", {})
+    
+    # Los buckets públicos están en exposure_data["details"]["S3 Public Buckets"]
+    s3_public_buckets = exposure_data.get("details", {}).get("S3 Public Buckets", {})
+    
+    # Iterar sobre todas las regiones que contengan buckets públicos
+    for region, buckets in s3_public_buckets.items():
+        for bucket_name in buckets:
+            failing_resources.append({
+                "resource": bucket_name,
+                "region": "Global"  # S3 es un servicio global, aunque técnicamente los buckets tienen región
+            })
+    
+    return failing_resources
+
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -1552,5 +1574,14 @@ RULES_TO_CHECK = [
         "description": "A Lambda function is using an IAM role that has been identified as privileged (e.g., AdministratorAccess). This grants excessive permissions to the function. If the Lambda code has a vulnerability, it could be exploited by an attacker to gain extensive control over your AWS account.",
         "remediation": "Create a new, dedicated IAM role for the Lambda function following the principle of least privilege. Grant only the specific permissions the function needs to perform its task. Avoid using broad, administrative policies for Lambda execution roles.",
         "check_function": check_lambda_using_privileged_role
+    },
+    {
+        "rule_id": "S3_001",
+        "section": "Internet Exposure",
+        "name": "S3 bucket with public access",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An S3 bucket has been detected that allows public access via ACLs or bucket policies. This exposes the bucket contents to the internet, potentially allowing unauthorized users to read, and in some cases modify, the stored data. Public S3 buckets represent a significant security risk as they can lead to data breaches if sensitive information is inadvertently stored without proper access controls.",
+        "remediation": "Navigate to the S3 console, select the affected bucket, and review its permissions. Enable 'Block all public access' in the bucket's permissions tab unless public access is absolutely necessary. If public access is required, ensure that only the specific objects that need to be public are accessible, and consider using CloudFront for better control over content distribution.",
+        "check_function": check_s3_public_buckets
     }
 ]

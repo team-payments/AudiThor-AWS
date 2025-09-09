@@ -83,40 +83,150 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
     }
 
     let diagramHtml = '<div class="space-y-8">';
-
+    
+    // Recopilar todas las reglas de EventBridge por región (evitar duplicados)
+    const eventBridgeRulesByRegion = {};
     trailFlows.forEach(trail => {
+        if (trail.DirectCloudTrailEventBridge && trail.DirectCloudTrailEventBridge.CloudTrailEventBridgeEnabled) {
+            const rules = trail.DirectCloudTrailEventBridge.Rules || [];
+            rules.forEach(rule => {
+                const region = rule.Region || trail.Region;
+                if (!eventBridgeRulesByRegion[region]) {
+                    eventBridgeRulesByRegion[region] = [];
+                }
+                // Evitar duplicados por nombre de regla
+                const ruleExists = eventBridgeRulesByRegion[region].some(existingRule => existingRule.Name === rule.Name);
+                if (!ruleExists) {
+                    eventBridgeRulesByRegion[region].push(rule);
+                }
+            });
+        }
+    });
+
+    // SECCIÓN 1: REGLAS EVENTBRIDGE (INDEPENDIENTES)
+    const hasAnyEventBridgeRules = Object.keys(eventBridgeRulesByRegion).length > 0;
+    
+    if (hasAnyEventBridgeRules) {
         diagramHtml += `
         <div class="bg-white border border-gray-200 rounded-xl shadow-md">
-            <div class="bg-gray-50 p-3 border-b border-gray-200 rounded-t-xl">
-                <h3 class="text-lg font-bold text-[#204071]">${trail.TrailName}</h3>
-                <p class="text-sm text-gray-500 font-mono">${trail.Region} | ${trail.TrailArn}</p>
+            <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 border-b border-gray-200 rounded-t-xl">
+                <h3 class="text-xl font-bold text-[#204071]">EventBridge Rules (Independent)</h3>
+                <p class="text-sm text-gray-600 mt-1">Regional rules that process CloudTrail events in real-time, independent of trail configurations</p>
             </div>
             <div class="p-4">
         `;
 
-        // Determinar si hay flujo EventBridge
-        const hasEventBridgeFlow = trail.EventBridgeFlow && trail.EventBridgeFlow.S3EventBridgeEnabled;
-        const hasCompleteFlow = hasEventBridgeFlow && trail.EventBridgeFlow.CompleteFlow;
+        // Mostrar reglas por región
+        Object.entries(eventBridgeRulesByRegion).forEach(([region, rules]) => {
+            const totalSNSTargets = rules.reduce((acc, rule) => {
+                const snsTargets = (rule.Targets || []).filter(target => target.Arn.includes(':sns:')).length;
+                return acc + snsTargets;
+            }, 0);
 
-        // Indicador de estado del flujo
-        if (hasCompleteFlow) {
             diagramHtml += `
-                <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div class="flex items-center space-x-2">
-                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <span class="text-green-800 font-semibold text-sm">Complete Alert Flow</span>
+                <div class="mb-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-lg font-semibold text-purple-800">
+                            Region: ${region} (${rules.length} rules)
+                        </h4>
+                        ${totalSNSTargets > 0 ? 
+                            `<div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span class="text-green-700 text-sm font-medium">Alert Flow Active</span>
+                            </div>` :
+                            `<div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                <span class="text-yellow-700 text-sm font-medium">No SNS Configured</span>
+                            </div>`
+                        }
                     </div>
-                    <p class="text-green-700 text-xs mt-1">CloudTrail → S3 → EventBridge → SNS</p>
+                    
+                    <div class="space-y-3">
+            `;
+
+            rules.forEach(rule => {
+                const snsTargets = (rule.Targets || []).filter(target => target.Arn.includes(':sns:'));
+                
+                diagramHtml += `
+                    <div class="bg-purple-100 border border-purple-300 rounded p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="font-semibold text-gray-800 text-sm">Rule: ${rule.Name}</p>
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">CloudTrail Events</span>
+                        </div>
+                        <p class="text-gray-600 text-xs mb-2">Processes CloudTrail API events in real-time</p>
+                `;
+
+                if (rule.Targets && rule.Targets.length > 0) {
+                    diagramHtml += `<div class="mt-2 space-y-1">`;
+                    rule.Targets.forEach(target => {
+                        const arn = target.Arn;
+                        const targetType = arn.includes(':lambda:') ? 'Lambda' :
+                                         arn.includes(':sqs:') ? 'SQS' :
+                                         arn.includes(':sns:') ? 'SNS' : 'Other';
+                        const targetName = arn.split(':').pop();
+                        const dotColor = targetType === 'SNS' ? 'bg-green-400' : 
+                                        targetType === 'Lambda' ? 'bg-blue-400' : 'bg-gray-400';
+                        
+                        diagramHtml += `<div class="pl-3 text-xs text-gray-700 flex items-center">
+                            <span class="inline-block w-2 h-2 rounded-full ${dotColor} mr-2"></span>
+                            ${targetType}: ${targetName}
+                        </div>`;
+                    });
+                    diagramHtml += `</div>`;
+                }
+
+                diagramHtml += `</div>`;
+            });
+
+            diagramHtml += `</div></div>`;
+        });
+
+        diagramHtml += `</div></div>`;
+    }
+
+    // SECCIÓN 2: CONFIGURACIÓN DE TRAILS CLOUDTRAIL
+    diagramHtml += `
+    <div class="bg-white border border-gray-200 rounded-xl shadow-md">
+        <div class="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 border-b border-gray-200 rounded-t-xl">
+            <h3 class="text-xl font-bold text-[#204071]">CloudTrail Configuration Flow</h3>
+            <p class="text-sm text-gray-600 mt-1">Trail configurations showing where CloudTrail logs are stored and processed</p>
+        </div>
+        <div class="p-4 space-y-6">
+    `;
+
+    // Mostrar cada trail
+    trailFlows.forEach(trail => {
+        // Determinar si hay flujo tradicional EventBridge (S3)
+        const hasS3EventBridgeFlow = trail.EventBridgeFlow && trail.EventBridgeFlow.S3EventBridgeEnabled;
+        const hasCompleteS3Flow = hasS3EventBridgeFlow && trail.EventBridgeFlow.CompleteFlow;
+
+        diagramHtml += `
+            <div class="bg-gray-50 border border-gray-300 rounded-lg p-4">
+                <div class="mb-4">
+                    <h4 class="text-lg font-semibold text-[#204071]">${trail.TrailName}</h4>
+                    <p class="text-sm text-gray-500 font-mono">${trail.Region} | ${trail.TrailArn}</p>
+                </div>
+        `;
+
+        // Indicador de estado del flujo para el trail
+        if (hasCompleteS3Flow) {
+            diagramHtml += `
+                <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <span class="text-blue-800 font-semibold text-sm">S3 EventBridge Flow Active</span>
+                    </div>
+                    <p class="text-blue-700 text-xs mt-1">Trail → S3 → EventBridge → SNS</p>
                 </div>
             `;
-        } else if (hasEventBridgeFlow) {
+        } else if (hasS3EventBridgeFlow) {
             diagramHtml += `
                 <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <div class="flex items-center space-x-2">
                         <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                        <span class="text-yellow-800 font-semibold text-sm">Partial EventBridge Flow</span>
+                        <span class="text-yellow-800 font-semibold text-sm">Partial S3 EventBridge Flow</span>
                     </div>
-                    <p class="text-yellow-700 text-xs mt-1">CloudTrail → S3 → EventBridge (no SNS)</p>
+                    <p class="text-yellow-700 text-xs mt-1">Trail → S3 → EventBridge (no SNS configured)</p>
                 </div>
             `;
         } else {
@@ -124,14 +234,14 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
                 <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                     <div class="flex items-center space-x-2">
                         <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
-                        <span class="text-gray-600 font-semibold text-sm">Traditional Flow Only</span>
+                        <span class="text-gray-600 font-semibold text-sm">Basic Trail Logging</span>
                     </div>
-                    <p class="text-gray-500 text-xs mt-1">S3 notifications only</p>
+                    <p class="text-gray-500 text-xs mt-1">Standard trail configuration without EventBridge</p>
                 </div>
             `;
         }
 
-        // Grid de destinos principales
+        // Grid de destinos (S3 y CloudWatch)
         diagramHtml += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">`;
 
         // S3 Destination
@@ -145,10 +255,10 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
                 <div class="space-y-2 flex-grow">
             `;
 
-            // EventBridge habilitado
-            if (hasEventBridgeFlow) {
+            // EventBridge habilitado para S3
+            if (hasS3EventBridgeFlow) {
                 diagramHtml += `<div class="bg-orange-100 border border-orange-300 p-2 rounded-md text-xs">
-                    <p class="font-semibold text-orange-800">EventBridge Enabled</p>
+                    <p class="font-semibold text-orange-800">S3 EventBridge Enabled</p>
                     <p class="text-gray-600">S3 events sent to EventBridge</p>
                 </div>`;
             }
@@ -162,7 +272,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
                         </p>
                     </div>`;
                 });
-            } else if (!hasEventBridgeFlow) {
+            } else if (!hasS3EventBridgeFlow) {
                 diagramHtml += '<p class="text-center text-xs text-gray-400 py-4">No notifications configured</p>';
             }
 
@@ -171,7 +281,7 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
             diagramHtml += '<div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-center"><p class="text-xs text-gray-400">No S3 destination</p></div>';
         }
 
-        // CloudWatch Destination - SECCIÓN ACTUALIZADA CON SNS DETAILS
+        // CloudWatch Destination (VERSIÓN COMPLETA RESTAURADA)
         if (trail.CloudWatchDestination) {
             const cw = trail.CloudWatchDestination;
             diagramHtml += `
@@ -195,109 +305,107 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
             }
             
             if (cw.MetricFilters && cw.MetricFilters.length > 0) {
-                 diagramHtml += '<hr class="my-2 border-purple-200">';
-                 cw.MetricFilters.forEach(mf => {
-                    diagramHtml += `<div class="bg-purple-100 border border-purple-300 p-2 rounded-md text-xs mb-2">
-                        <p class="font-semibold text-gray-800 truncate" title="${mf.FilterName}">
-                            Metric Filter: ${mf.FilterName}
-                        </p>`;
-                    
-                    if (mf.Alarms && mf.Alarms.length > 0) {
-                        mf.Alarms.forEach(alarm => {
-                            // Manejar tanto el formato antiguo (string) como el nuevo (objeto)
-                            const alarmName = typeof alarm === 'string' ? alarm : alarm.AlarmName;
-                            const alarmState = typeof alarm === 'object' ? alarm.State : 'UNKNOWN';
-                            const snsTopics = typeof alarm === 'object' ? alarm.SNSTopics : [];
-                            
-                            diagramHtml += `<div class="pl-3 mt-2 border-l-2 border-purple-400">
-                                <p class="text-gray-700 font-medium truncate" title="${alarmName}">
-                                    Alarm: ${alarmName}
-                                </p>`;
-                            
-                            // Mostrar estado de la alarma (solo si tenemos el objeto completo)
-                            if (typeof alarm === 'object') {
-                                const stateColor = alarmState === 'OK' ? 'text-green-600' : 
-                                                 alarmState === 'ALARM' ? 'text-red-600' : 'text-yellow-600';
-                                diagramHtml += `<p class="text-xs ${stateColor} ml-2">
-                                    State: ${alarmState}
-                                </p>`;
-                            }
-                            
-                            // NUEVO: Mostrar SNS Topics y subscriptions
-                            if (snsTopics && snsTopics.length > 0) {
-                                snsTopics.forEach(snsDetail => {
-                                    diagramHtml += `<div class="ml-4 mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                                        <p class="text-xs font-semibold text-green-800">
-                                            SNS Topic: ${snsDetail.TopicName}
-                                        </p>`;
-                                    
-                                    if (snsDetail.DisplayName && snsDetail.DisplayName !== snsDetail.TopicName) {
-                                        diagramHtml += `<p class="text-xs text-gray-600 italic">
-                                            Display Name: ${snsDetail.DisplayName}
-                                        </p>`;
-                                    }
-                                    
-                                    if (snsDetail.Subscriptions && snsDetail.Subscriptions.length > 0) {
-                                        diagramHtml += `<div class="mt-2 space-y-1">
-                                            <p class="text-xs font-medium text-gray-700">
-                                                Subscriptions (${snsDetail.SubscriptionCount}):
-                                            </p>`;
-                                        
-                                        snsDetail.Subscriptions.forEach(subscription => {
-                                            const statusColor = subscription.Status === 'Confirmed' ? 'text-green-600' : 'text-orange-600';
-                                            
-                                            diagramHtml += `<div class="ml-2 text-xs">
-                                                <span class="font-mono bg-gray-100 px-1 rounded">
-                                                    ${subscription.Protocol}
-                                                </span>
-                                                <span class="ml-1 text-gray-700">${subscription.Endpoint}</span>
-                                                <span class="ml-1 ${statusColor} font-medium">
-                                                    (${subscription.Status})
-                                                </span>
-                                            </div>`;
-                                        });
-                                        
-                                        diagramHtml += `</div>`;
-                                    } else {
-                                        diagramHtml += `<p class="text-xs text-gray-500 mt-1 italic">
-                                            No subscriptions or unable to retrieve
-                                        </p>`;
-                                    }
-                                    
-                                    if (snsDetail.Error) {
-                                        diagramHtml += `<p class="text-xs text-red-600 mt-1">
-                                            Error: ${snsDetail.Error}
-                                        </p>`;
-                                    }
-                                    
-                                    diagramHtml += `</div>`;
-                                });
-                            } else {
-                                diagramHtml += `<p class="text-xs text-gray-500 ml-4 mt-1 italic">
-                                    No SNS actions configured
-                                </p>`;
-                            }
-                            
-                            diagramHtml += `</div>`;
-                        });
-                    }
-                    diagramHtml += `</div>`;
-                 });
-            }
-            diagramHtml += `</div></div>`;
+                diagramHtml += '<hr class="my-2 border-purple-200">';
+                cw.MetricFilters.forEach(mf => {
+                   diagramHtml += `<div class="bg-purple-100 border border-purple-300 p-2 rounded-md text-xs mb-2">
+                       <p class="font-semibold text-gray-800 truncate" title="${mf.FilterName}">
+                           Metric Filter: ${mf.FilterName}
+                       </p>`;
+                   
+                   if (mf.Alarms && mf.Alarms.length > 0) {
+                       mf.Alarms.forEach(alarm => {
+                           const alarmName = typeof alarm === 'string' ? alarm : alarm.AlarmName;
+                           const alarmState = typeof alarm === 'object' ? alarm.State : 'UNKNOWN';
+                           const snsTopics = typeof alarm === 'object' ? alarm.SNSTopics : [];
+                           
+                           diagramHtml += `<div class="pl-3 mt-2 border-l-2 border-purple-400">
+                               <p class="text-gray-700 font-medium truncate" title="${alarmName}">
+                                   Alarm: ${alarmName}
+                               </p>`;
+                           
+                           if (typeof alarm === 'object') {
+                               const stateColor = alarmState === 'OK' ? 'text-green-600' : 
+                                                alarmState === 'ALARM' ? 'text-red-600' : 'text-yellow-600';
+                               diagramHtml += `<p class="text-xs ${stateColor} ml-2">
+                                   State: ${alarmState}
+                               </p>`;
+                           }
+                           
+                           // Mostrar SNS Topics y subscriptions - PARTE RESTAURADA
+                           if (snsTopics && snsTopics.length > 0) {
+                               snsTopics.forEach(snsDetail => {
+                                   diagramHtml += `<div class="ml-4 mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                                       <p class="text-xs font-semibold text-green-800">
+                                           SNS Topic: ${snsDetail.TopicName}
+                                       </p>`;
+                                   
+                                   if (snsDetail.DisplayName && snsDetail.DisplayName !== snsDetail.TopicName) {
+                                       diagramHtml += `<p class="text-xs text-gray-600 italic">
+                                           Display Name: ${snsDetail.DisplayName}
+                                       </p>`;
+                                   }
+                                   
+                                   if (snsDetail.Subscriptions && snsDetail.Subscriptions.length > 0) {
+                                       diagramHtml += `<div class="mt-2 space-y-1">
+                                           <p class="text-xs font-medium text-gray-700">
+                                               Subscriptions (${snsDetail.SubscriptionCount}):
+                                           </p>`;
+                                       
+                                       snsDetail.Subscriptions.forEach(subscription => {
+                                           const statusColor = subscription.Status === 'Confirmed' ? 'text-green-600' : 'text-orange-600';
+                                           
+                                           diagramHtml += `<div class="ml-2 text-xs">
+                                               <span class="font-mono bg-gray-100 px-1 rounded">
+                                                   ${subscription.Protocol}
+                                               </span>
+                                               <span class="ml-1 text-gray-700">${subscription.Endpoint}</span>
+                                               <span class="ml-1 ${statusColor} font-medium">
+                                                   (${subscription.Status})
+                                               </span>
+                                           </div>`;
+                                       });
+                                       
+                                       diagramHtml += `</div>`;
+                                   } else {
+                                       diagramHtml += `<p class="text-xs text-gray-500 mt-1 italic">
+                                           No subscriptions or unable to retrieve
+                                       </p>`;
+                                   }
+                                   
+                                   if (snsDetail.Error) {
+                                       diagramHtml += `<p class="text-xs text-red-600 mt-1">
+                                           Error: ${snsDetail.Error}
+                                       </p>`;
+                                   }
+                                   
+                                   diagramHtml += `</div>`;
+                               });
+                           } else {
+                               diagramHtml += `<p class="text-xs text-gray-500 ml-4 mt-1 italic">
+                                   No SNS actions configured
+                               </p>`;
+                           }
+                           
+                           diagramHtml += `</div>`;
+                       });
+                   }
+                   diagramHtml += `</div>`;
+                });
+           }
+           diagramHtml += `</div></div>`;
         } else {
             diagramHtml += '<div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-center"><p class="text-xs text-gray-400">No CloudWatch destination</p></div>';
         }
 
-        diagramHtml += `</div>`; // Cierra grid principal
+        diagramHtml += `</div>`; // Cierra grid
 
-        // EventBridge section (si hay)
-        if (hasEventBridgeFlow) {
+        // EventBridge S3 section (si hay)
+        if (hasS3EventBridgeFlow) {
             const eb = trail.EventBridgeFlow;
             diagramHtml += `
                 <div class="mt-6 bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <h4 class="text-md font-semibold text-orange-800 mb-3">
-                        EventBridge Processing (${eb.Rules.length} rules)
+                        S3 EventBridge Processing (${eb.Rules.length} rules)
                     </h4>
                     <div class="space-y-2">
             `;
@@ -353,15 +461,17 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
             diagramHtml += `</div></div>`;
         }
 
-        diagramHtml += `</div></div></div>`; // Cierra contenedor del trail
+        diagramHtml += `</div>`; // Cierra contenedor del trail
     });
 
-    diagramHtml += '</div>';
+    diagramHtml += `</div></div>`; // Cierra sección de trails
 
-    // Footer actualizado con formato original
+    diagramHtml += '</div>'; // Cierra contenedor principal
+
+    // Footer
     const footerHtml = `
         <div class="mt-8 text-center text-xs text-gray-400">
-            <p>Enhanced TrailGuard analysis with deterministic EventBridge flow detection and complete SNS chain visibility.</p>
+            <p>Enhanced TrailGuard analysis showing independent EventBridge rules and CloudTrail configuration flows.</p>
             <p class="mt-1">Inspired by <a href="https://github.com/adanalvarez/TrailGuard" target="_blank" class="text-blue-400 hover:underline">adanalvarez/TrailGuard</a>.</p>
         </div>
     `;
@@ -369,7 +479,6 @@ const renderCloudtrailFlowDiagram = (trailFlows) => {
 
     return diagramHtml;
 };
-
 
 const createCloudtrailSummaryCardsHtml = () => `
     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-5 mb-8">
