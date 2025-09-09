@@ -33,12 +33,57 @@ export const buildHealthyStatusView = () => {
 
         <div id="healthy-status-tab-content-container">
             <div id="hs-findings-content" class="healthy-status-tab-content">
-                <div class="mb-4">
-                    <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700">Filter by Region:</label>
-                    <select id="healthy-status-region-filter" class="mt-1 block w-full md:w-96 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] sm:text-sm rounded-md">
-                        <option value="all">All Regions</option>
-                    </select>
+                <!-- Filtros Mejorados -->
+                <div class="bg-white p-4 rounded-xl border border-gray-200 mb-6">
+                    <h3 class="text-sm font-semibold text-gray-800 mb-3">Filter Options</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700 mb-1">Region:</label>
+                            <select id="healthy-status-region-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                                <option value="all">All Regions</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="healthy-status-severity-filter" class="block text-sm font-medium text-gray-700 mb-1">Severity:</label>
+                            <select id="healthy-status-severity-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                                <option value="all">All Severities</option>
+                                <option value="Crítico">Critical</option>
+                                <option value="Alto">High</option>
+                                <option value="Medio">Medium</option>
+                                <option value="Bajo">Low</option>
+                                <option value="Informativo">Info</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="healthy-status-section-filter" class="block text-sm font-medium text-gray-700 mb-1">Section:</label>
+                            <select id="healthy-status-section-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                                <option value="all">All Sections</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="healthy-status-impact-filter" class="block text-sm font-medium text-gray-700 mb-1">Impact Type:</label>
+                            <select id="healthy-status-impact-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                                <option value="all">All Impact Types</option>
+                                <option value="compliance">Compliance Risk</option>
+                                <option value="data_breach">Data Breach Risk</option>
+                                <option value="operational">Operational Risk</option>
+                                <option value="access_control">Access Control Risk</option>
+                                <option value="monitoring">Monitoring Gap</option>
+                                <option value="encryption">Encryption Issue</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón de reset -->
+                    <div class="mt-3 flex justify-between items-center">
+                        <button id="reset-filters-btn" class="text-sm text-[#eb3496] hover:text-[#d42c86] font-medium">Reset All Filters</button>
+                        <div id="findings-count-display" class="text-sm text-gray-600"></div>
+                    </div>
                 </div>
+
                 <div id="healthy-status-container">
                     <div class="text-center py-16 bg-white rounded-lg">
                         <h3 class="mt-2 text-lg font-medium text-[#204071]">Waiting for analysis</h3>
@@ -56,8 +101,174 @@ export const buildHealthyStatusView = () => {
         tabsNav.addEventListener('click', handleTabClick(tabsNav, '.healthy-status-tab-content'));
     }
     
+    // Setup filter event listeners
+    setupFilterEventListeners();
+    
     // Build the report view immediately after creating the container
     buildGeminiReportView();
+};
+
+// --- FILTER SETUP ---
+const setupFilterEventListeners = () => {
+    const regionFilter = document.getElementById('healthy-status-region-filter');
+    const severityFilter = document.getElementById('healthy-status-severity-filter');
+    const sectionFilter = document.getElementById('healthy-status-section-filter');
+    const impactFilter = document.getElementById('healthy-status-impact-filter');
+    const resetBtn = document.getElementById('reset-filters-btn');
+
+    // Función de debounce para evitar múltiples llamadas rápidas
+    let filterTimeout;
+    const debouncedApplyFilters = () => {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(applyFilters, 100);
+    };
+
+    // Add change listeners to all filters
+    [regionFilter, severityFilter, sectionFilter, impactFilter].forEach(filter => {
+        if (filter) {
+            // Remover listener existente si lo hay
+            filter.removeEventListener('change', debouncedApplyFilters);
+            // Agregar nuevo listener
+            filter.addEventListener('change', debouncedApplyFilters);
+        }
+    });
+
+    // Reset filters button
+    if (resetBtn) {
+        resetBtn.removeEventListener('click', resetAllFilters);
+        resetBtn.addEventListener('click', resetAllFilters);
+    }
+};
+
+const resetAllFilters = () => {
+    const filters = [
+        'healthy-status-region-filter', 
+        'healthy-status-severity-filter', 
+        'healthy-status-section-filter', 
+        'healthy-status-impact-filter'
+    ];
+    
+    filters.forEach(filterId => {
+        const filter = document.getElementById(filterId);
+        if (filter) {
+            filter.value = 'all';
+        }
+    });
+    
+    // Aplicar filtros inmediatamente (sin debounce para reset)
+    setTimeout(applyFilters, 50);
+};
+
+const applyFilters = () => {
+    const regionValue = document.getElementById('healthy-status-region-filter')?.value || 'all';
+    const severityValue = document.getElementById('healthy-status-severity-filter')?.value || 'all';
+    const sectionValue = document.getElementById('healthy-status-section-filter')?.value || 'all';
+    const impactValue = document.getElementById('healthy-status-impact-filter')?.value || 'all';
+
+    let filteredFindings = [...(window.lastHealthyStatusFindings || [])]; // Crear copia
+    
+    // Apply region filter con mejor manejo de estructuras
+    if (regionValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => {
+            const resources = finding.affected_resources || [];
+            if (resources.length === 0) return false;
+            
+            return resources.some(res => {
+                // Manejar tanto objetos como strings
+                if (typeof res === 'object' && res !== null) {
+                    const region = res.region || 'Global';
+                    return region === regionValue || region === 'Global';
+                } else if (typeof res === 'string') {
+                    // Si es string, asumimos que es Global a menos que especifique región
+                    return regionValue === 'Global';
+                }
+                return false;
+            });
+        });
+    }
+    
+    // Apply severity filter
+    if (severityValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            finding.severity === severityValue
+        );
+    }
+    
+    // Apply section filter
+    if (sectionValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            finding.section === sectionValue
+        );
+    }
+    
+    // Apply impact type filter
+    if (impactValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            classifyFindingImpact(finding) === impactValue
+        );
+    }
+    
+    // Update findings count
+    updateFindingsCount(filteredFindings.length, (window.lastHealthyStatusFindings || []).length);
+    
+    // Render filtered findings
+    renderHealthyStatusFindings(filteredFindings);
+};
+
+const updateFindingsCount = (filtered, total) => {
+    const countDisplay = document.getElementById('findings-count-display');
+    if (countDisplay) {
+        if (filtered === total) {
+            countDisplay.textContent = `Showing ${total} finding${total !== 1 ? 's' : ''}`;
+        } else {
+            countDisplay.textContent = `Showing ${filtered} of ${total} findings`;
+        }
+    }
+};
+
+// --- IMPACT CLASSIFICATION ---
+const classifyFindingImpact = (finding) => {
+    const name = (finding.name || '').toLowerCase();
+    const description = (finding.description || '').toLowerCase();
+    const section = (finding.section || '').toLowerCase();
+    const ruleId = (finding.rule_id || '').toLowerCase();
+
+    // Compliance patterns
+    if (ruleId.includes('pci') || name.includes('pci') || description.includes('pci') ||
+        name.includes('cis') || description.includes('compliance') || 
+        description.includes('standard') || description.includes('benchmark')) {
+        return 'compliance';
+    }
+
+    // Data breach risk patterns
+    if (name.includes('public') || name.includes('exposed') || name.includes('internet') ||
+        description.includes('public access') || description.includes('publicly accessible') ||
+        section.includes('internet exposure') || name.includes('unencrypted')) {
+        return 'data_breach';
+    }
+
+    // Access control patterns
+    if (section.includes('identity') || section.includes('access') || 
+        name.includes('mfa') || name.includes('password') || name.includes('policy') ||
+        name.includes('permission') || name.includes('role') || name.includes('user')) {
+        return 'access_control';
+    }
+
+    // Monitoring gaps
+    if (section.includes('logging') || section.includes('monitoring') || 
+        name.includes('cloudtrail') || name.includes('guardduty') || name.includes('log') ||
+        name.includes('disabled') || name.includes('not enabled')) {
+        return 'monitoring';
+    }
+
+    // Encryption issues
+    if (name.includes('encrypt') || name.includes('kms') || description.includes('encrypt') ||
+        section.includes('data protection')) {
+        return 'encryption';
+    }
+
+    // Default to operational risk
+    return 'operational';
 };
 
 // This function is also exported because it's called from the main app.js
@@ -227,7 +438,7 @@ export const check_healthy_status_rules = (auditData) => {
                 rule_id: "IAM_001",
                 section: "Identity & Access",
                 name: "User without MFA enabled",
-                severity: "HIGH",
+                severity: "Alto",
                 description: "IAM users without Multi-Factor Authentication (MFA) enabled pose a significant security risk.",
                 remediation: "Enable MFA for all IAM users, especially those with console access.",
                 affected_resources: noMfaUsers.map(name => ({ resource: name, region: 'Global' }))
@@ -245,7 +456,7 @@ export const check_healthy_status_rules = (auditData) => {
                 rule_id: "GUARDDUTY_001",
                 section: "Security Services",
                 name: "GuardDuty not enabled in some regions",
-                severity: "MEDIUM",
+                severity: "Medio",
                 description: "AWS GuardDuty provides threat detection but is not enabled in all regions.",
                 remediation: "Enable GuardDuty in all active AWS regions for comprehensive threat detection.",
                 affected_resources: disabledGuardDuty.map(region => ({ resource: 'GuardDuty Service', region }))
@@ -271,7 +482,7 @@ export const renderHealthyStatusFindings = (findings) => {
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div class="flex items-center justify-center text-green-600">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/></svg>
-                    <p class="text-center font-semibold text-lg">¡Congratulations! No findings were found for the selected region.</p>
+                    <p class="text-center font-semibold text-lg">¡Congratulations! No findings were found for the selected criteria.</p>
                 </div>
             </div>
         `;
@@ -279,17 +490,35 @@ export const renderHealthyStatusFindings = (findings) => {
     }
 
     // Sort findings by severity
-    const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4 };
+    const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 };
     const sortedFindings = [...findings].sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99));
 
     container.innerHTML = '';
     
     sortedFindings.forEach(finding => {
         let borderColor = 'border-gray-500';
-        if (finding.severity === 'Crítico') borderColor = 'border-red-600';
-        if (finding.severity === 'Alto') borderColor = 'border-red-500';
-        if (finding.severity === 'Medio') borderColor = 'border-yellow-500';
-        if (finding.severity === 'Bajo') borderColor = 'border-blue-500';
+        let severityBadgeColor = 'bg-gray-100 text-gray-800';
+        
+        if (finding.severity === 'Crítico') {
+            borderColor = 'border-red-600';
+            severityBadgeColor = 'bg-red-100 text-red-800';
+        }
+        if (finding.severity === 'Alto') {
+            borderColor = 'border-red-500';
+            severityBadgeColor = 'bg-red-100 text-red-800';
+        }
+        if (finding.severity === 'Medio') {
+            borderColor = 'border-yellow-500';
+            severityBadgeColor = 'bg-yellow-100 text-yellow-800';
+        }
+        if (finding.severity === 'Bajo') {
+            borderColor = 'border-blue-500';
+            severityBadgeColor = 'bg-blue-100 text-blue-800';
+        }
+        if (finding.severity === 'Informativo') {
+            borderColor = 'border-gray-400';
+            severityBadgeColor = 'bg-gray-100 text-gray-600';
+        }
 
         // Create display format for affected resources
         const affectedResourcesWithDisplay = (finding.affected_resources || []).map(res => {
@@ -318,10 +547,25 @@ export const renderHealthyStatusFindings = (findings) => {
         ).join('');
         
         const resourcesCount = affectedResourcesWithDisplay.length;
+        const impactType = classifyFindingImpact(finding);
+        const impactLabel = {
+            'compliance': 'Compliance Risk',
+            'data_breach': 'Data Breach Risk', 
+            'operational': 'Operational Risk',
+            'access_control': 'Access Control Risk',
+            'monitoring': 'Monitoring Gap',
+            'encryption': 'Encryption Issue'
+        }[impactType] || 'Operational Risk';
 
         const card = `
             <div class="bg-white p-4 rounded-xl mb-4 border-l-4 ${borderColor} shadow-sm">
-                <h3 class="text-xl font-bold text-[#204071]">${finding.name || 'Unknown finding'} <span class="text-sm font-normal text-gray-500">(${finding.severity || 'UNKNOWN'})</span></h3>
+                <div class="flex flex-wrap items-center justify-between mb-2">
+                    <h3 class="text-xl font-bold text-[#204071] flex-grow">${finding.name || 'Unknown finding'}</h3>
+                    <div class="flex space-x-2 mt-1 sm:mt-0">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${severityBadgeColor}">${finding.severity || 'UNKNOWN'}</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">${impactLabel}</span>
+                    </div>
+                </div>
                 <p class="text-gray-600 mt-2 text-sm">${finding.description || 'No description available'}</p>
                 <div class="mt-4">
                     <details class="group">
@@ -345,45 +589,83 @@ export const renderHealthyStatusFindings = (findings) => {
 };
 
 export const populateHealthyStatusFilter = (findings) => {
-    const select = document.getElementById('healthy-status-region-filter');
-    if (!select) return;
+    const regionSelect = document.getElementById('healthy-status-region-filter');
+    const sectionSelect = document.getElementById('healthy-status-section-filter');
+    const geminiRegionSelect = document.getElementById('gemini-region-filter'); // También actualizar este
+    
+    if (!regionSelect || !sectionSelect) return;
 
+    // Populate regions con mejor manejo
     const regions = new Set();
-    regions.add('all');
     
     (findings || []).forEach(finding => {
         (finding.affected_resources || []).forEach(res => {
-            if (res.region) {
+            if (typeof res === 'object' && res !== null && res.region) {
                 regions.add(res.region);
+            } else {
+                // Si no tiene región especificada, agregar Global
+                regions.add('Global');
             }
         });
     });
 
-    select.innerHTML = '';
+    // Limpiar y repoblar regiones
+    regionSelect.innerHTML = '<option value="all">All Regions</option>';
+    if (geminiRegionSelect) {
+        geminiRegionSelect.innerHTML = '<option value="all">All Regions</option>';
+    }
+    
     const sortedRegions = Array.from(regions).sort();
     sortedRegions.forEach(region => {
         const option = document.createElement('option');
         option.value = region;
-        option.textContent = region === 'all' ? 'All Regions' : region;
-        select.appendChild(option);
+        option.textContent = region;
+        regionSelect.appendChild(option);
+        
+        // También actualizar el select de Gemini
+        if (geminiRegionSelect) {
+            const geminiOption = document.createElement('option');
+            geminiOption.value = region;
+            geminiOption.textContent = region;
+            geminiRegionSelect.appendChild(geminiOption);
+        }
     });
 
-    // Remove existing event listeners
-    const newSelect = select.cloneNode(true);
-    select.parentNode.replaceChild(newSelect, select);
+    // Populate sections
+    const sections = new Set();
     
-    // Add new event listener
-    newSelect.addEventListener('change', (e) => {
-        const selectedRegion = e.target.value;
-        let filteredFindings = window.lastHealthyStatusFindings || [];
-        
-        if (selectedRegion !== 'all') {
-            filteredFindings = (window.lastHealthyStatusFindings || []).filter(finding =>
-                (finding.affected_resources || []).some(res => 
-                    res.region === selectedRegion || res.region === 'Global'
-                )
-            );
+    (findings || []).forEach(finding => {
+        if (finding.section) {
+            sections.add(finding.section);
         }
-        renderHealthyStatusFindings(filteredFindings);
     });
+
+    sectionSelect.innerHTML = '<option value="all">All Sections</option>';
+    const sortedSections = Array.from(sections).sort();
+    sortedSections.forEach(section => {
+        const option = document.createElement('option');
+        option.value = section;
+        option.textContent = section;
+        sectionSelect.appendChild(option);
+    });
+
+    // Actualizar findings count inicial
+    if (findings && findings.length > 0) {
+        updateFindingsCount(findings.length, findings.length);
+    }
+};
+
+// Nueva función para inicializar los filtros después de cargar datos
+export const initializeFiltersAfterDataLoad = (findings) => {
+    // Guardar los findings
+    window.lastHealthyStatusFindings = findings || [];
+    
+    // Poblar los filtros
+    populateHealthyStatusFilter(findings);
+    
+    // Mostrar todos los findings inicialmente
+    renderHealthyStatusFindings(findings);
+    
+    // Asegurar que los event listeners están configurados
+    setupFilterEventListeners();
 };
