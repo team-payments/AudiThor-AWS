@@ -33,7 +33,7 @@ import { buildInspectorView } from '/static/js/views/08_inspector.js';
 import { buildAcmView } from '/static/js/views/09_acm.js';
 import { buildComputeView } from '/static/js/views/10_compute.js';
 import { buildDatabasesView } from '/static/js/views/11_databases.js';
-import { buildKmsView } from '/static/js/views/12_kms.js';
+import { buildKmsSecretsView } from '/static/js/views/12_kms_secrets.js';
 import { buildNetworkPoliciesView } from '/static/js/views/13_network_policies.js';
 import { buildConnectivityView } from '/static/js/views/14_connectivity.js';
 import { buildConfigSHView } from '/static/js/views/15_config_sh.js';
@@ -45,10 +45,10 @@ import { buildHealthyStatusView, buildGeminiReportView } from '/static/js/views/
 // Importar las funciones que se usarán en onclick
 import { openModalWithTlsDetails } from '/static/js/views/02_exposure.js';
 import { openModalWithEcrPolicy } from '/static/js/views/04_ecr.js';
+import { openModalWithKmsPolicy, openModalWithSecretDetails } from '/static/js/views/12_kms_secrets.js';
 import { showCloudtrailEventDetails } from '/static/js/views/06_cloudtrail.js';
 import { toggleAlarmDetails } from '/static/js/views/07_cloudwatch.js';
 import { openModalWithEc2Tags, openModalWithLambdaTags, openModalWithLambdaRole } from '/static/js/views/10_compute.js';
-import { openModalWithKmsPolicy } from '/static/js/views/12_kms.js';
 import { showComplianceDetails } from '/static/js/views/15_config_sh.js';
 
 // Importar iconos
@@ -149,7 +149,7 @@ const handleMainNavClick = (e) => {
 
 const runAnalysisFromInputs = async () => {
     // Resetear estado
-    window.iamApiData = null; window.securityHubApiData = null; window.exposureApiData = null; window.guarddutyApiData = null; window.wafApiData = null; window.cloudtrailApiData = null; window.cloudwatchApiData = null; window.inspectorApiData = null; window.acmApiData = null; window.computeApiData = null; window.databasesApiData = null; window.networkPoliciesApiData = null; window.connectivityApiData = null; window.playgroundApiData = null; window.allAvailableRegions = []; window.lastCloudtrailLookupResults = []; window.federationApiData = null; window.configSHApiData = null; window.configSHStatusApiData = null; window.kmsApiData = null; window.ecrApiData = null; window.codepipelineApiData = null;
+    window.iamApiData = null; window.securityHubApiData = null; window.exposureApiData = null; window.guarddutyApiData = null; window.wafApiData = null; window.cloudtrailApiData = null; window.cloudwatchApiData = null; window.inspectorApiData = null; window.acmApiData = null; window.computeApiData = null; window.databasesApiData = null; window.networkPoliciesApiData = null; window.connectivityApiData = null; window.playgroundApiData = null; window.allAvailableRegions = []; window.lastCloudtrailLookupResults = []; window.federationApiData = null; window.configSHApiData = null; window.configSHStatusApiData = null; window.kmsApiData = null; window.ecrApiData = null; window.codepipelineApiData = null; window.secretsManagerApiData = null;
     document.querySelectorAll('.view').forEach(v => v.innerHTML = '');
     document.getElementById('iam-view').innerHTML = createInitialEmptyState();
     
@@ -192,6 +192,7 @@ const runAnalysisFromInputs = async () => {
             federation: fetch('http://127.0.0.1:5001/api/run-federation-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
             config_sh_status: fetch('http://127.0.0.1:5001/api/run-config-sh-status-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
             kms: fetch('http://127.0.0.1:5001/api/run-kms-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+            secrets_manager: fetch('http://127.0.0.1:5001/api/run-secrets-manager-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
             connectivity: fetch('http://127.0.0.1:5001/api/run-connectivity-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
             codepipeline: fetch('http://127.0.0.1:5001/api/run-codepipeline-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         };
@@ -230,6 +231,7 @@ const runAnalysisFromInputs = async () => {
         window.federationApiData = results.federation;
         window.configSHStatusApiData = results.config_sh_status; 
         window.kmsApiData = results.kms; 
+        window.secretsManagerApiData = results.secrets_manager;
         window.connectivityApiData = results.connectivity;
         window.codepipelineApiData = results.codepipeline;
         
@@ -309,7 +311,7 @@ const buildAndRenderAllViews = () => {
         buildConfigSHView();
         buildCodePipelineView();
         buildPlaygroundView();
-        buildKmsView();
+        buildKmsSecretsView();
         buildConnectivityView();
         log('Views rendered.', 'success');
     } catch (e) { log(`Error rendering: ${e.message}`, 'error'); console.error(e); }
@@ -358,7 +360,8 @@ const exportResultsToJson = () => {
             networkPolicies: window.networkPoliciesApiData?.results || null,
             configAndSecurityHubStatus: window.configSHStatusApiData?.results || null,
             configAndSecurityHubDeepScan: window.configSHApiData?.results || null,
-            kms: window.kmsApiData?.results || null, 
+            kms: window.kmsApiData?.results || null,
+            secretsManager: window.secretsManagerApiData?.results || null,
             playground: {
                 traceroute: window.playgroundApiData?.results || null,
                 sslscan: window.playgroundApiData?.sslscan || null
@@ -430,6 +433,7 @@ const handleJsonImport = (event) => {
             window.configSHStatusApiData = results.configAndSecurityHubStatus ? { metadata: metadata, results: results.configAndSecurityHubStatus } : null;
             window.configSHApiData = results.configAndSecurityHubDeepScan ? { metadata: metadata, results: results.configAndSecurityHubDeepScan } : null;
             window.kmsApiData = results.kms ? { metadata: metadata, results: results.kms } : null;
+            window.secretsManagerApiData = results.secretsManager ? { metadata: metadata, results: results.secretsManager } : null;
             window.connectivityApiData = results.connectivity ? { metadata: metadata, results: results.connectivity } : null;
             window.codepipelineApiData = results.codepipeline ? { metadata: metadata, results: results.codepipeline } : null;
             
@@ -542,6 +546,7 @@ const runAndDisplayHealthyStatus = async () => {
             configSHStatus: window.configSHStatusApiData,
             config_sh: window.configSHStatusApiData,
             kms: window.kmsApiData,
+            secretsManager: window.secretsManagerApiData,
             connectivity: window.connectivityApiData,
             codepipeline: window.codepipelineApiData
         };
@@ -753,3 +758,4 @@ window.showComplianceDetails = showComplianceDetails;
 window.copyToClipboard = copyToClipboard;
 window.buildCodePipelineView = buildCodePipelineView;
 window.openModalWithUserRoles = openModalWithUserRoles;
+window.openModalWithSecretDetails = openModalWithSecretDetails;

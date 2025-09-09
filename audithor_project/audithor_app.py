@@ -16,6 +16,7 @@ import boto3
 from rules import RULES_TO_CHECK
 from collectors.network_policies import get_network_details_table
 from collectors import trailalerts
+from collectors import secrets_manager
 from botocore.exceptions import BotoCoreError, ClientError
 
 # --- 1. IMPORTA TUS NUEVOS MÓDULOS ---
@@ -1073,6 +1074,24 @@ def run_s3_security_check():
             "error": f"Unexpected error during security analysis: {str(e)}"
         }), 500
     
+@app.route('/api/run-secrets-manager-audit', methods=['POST'])
+def run_secrets_manager_audit():
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    try:
+        secrets_results = secrets_manager.collect_secrets_manager_data(session)
+        sts = session.client("sts")
+        return jsonify({ 
+            "metadata": {
+                "accountId": sts.get_caller_identity()["Account"], 
+                "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")
+            }, 
+            "results": secrets_results 
+        })
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error while collecting Secrets Manager data: {str(e)}"}), 500
+
+
 # ==============================================================================
 # EJECUCIÓN SERVIDOR
 # ==============================================================================
