@@ -543,6 +543,12 @@ const renderExposureDetails = (service, regions) => {
         return renderApiGatewayTable(regions);
     }
 
+    // Agregar soporte para S3 Public Buckets con tabla
+    if (service === "S3 Public Buckets") {
+        return renderPublicS3BucketsTable(regions);
+    }
+
+    // Fallback para otros servicios (Lambda URLs y Assumable Roles)
     let html = '<div class="space-y-6">';
     Object.entries(regions).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).forEach(([region, items]) => {
         html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><h4 class="font-semibold text-md text-[#204071] mb-2">${region}</h4><ul class="space-y-2 font-mono text-sm">`;
@@ -552,6 +558,7 @@ const renderExposureDetails = (service, regions) => {
     html += '</div>';
     return html;
 };
+
 
 const renderNetworkPortsTable = (ports) => {
     if (!ports || ports.length === 0) {
@@ -586,4 +593,447 @@ const renderNetworkPortsTable = (ports) => {
 
     tableHtml += `</tbody></table></div>`;
     return tableHtml;
+};
+
+const renderPublicS3BucketsTable = (bucketsByRegion) => {
+    const allBuckets = Object.values(bucketsByRegion || {}).flat();
+    if (allBuckets.length === 0) {
+        return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No public S3 buckets were found.</p></div>';
+    }
+
+    let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bucket Name</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Access Type</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>' +
+                    '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">ARN</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>' +
+                    '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+
+    // Procesar buckets por región
+    Object.entries(bucketsByRegion).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).forEach(([region, buckets]) => {
+        buckets.forEach(bucketName => {
+            const publicAccessType = "Public Read";
+            const bucketUrl = `https://${bucketName}.s3.amazonaws.com/`;
+            const bucketArn = `arn:aws:s3:::${bucketName}`;
+            
+            // Mostrar región como "Global" ya que S3 es un servicio global
+            const displayRegion = "Global";
+
+            tableHtml += `<tr class="hover:bg-gray-50">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 font-mono">${bucketName}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${displayRegion}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    ${publicAccessType}
+                                </span>
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-blue-600 font-mono">
+                                <a href="${bucketUrl}" target="_blank" class="hover:text-blue-800 transition">
+                                    ${bucketUrl}
+                                </a>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <button onclick="copyToClipboard(this, '${bucketArn}')" title="${bucketArn}" class="p-1 rounded-md hover:bg-gray-200 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard w-5 h-5 text-gray-500" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+                                </button>
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm">
+                                <div class="flex space-x-2">
+                                    <button onclick="openS3BucketDetails('${bucketName}', '${region}')" class="bg-[#204071] text-white px-2 py-1 text-xs font-medium rounded hover:bg-[#1a335a] transition">
+                                        Details
+                                    </button>
+                                    <button onclick="runS3BucketSecurityCheck('${bucketName}')" class="bg-orange-600 text-white px-2 py-1 text-xs font-medium rounded hover:bg-orange-700 transition">
+                                        Security Check
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+        });
+    });
+
+    tableHtml += '</tbody></table></div>';
+    
+    const infoNote = `
+        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-yellow-800">Security Recommendation</h3>
+                    <div class="mt-2 text-sm text-yellow-700">
+                        <p>Public S3 buckets can expose sensitive data to the internet. Review each bucket to ensure public access is intentional and necessary. Consider implementing:</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li>Block Public Access settings at account and bucket level</li>
+                            <li>Bucket policies with explicit deny statements for unauthorized access</li>
+                            <li>CloudFront distributions for controlled public content delivery</li>
+                            <li>S3 Access Logs and CloudTrail for monitoring access patterns</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return tableHtml + infoNote;
+};
+
+// Función implementada para el Security Check REAL mejorada
+window.runS3BucketSecurityCheck = async (bucketName) => {
+    const modal = document.getElementById('details-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+
+    if (!modal) return;
+
+    modalTitle.textContent = `Security Analysis: ${bucketName}`;
+    modalContent.innerHTML = `
+        <div class="space-y-4 text-left text-sm">
+            <div class="animate-pulse">
+                <div class="flex items-center space-x-2">
+                    <div class="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    <span class="text-blue-600">Analyzing bucket security configuration...</span>
+                </div>
+                <div class="mt-2 text-xs text-gray-500">Checking AWS configuration: ACLs, policies, encryption, versioning...</div>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+
+    try {
+        // Obtener credenciales del header
+        const accessKeyInput = document.getElementById("access-key-input");
+        const secretKeyInput = document.getElementById("secret-key-input");
+        const sessionTokenInput = document.getElementById("session-token-input");
+
+        if (!accessKeyInput?.value || !secretKeyInput?.value) {
+            throw new Error("AWS credentials are required for security analysis");
+        }
+
+        const payload = {
+            access_key: accessKeyInput.value.trim(),
+            secret_key: secretKeyInput.value.trim(),
+            session_token: sessionTokenInput.value.trim() || null,
+            bucket_name: bucketName
+        };
+
+        const response = await fetch('http://127.0.0.1:5001/api/run-s3-security-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Security analysis failed');
+        }
+
+        const analysis = data.analysis;
+        
+        // Determinar color del risk level
+        const getRiskColor = (risk) => {
+            switch(risk) {
+                case 'CRITICAL': return 'text-red-800 bg-red-100 border-red-200';
+                case 'HIGH': return 'text-orange-800 bg-orange-100 border-orange-200';
+                case 'MEDIUM': return 'text-yellow-800 bg-yellow-100 border-yellow-200';
+                case 'LOW': return 'text-blue-800 bg-blue-100 border-blue-200';
+                default: return 'text-green-800 bg-green-100 border-green-200';
+            }
+        };
+
+        modalContent.innerHTML = `
+            <div class="space-y-6 text-left text-sm">
+                <!-- Risk Score Header Mejorado -->
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border-l-4 ${
+                    analysis.risk_level === 'CRITICAL' ? 'border-red-500' :
+                    analysis.risk_level === 'HIGH' ? 'border-orange-500' :
+                    analysis.risk_level === 'MEDIUM' ? 'border-yellow-500' :
+                    analysis.risk_level === 'LOW' ? 'border-blue-500' : 'border-green-500'
+                }">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-lg text-gray-800">Security Risk Assessment</h4>
+                            <p class="text-sm text-gray-600 mt-1">Real-time AWS configuration analysis</p>
+                        </div>
+                        <div class="text-right">
+                            <!-- Barra de progreso visual -->
+                            <div class="w-24 bg-gray-200 rounded-full h-3 mb-2">
+                                <div class="h-3 rounded-full transition-all duration-500 ${
+                                    analysis.risk_score >= 80 ? 'bg-red-500' :
+                                    analysis.risk_score >= 60 ? 'bg-orange-500' :
+                                    analysis.risk_score >= 40 ? 'bg-yellow-500' :
+                                    analysis.risk_score >= 20 ? 'bg-blue-500' : 'bg-green-500'
+                                }" style="width: ${analysis.risk_score}%"></div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold ${
+                                    analysis.risk_score >= 80 ? 'text-red-700' :
+                                    analysis.risk_score >= 60 ? 'text-orange-700' :
+                                    analysis.risk_score >= 40 ? 'text-yellow-700' :
+                                    analysis.risk_score >= 20 ? 'text-blue-700' : 'text-green-700'
+                                }">${analysis.risk_score}/100</div>
+                                <span class="px-3 py-1 text-xs font-bold rounded-full border ${getRiskColor(analysis.risk_level)}">
+                                    ${analysis.risk_level}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Columna Izquierda: Issues y Warnings -->
+                    <div class="space-y-4">
+                        <!-- Issues Section -->
+                        ${analysis.issues.length > 0 ? `
+                        <div class="bg-red-50 border-l-4 border-red-400 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <h4 class="font-semibold text-red-800">
+                                    Critical Issues (${analysis.issues.length})
+                                </h4>
+                            </div>
+                            <div class="space-y-2">
+                                ${analysis.issues.map(issue => `
+                                    <div class="flex items-start">
+                                        <span class="text-red-500 mr-2 mt-0.5">•</span>
+                                        <span class="text-red-700 text-sm">${issue}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="bg-green-50 border-l-4 border-green-400 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="font-semibold text-green-800">No Critical Issues Found</span>
+                            </div>
+                        </div>
+                        `}
+
+                        <!-- Warnings Section -->
+                        ${analysis.warnings.length > 0 ? `
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <svg class="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.464 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                                <h4 class="font-semibold text-yellow-800">
+                                    Warnings (${analysis.warnings.length})
+                                </h4>
+                            </div>
+                            <div class="space-y-2">
+                                ${analysis.warnings.map(warning => `
+                                    <div class="flex items-start">
+                                        <span class="text-yellow-500 mr-2 mt-0.5">•</span>
+                                        <span class="text-yellow-700 text-sm">${warning}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Columna Derecha: Configuration -->
+                    <div>
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <h4 class="font-semibold text-gray-800 mb-4 flex items-center">
+                                <svg class="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                Current Configuration
+                            </h4>
+                            <div class="space-y-3 text-sm">
+                                <!-- Configuration Pills -->
+                                <div class="flex flex-wrap gap-2">
+                                    <div class="flex items-center">
+                                        <strong class="text-gray-700 mr-2">Encryption:</strong>
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium ${analysis.configuration.encryption ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                            ${analysis.configuration.encryption ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <strong class="text-gray-700 mr-2">Versioning:</strong>
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium ${analysis.configuration.versioning === 'Enabled' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                            ${analysis.configuration.versioning === 'Enabled' ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <strong class="text-gray-700 mr-2">Access Logging:</strong>
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium ${analysis.configuration.access_logging ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                            ${analysis.configuration.access_logging ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <strong class="text-gray-700 mr-2">Bucket Policy:</strong>
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium ${analysis.configuration.has_bucket_policy ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                            ${analysis.configuration.has_bucket_policy ? 'Present' : 'None'}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                ${analysis.configuration.public_access_block ? `
+                                    <div class="mt-4 pt-3 border-t border-gray-200">
+                                        <h5 class="font-semibold text-gray-700 mb-3">Public Access Block Settings:</h5>
+                                        <div class="flex flex-wrap gap-2">
+                                            ${Object.entries(analysis.configuration.public_access_block).map(([key, value]) => `
+                                                <div class="flex items-center">
+                                                    <strong class="text-gray-700 mr-2">${key.replace(/([A-Z])/g, ' $1').trim()}:</strong>
+                                                    <span class="px-3 py-1 rounded-full text-xs font-medium ${value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                                        ${value ? 'Yes' : 'No'}
+                                                    </span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : '<div class="mt-4 pt-3 border-t border-gray-200"><div class="flex items-center"><strong class="text-gray-700 mr-2">Public Access Block:</strong><span class="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Not configured</span></div></div>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recommendations Section -->
+                <div class="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <svg class="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                        <h4 class="font-semibold text-blue-800">Security Recommendations</h4>
+                    </div>
+                    <div class="space-y-2">
+                        ${analysis.recommendations.map((rec, index) => `
+                            <div class="flex items-start">
+                                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-xs font-bold mr-3 mt-0.5">${index + 1}</span>
+                                <span class="text-blue-700 text-sm">${rec}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="text-xs text-gray-500 border-t pt-3 flex justify-between">
+                    <span>Real-time AWS configuration analysis</span>
+                    <span>Completed at ${new Date().toLocaleString()}</span>
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        modalContent.innerHTML = `
+            <div class="space-y-4 text-left text-sm">
+                <div class="bg-red-50 border-l-4 border-red-400 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h4 class="font-semibold text-red-800">Analysis Failed</h4>
+                    </div>
+                    <p class="text-red-700 mb-3">${error.message}</p>
+                    <div class="bg-red-100 rounded p-3">
+                        <p class="text-red-800 font-medium text-sm mb-2">Possible causes:</p>
+                        <ul class="list-disc list-inside text-red-700 text-sm space-y-1">
+                            <li>Invalid or expired AWS credentials</li>
+                            <li>Insufficient S3 permissions for the bucket</li>
+                            <li>Bucket doesn't exist or is in a different region</li>
+                            <li>Network connectivity issues</li>
+                            <li>AWS service temporarily unavailable</li>
+                        </ul>
+                    </div>
+                    <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p class="text-yellow-800 text-sm"><strong>Required permissions:</strong></p>
+                        <p class="text-yellow-700 text-xs mt-1">s3:GetPublicAccessBlock, s3:GetBucketPolicy, s3:GetEncryptionConfiguration, s3:GetBucketVersioning, s3:GetBucketLogging, s3:GetBucketAcl</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+};
+
+
+
+
+
+// Funciones de placeholder para los botones de acción (se pueden implementar más adelante)
+window.openS3BucketDetails = (bucketName, region) => {
+    const modal = document.getElementById('details-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+
+    if (!modal) return;
+
+    modalTitle.textContent = `S3 Bucket Details: ${bucketName}`;
+    modalContent.innerHTML = `
+        <div class="space-y-4 text-left text-sm">
+            <div>
+                <h4 class="font-semibold text-gray-800">Bucket Information</h4>
+                <ul class="list-disc list-inside pl-2 mt-1 space-y-1">
+                    <li><strong>Name:</strong> ${bucketName}</li>
+                    <li><strong>Region:</strong> ${region}</li>
+                    <li><strong>ARN:</strong> arn:aws:s3:::${bucketName}</li>
+                    <li><strong>URL:</strong> https://${bucketName}.s3.amazonaws.com/</li>
+                </ul>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded p-3">
+                <h4 class="font-semibold text-red-800">Security Concerns</h4>
+                <p class="text-red-700 text-sm mt-1">This bucket allows public access. Verify that this is intentional and that no sensitive data is exposed.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">Recommended Actions</h4>
+                <ul class="list-disc list-inside pl-2 mt-1 space-y-1 text-sm">
+                    <li>Review bucket policy and ACLs</li>
+                    <li>Enable Block Public Access if not needed</li>
+                    <li>Implement least privilege access</li>
+                    <li>Enable logging and monitoring</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    modal.classList.remove('hidden');
+};
+
+
+const generateS3SecurityAnalysis = (bucketName) => {
+    const findings = {
+        issues: [
+            'Bucket allows public read access',
+            'No encryption detected on public bucket',
+            'Missing bucket policy restrictions',
+            'Versioning may not be enabled'
+        ],
+        analysis: [
+            `Bucket name: ${bucketName}`,
+            'Public access method: ACL or Bucket Policy',
+            'Risk level: HIGH - Data exposure potential',
+            'Compliance impact: May violate data protection policies'
+        ],
+        recommendations: [
+            'Enable "Block all public access" if not needed for legitimate use',
+            'Review and tighten bucket policy statements',
+            'Enable server-side encryption (SSE-S3 or SSE-KMS)',
+            'Enable versioning and MFA delete protection',
+            'Set up CloudTrail logging for bucket access monitoring',
+            'Consider using CloudFront for controlled public content delivery'
+        ]
+    };
+    
+    // Personalizar basado en el nombre del bucket
+    if (bucketName.includes('log') || bucketName.includes('backup')) {
+        findings.issues.unshift('CRITICAL: Logs/backup bucket exposed publicly');
+        findings.recommendations.unshift('URGENT: Remove public access immediately');
+    }
+    
+    if (bucketName.includes('www') || bucketName.includes('static')) {
+        findings.analysis.push('Likely used for web hosting - public access may be intentional');
+        findings.recommendations.push('If used for web hosting, consider CloudFront + private S3');
+    }
+    
+    return findings;
 };

@@ -876,6 +876,203 @@ def get_trailalerts_rule_details():
 
 
 
+@app.route('/api/run-s3-security-check', methods=['POST'])
+def run_s3_security_check():
+    session, error = utils.get_session(request.get_json())
+    if error: return jsonify({"error": error}), 401
+    
+    data = request.get_json()
+    bucket_name = data.get('bucket_name')
+    
+    if not bucket_name:
+        return jsonify({"error": "Bucket name is required"}), 400
+    
+    try:
+        s3_client = session.client('s3')
+        
+        security_analysis = {
+            "bucket_name": bucket_name,
+            "issues": [],
+            "warnings": [],
+            "recommendations": [],
+            "configuration": {},
+            "risk_score": 0
+        }
+        
+        # 1. Check Public Access Block settings
+        try:
+            public_access_block = s3_client.get_public_access_block(Bucket=bucket_name)
+            pab_config = public_access_block['PublicAccessBlockConfiguration']
+            security_analysis["configuration"]["public_access_block"] = pab_config
+            
+            if not pab_config.get('BlockPublicAcls', False):
+                security_analysis["issues"].append("Public ACLs are not blocked")
+                security_analysis["risk_score"] += 20
+                
+            if not pab_config.get('IgnorePublicAcls', False):
+                security_analysis["issues"].append("Public ACLs are not ignored")
+                security_analysis["risk_score"] += 20
+                
+            if not pab_config.get('BlockPublicPolicy', False):
+                security_analysis["issues"].append("Public bucket policies are not blocked")
+                security_analysis["risk_score"] += 25
+                
+            if not pab_config.get('RestrictPublicBuckets', False):
+                security_analysis["issues"].append("Public bucket access is not restricted")
+                security_analysis["risk_score"] += 15
+                
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchPublicAccessBlockConfiguration':
+                security_analysis["issues"].append("CRITICAL: No Public Access Block configuration found")
+                security_analysis["risk_score"] += 30
+            else:
+                security_analysis["warnings"].append(f"Could not check Public Access Block: {e.response['Error']['Code']}")
+        
+        # 2. Check bucket policy
+        try:
+            bucket_policy = s3_client.get_bucket_policy(Bucket=bucket_name)
+            import json
+            policy = json.loads(bucket_policy['Policy'])
+            security_analysis["configuration"]["has_bucket_policy"] = True
+            
+            # Analyze policy for public access
+            for statement in policy.get('Statement', []):
+                principal = statement.get('Principal', {})
+                if principal == "*" or (isinstance(principal, dict) and principal.get('AWS') == "*"):
+                    security_analysis["issues"].append("Bucket policy allows public access via wildcard principal")
+                    security_analysis["risk_score"] += 25
+                    
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchBucketPolicy':
+                security_analysis["configuration"]["has_bucket_policy"] = False
+                security_analysis["warnings"].append("No bucket policy found - relying on ACLs only")
+            else:
+                security_analysis["warnings"].append(f"Could not check bucket policy: {e.response['Error']['Code']}")
+        
+        # 3. Check bucket encryption
+        try:
+            encryption = s3_client.get_bucket_encryption(Bucket=bucket_name)
+            security_analysis["configuration"]["encryption"] = encryption['ServerSideEncryptionConfiguration']
+            security_analysis["recommendations"].append("Encryption is enabled - good security practice")
+            
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ServerSideEncryptionConfigurationNotFoundError':
+                security_analysis["issues"].append("No server-side encryption configured")
+                security_analysis["risk_score"] += 10
+                security_analysis["recommendations"].append("Enable server-side encryption (SSE-S3 or SSE-KMS)")
+            else:
+                security_analysis["warnings"].append(f"Could not check encryption: {e.response['Error']['Code']}")
+        
+        # 4. Check bucket versioning
+        try:
+            versioning = s3_client.get_bucket_versioning(Bucket=bucket_name)
+            versioning_status = versioning.get('Status', 'Disabled')
+            security_analysis["configuration"]["versioning"] = versioning_status
+            
+            if versioning_status != 'Enabled':
+                security_analysis["warnings"].append("Versioning is not enabled")
+                security_analysis["recommendations"].append("Consider enabling versioning for data protection")
+            
+            mfa_delete = versioning.get('MfaDelete', 'Disabled')
+            security_analysis["configuration"]["mfa_delete"] = mfa_delete
+            if mfa_delete != 'Enabled':
+                security_analysis["recommendations"].append("Consider enabling MFA Delete for critical buckets")
+                
+        except ClientError as e:
+            security_analysis["warnings"].append(f"Could not check versioning: {e.response['Error']['Code']}")
+        
+        # 5. Check bucket logging
+        try:
+            logging = s3_client.get_bucket_logging(Bucket=bucket_name)
+            if 'LoggingEnabled' in logging:
+                security_analysis["configuration"]["access_logging"] = True
+                security_analysis["recommendations"].append("Access logging is enabled - good for audit trails")
+            else:
+                security_analysis["configuration"]["access_logging"] = False
+                security_analysis["warnings"].append("Access logging is not enabled")
+                security_analysis["recommendations"].append("Enable access logging for security monitoring")
+                
+        except ClientError as e:
+            security_analysis["warnings"].append(f"Could not check logging: {e.response['Error']['Code']}")
+        
+        # 6. Check bucket ACL
+        try:
+            acl = s3_client.get_bucket_acl(Bucket=bucket_name)
+            public_read_grants = []
+            public_write_grants = []
+            
+            for grant in acl.get('Grants', []):
+                grantee = grant.get('Grantee', {})
+                if grantee.get('URI', '').endswith('AllUsers'):
+                    permission = grant.get('Permission')
+                    if permission in ['READ', 'FULL_CONTROL']:
+                        public_read_grants.append(permission)
+                        security_analysis["issues"].append(f"Public {permission} access via ACL")
+                        security_analysis["risk_score"] += 20
+                    if permission in ['WRITE', 'FULL_CONTROL']:
+                        public_write_grants.append(permission)
+                        security_analysis["issues"].append(f"CRITICAL: Public {permission} access via ACL")
+                        security_analysis["risk_score"] += 30
+            
+            security_analysis["configuration"]["public_read_acl"] = len(public_read_grants) > 0
+            security_analysis["configuration"]["public_write_acl"] = len(public_write_grants) > 0
+            
+        except ClientError as e:
+            security_analysis["warnings"].append(f"Could not check ACL: {e.response['Error']['Code']}")
+        
+        # 7. Generate recommendations based on bucket name patterns
+        bucket_lower = bucket_name.lower()
+        if any(keyword in bucket_lower for keyword in ['log', 'backup', 'archive', 'dump']):
+            security_analysis["recommendations"].insert(0, "URGENT: This appears to be a logs/backup bucket - public access should be removed immediately")
+            security_analysis["risk_score"] += 15
+            
+        if any(keyword in bucket_lower for keyword in ['www', 'static', 'public', 'web']):
+            security_analysis["recommendations"].append("This appears to be a web hosting bucket - ensure only necessary files are public")
+            
+        if any(keyword in bucket_lower for keyword in ['temp', 'test', 'dev']):
+            security_analysis["recommendations"].append("This appears to be a temporary/development bucket - consider if public access is necessary")
+        
+        # 8. Final risk assessment - CORREGIDO PARA LIMITAR A 100
+        security_analysis["risk_score"] = min(security_analysis["risk_score"], 100)
+        
+        if security_analysis["risk_score"] >= 80:
+            risk_level = "CRITICAL"
+        elif security_analysis["risk_score"] >= 60:
+            risk_level = "HIGH"
+        elif security_analysis["risk_score"] >= 40:
+            risk_level = "MEDIUM"
+        elif security_analysis["risk_score"] >= 20:
+            risk_level = "LOW"
+        else:
+            risk_level = "MINIMAL"
+            
+        security_analysis["risk_level"] = risk_level
+        
+        # 9. Add general recommendations
+        if not security_analysis["recommendations"]:
+            security_analysis["recommendations"].append("Review bucket configuration regularly")
+            
+        security_analysis["recommendations"].extend([
+            "Monitor CloudTrail logs for bucket access patterns",
+            "Consider using CloudFront for public content delivery",
+            "Implement least privilege access policies",
+            "Regular security audits and access reviews"
+        ])
+        
+        return jsonify({
+            "status": "success",
+            "analysis": security_analysis
+        })
+        
+    except ClientError as e:
+        return jsonify({
+            "error": f"AWS error: {e.response['Error']['Code']} - {e.response['Error']['Message']}"
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "error": f"Unexpected error during security analysis: {str(e)}"
+        }), 500
+    
 # ==============================================================================
 # EJECUCIÓN SERVIDOR
 # ==============================================================================
