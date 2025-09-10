@@ -9,6 +9,7 @@ import { handleTabClick, log } from '../utils.js';
 // Initialize global variable
 if (!window.lastHealthyStatusFindings) {
     window.lastHealthyStatusFindings = [];
+    
 }
 
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
@@ -33,54 +34,103 @@ export const buildHealthyStatusView = () => {
 
         <div id="healthy-status-tab-content-container">
             <div id="hs-findings-content" class="healthy-status-tab-content">
-                <!-- Filtros Mejorados -->
-                <div class="bg-white p-4 rounded-xl border border-gray-200 mb-6">
-                    <h3 class="text-sm font-semibold text-gray-800 mb-3">Filter Options</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label for="healthy-status-region-filter" class="block text-sm font-medium text-gray-700 mb-1">Region:</label>
-                            <select id="healthy-status-region-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                <!-- Filtros Mejorados con píldoras de colores -->
+                <div class="bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-[#eb3496]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"></path>
+                            </svg>
+                            <h3 class="text-lg font-bold text-gray-800">Filter Options</h3>
+                        </div>
+                        <div id="findings-count-display" class="bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+                        <div class="group">
+                            <label for="healthy-status-region-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                <svg class="w-4 h-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                Region
+                            </label>
+                            <select id="healthy-status-region-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-blue-300">
                                 <option value="all">All Regions</option>
                             </select>
                         </div>
                         
-                        <div>
-                            <label for="healthy-status-severity-filter" class="block text-sm font-medium text-gray-700 mb-1">Severity:</label>
-                            <select id="healthy-status-severity-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                        <div class="group">
+                            <label for="healthy-status-severity-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                <svg class="w-4 h-4 mr-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                                Severity
+                            </label>
+                            <select id="healthy-status-severity-filter" class="severity-select w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-red-300">
                                 <option value="all">All Severities</option>
-                                <option value="Crítico">Critical</option>
-                                <option value="Alto">High</option>
-                                <option value="Medio">Medium</option>
-                                <option value="Bajo">Low</option>
-                                <option value="Informativo">Info</option>
+                                <option value="Crítico" data-color="critical">Critical</option>
+                                <option value="Alto" data-color="high">High</option>
+                                <option value="Medio" data-color="medium">Medium</option>
+                                <option value="Bajo" data-color="low">Low</option>
+                                <option value="Informativo" data-color="info">Info</option>
                             </select>
                         </div>
                         
-                        <div>
-                            <label for="healthy-status-section-filter" class="block text-sm font-medium text-gray-700 mb-1">Section:</label>
-                            <select id="healthy-status-section-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                        <div class="group">
+                            <label for="healthy-status-section-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                <svg class="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                                Section
+                            </label>
+                            <select id="healthy-status-section-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-green-300">
                                 <option value="all">All Sections</option>
                             </select>
                         </div>
                         
-                        <div>
-                            <label for="healthy-status-impact-filter" class="block text-sm font-medium text-gray-700 mb-1">Impact Type:</label>
-                            <select id="healthy-status-impact-filter" class="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-[#eb3496] focus:border-[#eb3496] rounded-md">
+                        <div class="group">
+                            <label for="healthy-status-impact-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                <svg class="w-4 h-4 mr-1 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Impact Type
+                            </label>
+                            <select id="healthy-status-impact-filter" class="impact-select w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-purple-300">
                                 <option value="all">All Impact Types</option>
-                                <option value="compliance">Compliance Risk</option>
-                                <option value="data_breach">Data Breach Risk</option>
-                                <option value="operational">Operational Risk</option>
-                                <option value="access_control">Access Control Risk</option>
-                                <option value="monitoring">Monitoring Gap</option>
-                                <option value="encryption">Encryption Issue</option>
+                                <option value="compliance" data-color="compliance">Compliance Risk</option>
+                                <option value="data_breach" data-color="data-breach">Data Breach Risk</option>
+                                <option value="operational" data-color="operational">Operational Risk</option>
+                                <option value="access_control" data-color="access-control">Access Control Risk</option>
+                                <option value="monitoring" data-color="monitoring">Monitoring Gap</option>
+                                <option value="encryption" data-color="encryption">Encryption Issue</option>
                             </select>
                         </div>
                     </div>
                     
-                    <!-- Botón de reset -->
-                    <div class="mt-3 flex justify-between items-center">
-                        <button id="reset-filters-btn" class="text-sm text-[#eb3496] hover:text-[#d42c86] font-medium">Reset All Filters</button>
-                        <div id="findings-count-display" class="text-sm text-gray-600"></div>
+                    <!-- Píldoras de severidad seleccionadas -->
+                    <div id="active-filters-display" class="hidden mb-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-sm font-medium text-gray-600">Active filters:</span>
+                            <div id="active-filters-container" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón de reset mejorado -->
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <button id="reset-filters-btn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-[#eb3496] bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 hover:border-[#eb3496] transition-all duration-200 group">
+                            <svg class="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Reset All Filters
+                        </button>
+                        
+                        <div class="flex items-center space-x-2 text-sm text-gray-600">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                            <span>Active filters will update results instantly</span>
+                        </div>
                     </div>
                 </div>
 
@@ -94,6 +144,33 @@ export const buildHealthyStatusView = () => {
 
             <div id="hs-report-content" class="healthy-status-tab-content hidden"></div>
         </div>
+        
+        <style>
+        /* Píldoras para severity */
+        .severity-pill-critical { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .severity-pill-high { background-color: #fef3c7; color: #92400e; border: 1px solid #fbbf24; }
+        .severity-pill-medium { background-color: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
+        .severity-pill-low { background-color: #dbeafe; color: #1e40af; border: 1px solid #60a5fa; }
+        .severity-pill-info { background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+        /* Píldoras para impact types */
+        .impact-pill-compliance { background-color: #f0f9ff; color: #0c4a6e; border: 1px solid #7dd3fc; }
+        .impact-pill-data-breach { background-color: #fef2f2; color: #7f1d1d; border: 1px solid #fca5a5; }
+        .impact-pill-operational { background-color: #f0fdf4; color: #14532d; border: 1px solid #86efac; }
+        .impact-pill-access-control { background-color: #faf5ff; color: #581c87; border: 1px solid #c084fc; }
+        .impact-pill-monitoring { background-color: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
+        .impact-pill-encryption { background-color: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7; }
+
+        .filter-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            gap: 0.375rem;
+        }
+        </style>
     `;
 
     const tabsNav = container.querySelector('#healthy-status-tabs');
@@ -107,6 +184,7 @@ export const buildHealthyStatusView = () => {
     // Build the report view immediately after creating the container
     buildGeminiReportView();
 };
+
 
 // --- FILTER SETUP ---
 const setupFilterEventListeners = () => {
@@ -165,7 +243,7 @@ const applyFilters = () => {
     const sectionValue = document.getElementById('healthy-status-section-filter')?.value || 'all';
     const impactValue = document.getElementById('healthy-status-impact-filter')?.value || 'all';
 
-    let filteredFindings = [...(window.lastHealthyStatusFindings || [])]; // Crear copia
+    let filteredFindings = [...(window.lastHealthyStatusFindings || [])];
     
     // Apply region filter con mejor manejo de estructuras
     if (regionValue !== 'all') {
@@ -174,12 +252,10 @@ const applyFilters = () => {
             if (resources.length === 0) return false;
             
             return resources.some(res => {
-                // Manejar tanto objetos como strings
                 if (typeof res === 'object' && res !== null) {
                     const region = res.region || 'Global';
                     return region === regionValue || region === 'Global';
                 } else if (typeof res === 'string') {
-                    // Si es string, asumimos que es Global a menos que especifique región
                     return regionValue === 'Global';
                 }
                 return false;
@@ -211,6 +287,9 @@ const applyFilters = () => {
     // Update findings count
     updateFindingsCount(filteredFindings.length, (window.lastHealthyStatusFindings || []).length);
     
+    // Update active filters display
+    updateActiveFiltersDisplay();
+    
     // Render filtered findings
     renderHealthyStatusFindings(filteredFindings);
 };
@@ -219,12 +298,133 @@ const updateFindingsCount = (filtered, total) => {
     const countDisplay = document.getElementById('findings-count-display');
     if (countDisplay) {
         if (filtered === total) {
-            countDisplay.textContent = `Showing ${total} finding${total !== 1 ? 's' : ''}`;
+            countDisplay.innerHTML = `
+                <div class="flex items-center space-x-1">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>${total} finding${total !== 1 ? 's' : ''}</span>
+                </div>
+            `;
+            countDisplay.className = "bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center";
         } else {
-            countDisplay.textContent = `Showing ${filtered} of ${total} findings`;
+            countDisplay.innerHTML = `
+                <div class="flex items-center space-x-1">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>${filtered}/${total}</span>
+                </div>
+            `;
+            countDisplay.className = "bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center animate-pulse";
         }
     }
 };
+
+const updateActiveFiltersDisplay = () => {
+    const activeFiltersContainer = document.getElementById('active-filters-container');
+    const activeFiltersDisplay = document.getElementById('active-filters-display');
+    
+    if (!activeFiltersContainer || !activeFiltersDisplay) return;
+    
+    activeFiltersContainer.innerHTML = '';
+    let hasActiveFilters = false;
+    
+    // Mapeo de valores a etiquetas y colores
+    const severityConfig = {
+        'Crítico': { label: 'Critical', class: 'severity-pill-critical' },
+        'Alto': { label: 'High', class: 'severity-pill-high' },
+        'Medio': { label: 'Medium', class: 'severity-pill-medium' },
+        'Bajo': { label: 'Low', class: 'severity-pill-low' },
+        'Informativo': { label: 'Info', class: 'severity-pill-info' }
+    };
+    
+    const impactConfig = {
+        'compliance': { label: 'Compliance Risk', class: 'impact-pill-compliance' },
+        'data_breach': { label: 'Data Breach Risk', class: 'impact-pill-data-breach' },
+        'operational': { label: 'Operational Risk', class: 'impact-pill-operational' },
+        'access_control': { label: 'Access Control Risk', class: 'impact-pill-access-control' },
+        'monitoring': { label: 'Monitoring Gap', class: 'impact-pill-monitoring' },
+        'encryption': { label: 'Encryption Issue', class: 'impact-pill-encryption' }
+    };
+    
+    // Verificar filtros activos
+    const regionValue = document.getElementById('healthy-status-region-filter')?.value;
+    const severityValue = document.getElementById('healthy-status-severity-filter')?.value;
+    const sectionValue = document.getElementById('healthy-status-section-filter')?.value;
+    const impactValue = document.getElementById('healthy-status-impact-filter')?.value;
+    
+    // Crear píldora para región
+    if (regionValue && regionValue !== 'all') {
+        const pill = createFilterPill('Region', regionValue, 'region', 'bg-blue-100 text-blue-800 border-blue-200');
+        activeFiltersContainer.appendChild(pill);
+        hasActiveFilters = true;
+    }
+    
+    // Crear píldora para severidad
+    if (severityValue && severityValue !== 'all') {
+        const config = severityConfig[severityValue];
+        const pill = createFilterPill('Severity', config?.label || severityValue, 'severity', config?.class || 'bg-gray-100 text-gray-800 border-gray-200');
+        activeFiltersContainer.appendChild(pill);
+        hasActiveFilters = true;
+    }
+    
+    // Crear píldora para sección
+    if (sectionValue && sectionValue !== 'all') {
+        const pill = createFilterPill('Section', sectionValue, 'section', 'bg-green-100 text-green-800 border-green-200');
+        activeFiltersContainer.appendChild(pill);
+        hasActiveFilters = true;
+    }
+    
+    // Crear píldora para tipo de impacto
+    if (impactValue && impactValue !== 'all') {
+        const config = impactConfig[impactValue];
+        const pill = createFilterPill('Impact', config?.label || impactValue, 'impact', config?.class || 'bg-gray-100 text-gray-800 border-gray-200');
+        activeFiltersContainer.appendChild(pill);
+        hasActiveFilters = true;
+    }
+    
+    // Mostrar u ocultar la sección de filtros activos
+    if (hasActiveFilters) {
+        activeFiltersDisplay.classList.remove('hidden');
+    } else {
+        activeFiltersDisplay.classList.add('hidden');
+    }
+};
+
+const createFilterPill = (type, label, filterType, cssClass) => {
+    const pill = document.createElement('div');
+    pill.className = `filter-pill ${cssClass}`;
+    pill.innerHTML = `
+        <span class="text-xs font-medium opacity-75">${type}:</span>
+        <span class="text-xs font-semibold">${label}</span>
+        <button class="ml-1 hover:bg-black hover:bg-opacity-10 rounded-full p-0.5 transition-colors" onclick="removeFilter('${filterType}')">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    return pill;
+};
+
+// Función para remover filtros individuales
+const removeFilter = (filterType) => {
+    const filterMap = {
+        'region': 'healthy-status-region-filter',
+        'severity': 'healthy-status-severity-filter',
+        'section': 'healthy-status-section-filter',
+        'impact': 'healthy-status-impact-filter'
+    };
+    
+    const filterId = filterMap[filterType];
+    const filter = document.getElementById(filterId);
+    
+    if (filter) {
+        filter.value = 'all';
+        applyFilters();
+    }
+};
+
 
 // --- IMPACT CLASSIFICATION ---
 const classifyFindingImpact = (finding) => {
@@ -480,9 +680,12 @@ export const renderHealthyStatusFindings = (findings) => {
     if (!findings || findings.length === 0) {
         container.innerHTML = `
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div class="flex items-center justify-center text-green-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.01a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/></svg>
-                    <p class="text-center font-semibold text-lg">¡Congratulations! No findings were found for the selected criteria.</p>
+                <div class="flex items-center justify-center text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="mr-3" viewBox="0 0 16 16">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                        <path d="M8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+                    </svg>
+                    <p class="text-center font-medium text-lg text-gray-600">No findings were found for the selected criteria.</p>
                 </div>
             </div>
         `;
@@ -669,3 +872,5 @@ export const initializeFiltersAfterDataLoad = (findings) => {
     // Asegurar que los event listeners están configurados
     setupFilterEventListeners();
 };
+
+window.removeFilter = removeFilter;
