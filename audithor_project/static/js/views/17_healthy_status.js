@@ -34,12 +34,11 @@ export const buildHealthyStatusView = () => {
 
         <div id="healthy-status-tab-content-container">
             <div id="hs-findings-content" class="healthy-status-tab-content">
-                <!-- Filtros Mejorados con píldoras de colores -->
                 <div class="bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm mb-6">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center space-x-2">
                             <svg class="w-5 h-5 text-[#eb3496]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293.707L3.293 7.707A1 1 0 013 7V4z"></path>
                             </svg>
                             <h3 class="text-lg font-bold text-gray-800">Filter Options</h3>
                         </div>
@@ -108,7 +107,6 @@ export const buildHealthyStatusView = () => {
                         </div>
                     </div>
                     
-                    <!-- Píldoras de severidad seleccionadas -->
                     <div id="active-filters-display" class="hidden mb-4">
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="text-sm font-medium text-gray-600">Active filters:</span>
@@ -116,7 +114,6 @@ export const buildHealthyStatusView = () => {
                         </div>
                     </div>
                     
-                    <!-- Botón de reset mejorado -->
                     <div class="flex justify-between items-center pt-4 border-t border-gray-200">
                         <button id="reset-filters-btn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-[#eb3496] bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 hover:border-[#eb3496] transition-all duration-200 group">
                             <svg class="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,14 +143,12 @@ export const buildHealthyStatusView = () => {
         </div>
         
         <style>
-        /* Píldoras para severity */
         .severity-pill-critical { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
         .severity-pill-high { background-color: #fef3c7; color: #92400e; border: 1px solid #fbbf24; }
         .severity-pill-medium { background-color: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
         .severity-pill-low { background-color: #dbeafe; color: #1e40af; border: 1px solid #60a5fa; }
         .severity-pill-info { background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 
-        /* Píldoras para impact types */
         .impact-pill-compliance { background-color: #f0f9ff; color: #0c4a6e; border: 1px solid #7dd3fc; }
         .impact-pill-data-breach { background-color: #fef2f2; color: #7f1d1d; border: 1px solid #fca5a5; }
         .impact-pill-operational { background-color: #f0fdf4; color: #14532d; border: 1px solid #86efac; }
@@ -178,10 +173,8 @@ export const buildHealthyStatusView = () => {
         tabsNav.addEventListener('click', handleTabClick(tabsNav, '.healthy-status-tab-content'));
     }
     
-    // Setup filter event listeners
     setupFilterEventListeners();
     
-    // Build the report view immediately after creating the container
     buildGeminiReportView();
 };
 
@@ -194,24 +187,19 @@ const setupFilterEventListeners = () => {
     const impactFilter = document.getElementById('healthy-status-impact-filter');
     const resetBtn = document.getElementById('reset-filters-btn');
 
-    // Función de debounce para evitar múltiples llamadas rápidas
     let filterTimeout;
     const debouncedApplyFilters = () => {
         clearTimeout(filterTimeout);
         filterTimeout = setTimeout(applyFilters, 100);
     };
 
-    // Add change listeners to all filters
     [regionFilter, severityFilter, sectionFilter, impactFilter].forEach(filter => {
         if (filter) {
-            // Remover listener existente si lo hay
             filter.removeEventListener('change', debouncedApplyFilters);
-            // Agregar nuevo listener
             filter.addEventListener('change', debouncedApplyFilters);
         }
     });
 
-    // Reset filters button
     if (resetBtn) {
         resetBtn.removeEventListener('click', resetAllFilters);
         resetBtn.addEventListener('click', resetAllFilters);
@@ -233,7 +221,6 @@ const resetAllFilters = () => {
         }
     });
     
-    // Aplicar filtros inmediatamente (sin debounce para reset)
     setTimeout(applyFilters, 50);
 };
 
@@ -245,7 +232,6 @@ const applyFilters = () => {
 
     let filteredFindings = [...(window.lastHealthyStatusFindings || [])];
     
-    // Apply region filter con mejor manejo de estructuras
     if (regionValue !== 'all') {
         filteredFindings = filteredFindings.filter(finding => {
             const resources = finding.affected_resources || [];
@@ -263,34 +249,28 @@ const applyFilters = () => {
         });
     }
     
-    // Apply severity filter
     if (severityValue !== 'all') {
         filteredFindings = filteredFindings.filter(finding => 
             finding.severity === severityValue
         );
     }
     
-    // Apply section filter
     if (sectionValue !== 'all') {
         filteredFindings = filteredFindings.filter(finding => 
             finding.section === sectionValue
         );
     }
     
-    // Apply impact type filter
     if (impactValue !== 'all') {
         filteredFindings = filteredFindings.filter(finding => 
             classifyFindingImpact(finding) === impactValue
         );
     }
     
-    // Update findings count
     updateFindingsCount(filteredFindings.length, (window.lastHealthyStatusFindings || []).length);
     
-    // Update active filters display
     updateActiveFiltersDisplay();
     
-    // Render filtered findings
     renderHealthyStatusFindings(filteredFindings);
 };
 
@@ -330,7 +310,6 @@ const updateActiveFiltersDisplay = () => {
     activeFiltersContainer.innerHTML = '';
     let hasActiveFilters = false;
     
-    // Mapeo de valores a etiquetas y colores
     const severityConfig = {
         'Crítico': { label: 'Critical', class: 'severity-pill-critical' },
         'Alto': { label: 'High', class: 'severity-pill-high' },
@@ -348,20 +327,17 @@ const updateActiveFiltersDisplay = () => {
         'encryption': { label: 'Encryption Issue', class: 'impact-pill-encryption' }
     };
     
-    // Verificar filtros activos
     const regionValue = document.getElementById('healthy-status-region-filter')?.value;
     const severityValue = document.getElementById('healthy-status-severity-filter')?.value;
     const sectionValue = document.getElementById('healthy-status-section-filter')?.value;
     const impactValue = document.getElementById('healthy-status-impact-filter')?.value;
     
-    // Crear píldora para región
     if (regionValue && regionValue !== 'all') {
         const pill = createFilterPill('Region', regionValue, 'region', 'bg-blue-100 text-blue-800 border-blue-200');
         activeFiltersContainer.appendChild(pill);
         hasActiveFilters = true;
     }
     
-    // Crear píldora para severidad
     if (severityValue && severityValue !== 'all') {
         const config = severityConfig[severityValue];
         const pill = createFilterPill('Severity', config?.label || severityValue, 'severity', config?.class || 'bg-gray-100 text-gray-800 border-gray-200');
@@ -369,14 +345,12 @@ const updateActiveFiltersDisplay = () => {
         hasActiveFilters = true;
     }
     
-    // Crear píldora para sección
     if (sectionValue && sectionValue !== 'all') {
         const pill = createFilterPill('Section', sectionValue, 'section', 'bg-green-100 text-green-800 border-green-200');
         activeFiltersContainer.appendChild(pill);
         hasActiveFilters = true;
     }
     
-    // Crear píldora para tipo de impacto
     if (impactValue && impactValue !== 'all') {
         const config = impactConfig[impactValue];
         const pill = createFilterPill('Impact', config?.label || impactValue, 'impact', config?.class || 'bg-gray-100 text-gray-800 border-gray-200');
@@ -384,7 +358,6 @@ const updateActiveFiltersDisplay = () => {
         hasActiveFilters = true;
     }
     
-    // Mostrar u ocultar la sección de filtros activos
     if (hasActiveFilters) {
         activeFiltersDisplay.classList.remove('hidden');
     } else {
@@ -407,7 +380,6 @@ const createFilterPill = (type, label, filterType, cssClass) => {
     return pill;
 };
 
-// Función para remover filtros individuales
 const removeFilter = (filterType) => {
     const filterMap = {
         'region': 'healthy-status-region-filter',
@@ -433,72 +405,65 @@ const classifyFindingImpact = (finding) => {
     const section = (finding.section || '').toLowerCase();
     const ruleId = (finding.rule_id || '').toLowerCase();
 
-    // Compliance patterns
     if (ruleId.includes('pci') || name.includes('pci') || description.includes('pci') ||
         name.includes('cis') || description.includes('compliance') || 
         description.includes('standard') || description.includes('benchmark')) {
         return 'compliance';
     }
 
-    // Data breach risk patterns
     if (name.includes('public') || name.includes('exposed') || name.includes('internet') ||
         description.includes('public access') || description.includes('publicly accessible') ||
         section.includes('internet exposure') || name.includes('unencrypted')) {
         return 'data_breach';
     }
 
-    // Access control patterns
     if (section.includes('identity') || section.includes('access') || 
         name.includes('mfa') || name.includes('password') || name.includes('policy') ||
         name.includes('permission') || name.includes('role') || name.includes('user')) {
         return 'access_control';
     }
 
-    // Monitoring gaps
     if (section.includes('logging') || section.includes('monitoring') || 
         name.includes('cloudtrail') || name.includes('guardduty') || name.includes('log') ||
         name.includes('disabled') || name.includes('not enabled')) {
         return 'monitoring';
     }
 
-    // Encryption issues
     if (name.includes('encrypt') || name.includes('kms') || description.includes('encrypt') ||
         section.includes('data protection')) {
         return 'encryption';
     }
 
-    // Default to operational risk
     return 'operational';
 };
 
-// This function is also exported because it's called from the main app.js
 export const buildGeminiReportView = () => {
     const container = document.getElementById('hs-report-content');
     if (!container) return;
 
-    const defaultPrompt = `Actúa como un consultor de ciberseguridad senior de la empresa [Nombre de tu Empresa]. El destinatario de este correo es nuestro cliente, una persona con un rol de liderazgo técnico (CTO, Tech Lead).
+    const defaultPrompt = `Act as a senior cybersecurity consultant from [Your Company Name]. The recipient of this email is our client, an individual in a technical leadership role (CTO, Tech Lead).
 
-Tu tarea es redactar un borrador de correo electrónico claro y conciso para notificar al cliente sobre los hallazgos de seguridad identificados en su cuenta de AWS.
+Your task is to draft a clear and concise email to notify the client about the security findings identified in their AWS account.
 
-El correo debe tener la siguiente estructura:
+The email must have the following structure:
 
-**Asunto:** Resumen Ejecutivo: Hallazgos de Seguridad en su Cuenta de AWS
+**Subject:** Executive Summary: Security Findings in Your AWS Account
 
-**Cuerpo del Correo:**
+**Email Body:**
 
-* **Saludo:** Un saludo profesional (ej: "Estimado/a [Nombre del Cliente],").
-* **Introducción (1 párrafo):** Informa brevemente que se ha completado una revisión de seguridad y que a continuación se presentan los resultados clave.
-* **Resumen de Hallazgos:** Presenta una lista de viñetas (bullet points). Para **cada tipo de hallazgo** identificado en el JSON que te proporciono, incluye una viñeta con:
-    * El **título del hallazgo**.
-    * Entre paréntesis, su **severidad**.
-    * Una **breve descripción (1-2 frases)** del riesgo de negocio asociado. **No incluyas la lista detallada de recursos afectados**, solo el resumen del problema.
-* **Recomendación Principal:** Basado en los hallazgos, ofrece una recomendación general y priorizada (ej: "Recomendamos centrar los esfuerzos iniciales en solucionar los hallazgos de severidad Crítica y Alta, especialmente los relacionados con la gestión de identidades y accesos.").
-* **Próximos Pasos:** Propón agendar una reunión para revisar el informe técnico completo y coordinar el plan de remediación.
-* **Cierre:** Un cierre cordial y profesional.
+* **Greeting:** A professional salutation (e.g., "Dear [Client Name],").
+* **Introduction (1 paragraph):** Briefly state that a security review has been completed and that the key results are presented below.
+* **Summary of Findings:** Present a bulleted list. For **each type of finding** identified in the JSON I provide, include a bullet point with:
+    * The **finding's title**.
+    * In parentheses, its **severity**.
+    * A **brief description (1-2 sentences)** of the associated business risk. **Do not include the detailed list of affected resources**, only a summary of the issue.
+* **Primary Recommendation:** Based on the findings, offer a general, prioritized recommendation (e.g., "We recommend focusing initial efforts on remediating Critical and High severity findings, especially those related to identity and access management.").
+* **Next Steps:** Propose scheduling a meeting to review the full technical report and coordinate the remediation plan.
+* **Closing:** A cordial and professional closing.
 
-El objetivo es que el cliente entienda rápidamente qué problemas existen y cuál es su impacto, sin abrumarlo con detalles técnicos en el primer contacto. Asegúrate de que **todos los tipos de hallazgos** estén listados.
+The goal is for the client to quickly understand the existing issues and their impact without being overwhelmed by technical details in the first contact. Ensure that **all types of findings** are listed.
 
-A continuación te proporciono los hallazgos en formato JSON:`;
+Below are the findings in JSON format:`;
 
     container.innerHTML = `
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -535,7 +500,6 @@ A continuación te proporciono los hallazgos en formato JSON:`;
         </div>
     `;
 
-    // Add event listener after the button is created
     const genButton = document.getElementById('generate-gemini-report-btn');
     if (genButton) {
         genButton.addEventListener('click', generateGeminiReport);
@@ -622,12 +586,10 @@ export const generateGeminiReport = async () => {
     }
 };
 
-// Sample rule checking function - you'll need to implement the actual rules
 export const check_healthy_status_rules = (auditData) => {
     const findings = [];
     
     try {
-        // Example: Check for MFA rule
         const users = auditData.iam?.results?.users || [];
         const noMfaUsers = users.filter(user => 
             !user.MFADevices || user.MFADevices.length === 0
@@ -645,7 +607,6 @@ export const check_healthy_status_rules = (auditData) => {
             });
         }
 
-        // Example: Check for GuardDuty rule
         const guarddutyStatus = auditData.guardduty?.results?.status || [];
         const disabledGuardDuty = guarddutyStatus.filter(status => 
             status.Status !== "Enabled"
@@ -662,8 +623,6 @@ export const check_healthy_status_rules = (auditData) => {
                 affected_resources: disabledGuardDuty.map(region => ({ resource: 'GuardDuty Service', region }))
             });
         }
-
-        // Add more rules here as needed...
 
     } catch (error) {
         console.error('Error in rule checking:', error);
@@ -692,7 +651,6 @@ export const renderHealthyStatusFindings = (findings) => {
         return;
     }
 
-    // Sort findings by severity
     const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 };
     const sortedFindings = [...findings].sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99));
 
@@ -723,7 +681,15 @@ export const renderHealthyStatusFindings = (findings) => {
             severityBadgeColor = 'bg-gray-100 text-gray-600';
         }
 
-        // Create display format for affected resources
+        const severityToEnglish = {
+            'Crítico': 'Critical',
+            'Alto': 'High',
+            'Medio': 'Medium',
+            'Bajo': 'Low',
+            'Informativo': 'Info'
+        };
+        const severityInEnglish = severityToEnglish[finding.severity] || finding.severity;
+
         const affectedResourcesWithDisplay = (finding.affected_resources || []).map(res => {
             if (typeof res === 'object' && res.resource && res.region) {
                 return {
@@ -769,7 +735,7 @@ export const renderHealthyStatusFindings = (findings) => {
                 <div class="flex flex-wrap items-center justify-between mb-2">
                     <h3 class="text-xl font-bold text-[#204071] flex-grow">${finding.name || 'Unknown finding'}</h3>
                     <div class="flex flex-wrap gap-2 mt-1 sm:mt-0">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${severityBadgeColor}">${finding.severity || 'UNKNOWN'}</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${severityBadgeColor}">${severityInEnglish || 'UNKNOWN'}</span>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">${impactLabel}</span>
                         ${pciBadgeHtml}
                     </div>
@@ -799,11 +765,10 @@ export const renderHealthyStatusFindings = (findings) => {
 export const populateHealthyStatusFilter = (findings) => {
     const regionSelect = document.getElementById('healthy-status-region-filter');
     const sectionSelect = document.getElementById('healthy-status-section-filter');
-    const geminiRegionSelect = document.getElementById('gemini-region-filter'); // También actualizar este
+    const geminiRegionSelect = document.getElementById('gemini-region-filter');
     
     if (!regionSelect || !sectionSelect) return;
 
-    // Populate regions con mejor manejo
     const regions = new Set();
     
     (findings || []).forEach(finding => {
@@ -811,13 +776,11 @@ export const populateHealthyStatusFilter = (findings) => {
             if (typeof res === 'object' && res !== null && res.region) {
                 regions.add(res.region);
             } else {
-                // Si no tiene región especificada, agregar Global
                 regions.add('Global');
             }
         });
     });
 
-    // Limpiar y repoblar regiones
     regionSelect.innerHTML = '<option value="all">All Regions</option>';
     if (geminiRegionSelect) {
         geminiRegionSelect.innerHTML = '<option value="all">All Regions</option>';
@@ -830,7 +793,6 @@ export const populateHealthyStatusFilter = (findings) => {
         option.textContent = region;
         regionSelect.appendChild(option);
         
-        // También actualizar el select de Gemini
         if (geminiRegionSelect) {
             const geminiOption = document.createElement('option');
             geminiOption.value = region;
@@ -839,7 +801,6 @@ export const populateHealthyStatusFilter = (findings) => {
         }
     });
 
-    // Populate sections
     const sections = new Set();
     
     (findings || []).forEach(finding => {
@@ -857,24 +818,18 @@ export const populateHealthyStatusFilter = (findings) => {
         sectionSelect.appendChild(option);
     });
 
-    // Actualizar findings count inicial
     if (findings && findings.length > 0) {
         updateFindingsCount(findings.length, findings.length);
     }
 };
 
-// Nueva función para inicializar los filtros después de cargar datos
 export const initializeFiltersAfterDataLoad = (findings) => {
-    // Guardar los findings
     window.lastHealthyStatusFindings = findings || [];
     
-    // Poblar los filtros
     populateHealthyStatusFilter(findings);
     
-    // Mostrar todos los findings inicialmente
     renderHealthyStatusFindings(findings);
     
-    // Asegurar que los event listeners están configurados
     setupFilterEventListeners();
 };
 
