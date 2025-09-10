@@ -317,7 +317,13 @@ const buildAndRenderAllViews = () => {
     } catch (e) { log(`Error rendering: ${e.message}`, 'error'); console.error(e); }
 };
 
-const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><h3 class="mt-2 text-lg font-medium text-[#204071]">Welcome to AudiThor</h3><p class="mt-1 text-sm text-gray-500">Enter your credentials and click "Scan Account"</p></div>`;
+const createInitialEmptyState = () => `<div class="text-center py-16 bg-white rounded-lg">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mx-auto h-12 w-12 text-gray-400" viewBox="0 0 16 16">
+        <path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2.5-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16m0-1c-1.657 0-3-1-3-2.75 0-.75.25-2 1.25-3C6.125 10 7 10.5 7 10.5c-.375-1.25.5-3.25 2-3.5-.179 1-.25 2 1 3 .625.5 1 1.364 1 2.25C11 14 9.657 15 8 15"/>
+    </svg>
+    <h3 class="mt-2 text-lg font-medium text-[#204071]">Welcome to AudiThor</h3>
+    <p class="mt-1 text-sm text-gray-500">Enter your credentials and click "Scan Account"</p>
+</div>`;
 
 const exportResultsToJson = () => {
     if (!window.iamApiData) {
