@@ -1257,6 +1257,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "An IAM user does not have Multi-Factor Authentication (MFA) enabled. Requiring MFA for all users is a fundamental security best practice to add an extra layer of protection against unauthorized access.",
         "remediation": "Navigate to the IAM service in the AWS console, select the affected user, and on the 'Security credentials' tab, assign an MFA device.",
+        "pci_requirement": "PCI DSS 8.4",
         "check_function": check_mfa_for_all_users
     },
     {
@@ -1266,6 +1267,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "Programmatic access keys older than 90 days exist. It is a security best practice to rotate credentials regularly to limit the risk in case a key is compromised.",
         "remediation": "In the IAM console, create a new access key for the user, update the applications that use it, and then deactivate and delete the old key.",
+        "pci_requirement": "PCI DSS 8.3.9",
         "check_function": check_iam_access_key_age
     },
     {
@@ -1275,6 +1277,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "The account's password policy does not meet recommended security standards, making user accounts more vulnerable to brute-force or guessing attacks.",
         "remediation": "In the IAM console, go to 'Account settings' and edit the password policy to meet all requirements: length >= 12, use of uppercase, lowercase, numbers, and symbols, expiration <= 90 days, reuse prevention >= 4, and hard expiry.",
+        "pci_requirement": "PCI DSS 8.3.6",
         "check_function": check_password_policy_strength
     },
     {
@@ -1284,6 +1287,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "A user has been detected with one or more IAM policies attached directly to their identity. AWS best practice recommends managing permissions through groups and roles to simplify administration and reduce the risk of configuration errors.",
         "remediation": "Create an IAM group that represents the user's role, attach the necessary policies to that group, and then add the user to the group. Finally, remove the policies that are directly attached to the user.",
+        "pci_requirement": "PCI DSS 7.2.1",
         "check_function": check_user_has_attached_policies
     },
     {
@@ -1293,6 +1297,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "An IAM user with active access keys (CLI/programmatic access) does not properly comply with MFA requirements. This could be because the user lacks an MFA device entirely, or because there are no IAM policies enforcing MFA authentication for API calls. Without proper MFA enforcement for CLI access, the account is vulnerable to credential theft and unauthorized programmatic access.",
         "remediation": "For users without MFA devices: Enable MFA in the IAM console under 'Security credentials'. For users without MFA enforcement policies: Create or attach an IAM policy that includes a condition requiring 'aws:MultiFactorAuthPresent' to be true for sensitive actions. Consider using STS GetSessionToken with MFA for temporary credentials in CLI workflows.",
+        "pci_requirement": "PCI DSS 8.4",
         "check_function": check_cli_mfa_non_compliance
     },
     {
@@ -1302,6 +1307,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["CRITICAL"],
         "description": "The root user account does not have Multi-Factor Authentication (MFA) enabled. The root user has complete access to all AWS services and resources in the account. Without MFA, if the root user credentials are compromised, an attacker would have unrestricted access to the entire AWS account, potentially leading to complete account takeover, data breaches, and significant financial losses.",
         "remediation": "Immediately enable MFA for the root user account. Go to the AWS Console, sign in as root, navigate to 'My Security Credentials', and assign an MFA device. Use a hardware MFA device for the highest level of security. After enabling MFA, avoid using the root user for daily operations - create IAM users with appropriate permissions instead.",
+        "pci_requirement": "PCI DSS 8.4",
         "check_function": check_root_mfa_disabled
     },
     {
@@ -1311,6 +1317,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "The root user has MFA enabled, but it appears to be using a virtual MFA device rather than a hardware-based device. While virtual MFA provides good security, hardware MFA devices offer additional protection against sophisticated attacks such as SIM swapping, malware on mobile devices, or social engineering attacks targeting virtual MFA applications. For the root user, which has the highest level of access, hardware MFA provides the strongest possible authentication.",
         "remediation": "Replace the current virtual MFA device with a hardware MFA device. Purchase a compatible hardware MFA device (such as a FIDO2/WebAuthn security key or an OATH-TOTP hardware token), then go to the AWS Console root user security credentials section to remove the current virtual MFA device and configure the new hardware device.",
+        "pci_requirement": "PCI DSS 8.5.1",
         "check_function": check_root_mfa_not_hardware
     },
     {
@@ -1320,6 +1327,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "AWS GuardDuty, the threat detection service, is not enabled or is suspended in one or more regions. Enabling it is key to detecting malicious or unauthorized activity in the account.",
         "remediation": "Access the AWS console, go to the GuardDuty service, and enable it in the indicated regions to improve your account's threat detection.",
+        "pci_requirement": "PCI DSS 11.5.1",
         "check_function": check_guardduty_disabled
     },
     {
@@ -1329,6 +1337,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "GuardDuty Malware Protection is disabled in a region where EC2 instances exist. Although GuardDuty is active, this specific feature adds a layer of protection to detect malicious software on EC2 workloads and should be enabled if these instances are used.",
         "remediation": "Access the GuardDuty console, go to the detector settings for the affected region, and enable the 'Malware Protection' feature. This has no additional cost unless malware is detected and a scan is initiated.",
+        "pci_requirement": "PCI DSS 5.2.1",
         "check_function": check_guardduty_malware_protection_disabled_with_ec2
     },
     {
@@ -1338,6 +1347,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "AWS Config is not enabled in one or more regions. This service is essential for auditing and evaluating the configurations of AWS resources, allowing for continuous compliance monitoring.",
         "remediation": "Access the AWS console, go to the AWS Config service, and enable it in the indicated regions to improve visibility and configuration compliance of your resources.",
+        "pci_requirement": "PCI DSS 11.5.2",
         "check_function": check_config_disabled
     },
     {
@@ -1347,6 +1357,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "AWS Security Hub is not enabled in one or more regions. Security Hub provides a comprehensive view of high-priority security alerts and compliance status across all AWS services.",
         "remediation": "Access the AWS console, go to the Security Hub service, and enable it in the indicated regions to centralize and manage your account's security posture.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_security_hub_disabled
     },
     {
@@ -1356,6 +1367,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "The 'PCI DSS v3.2.1' security standard is not enabled in AWS Security Hub. If the account processes, stores, or transmits credit card data, enabling this standard is crucial for monitoring compliance with the required security controls.",
         "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'PCI DSS v3.2.1' standard.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_pci_dss_3_2_1_standard_enabled
     },
     {
@@ -1365,6 +1377,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "The 'PCI DSS v4.0.1' security standard is not enabled in AWS Security Hub. If the account processes, stores, or transmits credit card data, enabling this standard is crucial for monitoring compliance with the required security controls.",
         "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'PCI DSS v4.0.1' standard.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_pci_dss_4_0_1_standard_enabled
     },
     {
@@ -1374,6 +1387,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "The 'CIS AWS Foundations Benchmark v1.2.0' security standard is not enabled in Security Hub. This benchmark provides a set of security recommendations for configuring AWS and helps align the account with industry best practices.",
         "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'CIS AWS Foundations Benchmark v1.2.0' standard.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_cis_1_2_0_standard_enabled
     },
     {
@@ -1383,6 +1397,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "The 'AWS Foundational Security Best Practices' standard is not enabled in Security Hub. This is the primary AWS standard that helps detect when accounts and resources deviate from security best practices. It is essential to have it activated.",
         "remediation": "Access the AWS Security Hub console, navigate to the 'Security standards' section, and search for and enable the 'AWS Foundational Security Best Practices v1.0.0' standard.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_aws_foundational_security_standard_enabled
     },
     {
@@ -1392,6 +1407,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["CRITICAL"],
         "description": "A resource (such as an EC2 instance) has been detected using an operating system or platform that has reached its 'End of Life' (EOL). This means it no longer receives security updates from the provider, leaving it exposed to known and future vulnerabilities.",
         "remediation": "Migrate the application or service to an instance with a supported operating system or platform that receives security updates. Plan to upgrade resources before they reach their EOL date.",
+        "pci_requirement": "PCI DSS 6.3.1",
         "check_function": check_inspector_platform_eol
     },
     {
@@ -1401,6 +1417,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "EC2 instances have been detected in a region where Amazon Inspector vulnerability scanning for EC2 is not activated. This represents a security blind spot, as new vulnerabilities in these instances will not be discovered.",
         "remediation": "Access the Amazon Inspector console, go to 'Account settings' -> 'Scan status', and ensure that 'Amazon EC2 scanning' is activated for the affected region.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_inspector_ec2_scanning_disabled
     },
     {
@@ -1410,6 +1427,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "Lambda functions have been detected in a region where Amazon Inspector vulnerability scanning for Lambda is not activated. This can leave your functions' code and dependencies unscanned for known vulnerabilities.",
         "remediation": "Access the Amazon Inspector console, go to 'Account settings' -> 'Scan status', and ensure that 'Lambda functions scanning' is activated for the affected region.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_inspector_lambda_scanning_disabled
     },
     {
@@ -1419,6 +1437,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "ECR repositories have been detected in a region where Amazon Inspector container image scanning is not activated. Images can contain vulnerabilities in their operating system or software packages, and not scanning them represents a significant security risk.",
         "remediation": "Access the Amazon Inspector console, go to 'Account settings' -> 'Scan status', and ensure that 'Amazon ECR scanning' is activated for the affected region.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_inspector_ecr_scanning_disabled
     },
     {
@@ -1428,6 +1447,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "Inspector findings with 'Critical' or 'High' severity have been detected that have not been remediated in over 30 days. This represents a significant and prolonged security risk, indicating a potential gap in the vulnerability and patch management process.",
         "remediation": "Immediately prioritize and remediate these old findings. Review your patch management processes to ensure high-impact vulnerabilities are addressed within an acceptable timeframe (SLA).",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_inspector_old_critical_findings
     },
     {
@@ -1437,6 +1457,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "An AWS region has been detected that does not have any CloudTrail trail defined. Having an audit log of all API calls in every region is a fundamental security practice for incident investigation and activity monitoring.",
         "remediation": "Create a CloudTrail trail in the affected region. It is highly recommended to create a multi-region trail from the primary region to consolidate logs from all regions into a single S3 bucket.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_no_cloudtrail_in_region
     },
     {
@@ -1446,6 +1467,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "A CloudTrail trail has been detected that does not use AWS KMS encryption to protect the log files. Encrypting logs at rest is a fundamental security practice to protect sensitive audit information from unauthorized access if the S3 bucket is compromised.",
         "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the storage section, enable log data encryption with AWS KMS, using either an AWS-managed key or a customer-managed key (CMK).",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_cloudtrail_kms_encryption_disabled
     },
     {
@@ -1455,6 +1477,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "A CloudTrail trail has been detected that does not have log file integrity validation enabled. This feature is crucial to ensure that logs have not been altered or deleted after being delivered to the S3 bucket. Without it, the reliability of the audit records cannot be guaranteed.",
         "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the 'Storage properties' section, ensure that the 'Enable log file integrity validation' option is checked.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_cloudtrail_log_file_validation_disabled
     },
     {
@@ -1464,6 +1487,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "A CloudTrail trail has been detected that does not have a CloudWatch Logs destination configured. This prevents the ability to create metric filters and alarms for real-time monitoring of critical API calls, such as root user logins, security group changes, or unauthorized API activity.",
         "remediation": "Navigate to the CloudTrail console, select the affected trail, and edit its configuration. In the 'CloudWatch Logs' section, enable the option and either create a new log group or select an existing one to send the logs to.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_cloudtrail_cloudwatch_destination_disabled
     },
     {
@@ -1473,6 +1497,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "Console login events have been detected using the AWS root user account. The root user has complete access to all AWS services and resources in the account and should only be used for specific account management tasks that require root access. Regular use of the root user for daily operations represents a significant security risk and violates AWS security best practices.",
         "remediation": "Investigate the necessity of the root user login. If it was for legitimate account management tasks, ensure MFA is enabled for the root user. For regular operations, create IAM users with appropriate permissions instead. Consider implementing CloudWatch alarms for root user activity monitoring and establish processes that minimize root user usage.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_root_user_console_login
     },
     {
@@ -1482,6 +1507,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["INFO"],
         "description": "The use of advanced network components such as VPC Peering, Transit Gateway, VPNs, or VPC Endpoints has been detected. These services indicate a complex network architecture that interconnects different environments. It is a good practice to perform network segmentation tests to ensure that the isolation between VPCs and on-premises networks is as expected and that no unintended communication paths exist.",
         "remediation": "Plan and execute a network segmentation test. Verify that only explicitly permitted traffic flows are possible between the different network segments (e.g., development, pre-production, production) and with corporate networks.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_network_connectivity_exists
     },
     {
@@ -1491,6 +1517,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "An RDS database instance has been detected that is configured to be publicly accessible from the Internet. This exposes the database to direct attacks, such as brute-force attempts, SQL injection, or vulnerability exploitation, and significantly increases the risk of a data breach.",
         "remediation": "Navigate to the RDS console, select the affected instance, and click 'Modify'. In the 'Connectivity' section, change the 'Public access' option from 'Yes' to 'No'. Ensure that your resources within the VPC (such as EC2 instances or Lambda functions) have the necessary network connectivity to access the database privately.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_rds_publicly_accessible
     },
     {
@@ -1500,6 +1527,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["CRITICAL"],
         "description": "An RDS database instance has been detected that does not have storage encryption enabled. This is a critical security gap, especially for PCI DSS compliance, as it leaves sensitive data unprotected on the underlying storage.",
         "remediation": "Encryption must be enabled at the time of instance creation. To remediate this, create a snapshot of the unencrypted instance, copy the snapshot while enabling encryption on the copy, and finally, restore the database from the new encrypted snapshot.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_rds_instance_unencrypted
     },
     {
@@ -1509,6 +1537,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["CRITICAL"],
         "description": "An Aurora database cluster has been detected that does not have storage encryption enabled. As with RDS, this is a critical risk that exposes data to unauthorized access at the disk level.",
         "remediation": "Encryption for an Aurora cluster is defined at the time of its creation. To fix this finding, it is necessary to create a new cluster with encryption enabled and migrate the data from the unencrypted cluster.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_aurora_cluster_unencrypted
     },
     {
@@ -1518,6 +1547,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "A DynamoDB table has been detected that does not use encryption at rest with a customer-managed key (CMK) or an AWS-managed key (KMS). Although DynamoDB encrypts data by default, using KMS keys provides an additional layer of control and auditability.",
         "remediation": "In the DynamoDB console, select the table, go to the 'Additional settings' tab, and in the 'Encryption at rest' section, change the encryption key to an AWS-managed (KMS) or customer-managed (CMK) key.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_dynamodb_table_unencrypted
     },
     {
@@ -1527,6 +1557,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["CRITICAL"],
         "description": "A DocumentDB cluster has been detected that does not have storage encryption enabled. This is a critical security risk, as the data on the disk is not protected against unauthorized access.",
         "remediation": "Encryption for DocumentDB must be enabled during cluster creation and cannot be changed afterward. Remediation involves creating a new cluster with encryption enabled and migrating the data.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_docdb_cluster_unencrypted
     },
     {
@@ -1536,6 +1567,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "A public load balancer (ALB/NLB) has been detected whose HTTPS/TLS listener allows the use of outdated TLS versions (TLS 1.0 or TLS 1.1). These protocols have known vulnerabilities (such as POODLE and BEAST) and do not support modern encryption algorithms, exposing traffic to potential interception and decryption attacks.",
         "remediation": "Navigate to the EC2 console -> Load Balancers. Select the affected listener and edit its configuration to assign a modern security policy that requires at least TLSv1.2, such as 'ELBSecurityPolicy-TLS-1-2-2017-01' or a later version.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_alb_outdated_tls_policy
     },
     {
@@ -1545,6 +1577,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "An EC2 instance has been detected with a public IP address, making it directly accessible from the Internet. This increases the attack surface, exposing it to scans, brute-force attacks, and exploitation of unpatched vulnerabilities.",
         "remediation": "Review if the instance requires direct public access. If not, disassociate the Elastic IP or modify the subnet settings to prevent auto-assignment of public IPs. If public access is necessary, ensure its Security Group is highly restrictive, allowing traffic only from trusted sources on the required ports.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_ec2_publicly_exposed
     },
     {
@@ -1554,6 +1587,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "A certificate managed by AWS Certificate Manager (ACM) has been detected that has expired. Expired certificates cause trust errors in browsers and can disrupt service for applications that use them.",
         "remediation": "Navigate to the ACM console, locate the affected certificate by its domain name, and proceed to renew it. If the certificate is no longer in use, delete it to avoid alerts.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_acm_expired_certificates
     },
     {
@@ -1563,6 +1597,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "A customer-managed KMS key (CMK) has been detected without automatic key rotation enabled. Regularly rotating keys is a security best practice that limits the potential impact of a compromised key and reduces the amount of data protected by a single encryption key version.",
         "remediation": "Navigate to the KMS console, select the affected key, and go to the 'Key rotation' tab. Check the box to enable automatic key rotation. AWS will then automatically generate new key material every year.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_kms_customer_key_rotation_disabled
     },
     {
@@ -1572,6 +1607,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "An ECR repository allows image tags to be overwritten. This practice goes against the principle of immutability and can lead to confusion in deployments, making it difficult to track which version of an image is running. In a worst-case scenario, a malicious image could be pushed with a production tag.",
         "remediation": "Navigate to the ECR console, select the repository, and edit its settings to change 'Tag immutability' to 'Immutable'. This ensures that once an image tag is pushed, it cannot be modified.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_ecr_tag_mutability_mutable
     },
     {
@@ -1581,6 +1617,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "An ECR repository has a resource-based policy that grants public access. This allows any user on the internet to pull images, potentially exposing proprietary code or vulnerable container images.",
         "remediation": "Navigate to the ECR console, select the repository, and under 'Permissions', edit the policy to remove any statements that grant access to a public principal ('*').",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_ecr_public_repository
     },
     {
@@ -1590,6 +1627,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "An ECR repository does not have an image signing configuration. Image signing ensures the authenticity and integrity of container images, confirming they are from a trusted source and have not been tampered with.",
         "remediation": "Configure AWS Signer with a signing profile for container images and integrate it with your CI/CD pipeline to sign images before they are pushed to ECR. Enforce policies that only allow signed images to be deployed.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_ecr_image_signing_disabled
     },
         {
@@ -1599,6 +1637,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "An ECR repository does not automatically scan images for vulnerabilities, and Amazon Inspector is also not configured to scan ECR images in this region. This creates a critical security gap, as there is no automated mechanism to detect vulnerabilities in container images.",
         "remediation": "The highest priority is to enable 'Scan on push' in the ECR repository settings. As a secondary control, enable Amazon Inspector for ECR in the region.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_ecr_no_scan_on_push_and_no_inspector
     },
     {
@@ -1608,6 +1647,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "An ECR repository does not use the basic 'Scan on push' feature. However, Amazon Inspector is active for ECR in this region, which acts as a compensating control by providing advanced vulnerability scanning. While this is a better configuration, enabling 'Scan on push' is still recommended for immediate feedback.",
         "remediation": "Enable 'Scan on push' in the ECR repository settings to get immediate vulnerability feedback upon pushing an image.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_ecr_no_scan_on_push_but_inspector_ok
     },
     {
@@ -1617,6 +1657,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "A CodePipeline is using an artifact store (S3 bucket) that does not have encryption enabled. This could expose source code, build artifacts, and sensitive configuration files if the bucket is compromised.",
         "remediation": "Navigate to the CodePipeline settings, edit the pipeline, and in the 'Artifact store' section, configure a KMS key for encryption.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_codepipeline_unencrypted_artifacts
     },
     {
@@ -1626,6 +1667,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "A CodePipeline does not have a manual approval stage. This is a security risk, especially for pipelines deploying to production, as it allows code changes to be deployed automatically without human oversight.",
         "remediation": "Edit the pipeline and add a new stage before the production deployment action. In this stage, add a 'Manual approval' action. This will pause the pipeline until an authorized user approves the deployment.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_codepipeline_no_manual_approval
     },
     {
@@ -1635,6 +1677,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "A CodePipeline does not have an integrated security scanning stage, and Amazon Inspector is also not configured to scan container images in this region. This means code or images could be deployed to production with known vulnerabilities without any automated checks.",
         "remediation": "The best practice is to add a security scanning stage to your pipeline (e.g., using CodeBuild with tools like Trivy, SonarQube, or AWS Inspector). As a baseline, ensure Amazon Inspector is enabled for ECR in the region.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_codepipeline_no_scan_and_no_inspector
     },
     {
@@ -1644,6 +1687,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "A CodePipeline does not have a specific security scanning stage. However, Amazon Inspector is active for ECR in this region, providing a compensating control for container image vulnerabilities. While this is a good baseline, integrating a scan directly into the pipeline provides earlier feedback.",
         "remediation": "For more robust security, add a dedicated security scanning stage to your pipeline. This allows you to fail the build early if critical vulnerabilities are found, rather than discovering them after the image is in ECR.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_codepipeline_no_scan_but_inspector_ok
     },
     {
@@ -1653,6 +1697,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "A Web ACL does not have 'Sampled Requests' enabled. While not as critical as full logging, this feature provides free, real-time visibility into the traffic that matches the rules, which is very useful for debugging and operational monitoring.",
         "remediation": "Navigate to the WAF console, select the affected Web ACL, go to the 'Visibility and metrics' tab, and enable the 'Sampled requests' option.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_waf_sampled_requests_disabled
     },
     {
@@ -1662,6 +1707,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "A Web ACL does not have a logging destination configured. This is a critical security gap as it prevents the collection of detailed traffic logs necessary for incident investigation, forensic analysis, and compliance auditing. Without these logs, it is nearly impossible to analyze an attack or troubleshoot false positives.",
         "remediation": "Navigate to the WAF console, select the affected Web ACL, go to the 'Logging and metrics' tab, and enable logging. You will need to configure an Amazon Kinesis Data Firehose as the destination to store the logs, which can then be sent to S3, CloudWatch, or other analysis tools.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_waf_logging_destination_disabled
     },
     {
@@ -1671,6 +1717,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "An active EC2 instance has been detected without an associated IAM role. This directly implies that it lacks the necessary permissions to interact with other AWS services. For example, it cannot send logs to CloudWatch, which prevents security tools installed on the instance (like a FIM such as OSSEC) from forwarding their critical alerts. This creates a major gap in security visibility and centralized monitoring.",
         "remediation": "Create an IAM role with the minimum necessary permissions for the instance's function (e.g., 'CloudWatchAgentServerPolicy' for logging). Then, navigate to the EC2 console, select the instance, and under 'Actions' -> 'Security' -> 'Modify IAM role', attach the newly created role.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_ec2_instance_missing_iam_role
     },
     {
@@ -1680,6 +1727,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "One or more Lambda functions do not have any tags assigned. Tagging is essential for governance, cost management, and identifying resources. For compliance, it's the first step to classify functions based on their role and the data they handle.",
         "remediation": "Assign meaningful tags to every Lambda function. At a minimum, consider tags such as 'Project', 'Owner', 'Environment', and a data classification tag like 'Sensitivity' (e.g., PCI, High, Medium, Low).",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_lambda_missing_any_tag
     },
     {
@@ -1689,6 +1737,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["HIGH"],
         "description": "A Lambda function is using an IAM role that has been identified as privileged (e.g., AdministratorAccess). This grants excessive permissions to the function. If the Lambda code has a vulnerability, it could be exploited by an attacker to gain extensive control over your AWS account.",
         "remediation": "Create a new, dedicated IAM role for the Lambda function following the principle of least privilege. Grant only the specific permissions the function needs to perform its task. Avoid using broad, administrative policies for Lambda execution roles.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_lambda_using_privileged_role
     },
     {
@@ -1698,16 +1747,18 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "An S3 bucket has been detected that allows public access via ACLs or bucket policies. This exposes the bucket contents to the internet, potentially allowing unauthorized users to read, and in some cases modify, the stored data. Public S3 buckets represent a significant security risk as they can lead to data breaches if sensitive information is inadvertently stored without proper access controls.",
         "remediation": "Navigate to the S3 console, select the affected bucket, and review its permissions. Enable 'Block all public access' in the bucket's permissions tab unless public access is absolutely necessary. If public access is required, ensure that only the specific objects that need to be public are accessible, and consider using CloudFront for better control over content distribution.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_s3_public_buckets
     },
     {
-    "rule_id": "SECRETS_001",
-    "section": "Data Protection", 
-    "name": "Secret without automatic rotation enabled",
-    "severity": SEVERITY["HIGH"],
-    "description": "A secret in AWS Secrets Manager does not have automatic rotation enabled. Without rotation, compromised credentials could remain valid indefinitely, increasing security risk. This is especially critical for database credentials and API keys.",
-    "remediation": "Navigate to AWS Secrets Manager, select the affected secret, and configure automatic rotation. For database credentials, use AWS managed Lambda functions. For other secrets, create custom rotation functions.",
-    "check_function": check_secrets_rotation_disabled
+        "rule_id": "SECRETS_001",
+        "section": "Data Protection", 
+        "name": "Secret without automatic rotation enabled",
+        "severity": SEVERITY["HIGH"],
+        "description": "A secret in AWS Secrets Manager does not have automatic rotation enabled. Without rotation, compromised credentials could remain valid indefinitely, increasing security risk. This is especially critical for database credentials and API keys.",
+        "remediation": "Navigate to AWS Secrets Manager, select the affected secret, and configure automatic rotation. For database credentials, use AWS managed Lambda functions. For other secrets, create custom rotation functions.",
+        "pci_requirement": "PCI DSS XX",
+        "check_function": check_secrets_rotation_disabled
     },
     {
         "rule_id": "SECRETS_002",
@@ -1716,6 +1767,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"], 
         "description": "A secret is using an AWS managed KMS key instead of a customer managed key (CMK). Customer managed keys provide better control over encryption, key rotation policies, and access logging.",
         "remediation": "Create a customer managed KMS key and update the secret to use it. Navigate to Secrets Manager, edit the secret's encryption configuration, and select your CMK.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_secrets_aws_managed_kms
     },
     {
@@ -1725,6 +1777,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["CRITICAL"],
         "description": "A secret has a resource policy that allows public access or uses wildcard principals. This could allow unauthorized access to sensitive credentials from anywhere on the internet.",
         "remediation": "Navigate to Secrets Manager, select the secret, and review its resource policy. Remove any statements with Principal '*' and restrict access to specific IAM roles or users that require it.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_secrets_public_resource_policy
     },
     {
@@ -1734,6 +1787,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "A secret is not replicated to other regions, creating a single point of failure. If the primary region becomes unavailable, applications dependent on this secret could fail.",
         "remediation": "Enable cross-region replication for critical secrets. In Secrets Manager, select the secret and configure replication to at least one other region.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_secrets_no_replication
     },
     {
@@ -1743,6 +1797,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["LOW"],
         "description": "A secret has no tags assigned. Tags are essential for governance, cost allocation, and security classification of sensitive credentials.",
         "remediation": "Add appropriate tags to classify the secret. Consider tags like Environment, Owner, Sensitivity, and Purpose to improve governance and cost tracking.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_secrets_no_tags
     },
     {
@@ -1752,6 +1807,7 @@ RULES_TO_CHECK = [
         "severity": SEVERITY["MEDIUM"],
         "description": "A secret has automatic rotation enabled but with an interval exceeding 90 days. Long rotation intervals reduce the effectiveness of credential rotation as a security control.",
         "remediation": "Navigate to Secrets Manager, select the secret, and modify the rotation configuration to use an interval of 90 days or less for enhanced security.",
+        "pci_requirement": "PCI DSS XX",
         "check_function": check_secrets_long_rotation_interval
     }
 ]

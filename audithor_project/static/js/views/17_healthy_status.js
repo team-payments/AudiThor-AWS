@@ -760,13 +760,18 @@ export const renderHealthyStatusFindings = (findings) => {
             'encryption': 'Encryption Issue'
         }[impactType] || 'Operational Risk';
 
+        const pciBadgeHtml = finding.pci_requirement 
+            ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">${finding.pci_requirement}</span>`
+            : '';
+        
         const card = `
             <div class="bg-white p-4 rounded-xl mb-4 border-l-4 ${borderColor} shadow-sm">
                 <div class="flex flex-wrap items-center justify-between mb-2">
                     <h3 class="text-xl font-bold text-[#204071] flex-grow">${finding.name || 'Unknown finding'}</h3>
-                    <div class="flex space-x-2 mt-1 sm:mt-0">
+                    <div class="flex flex-wrap gap-2 mt-1 sm:mt-0">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${severityBadgeColor}">${finding.severity || 'UNKNOWN'}</span>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">${impactLabel}</span>
+                        ${pciBadgeHtml}
                     </div>
                 </div>
                 <p class="text-gray-600 mt-2 text-sm">${finding.description || 'No description available'}</p>

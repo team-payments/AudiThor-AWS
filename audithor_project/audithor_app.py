@@ -493,6 +493,7 @@ def check_healthy_status_rules_endpoint():
                             "severity": rule.get("severity"),
                             "description": rule.get("description"),
                             "remediation": rule.get("remediation"),
+                            "pci_requirement": rule.get("pci_requirement"),
                             "affected_resources": affected_resources_list
                         }
                         findings.append(finding)
