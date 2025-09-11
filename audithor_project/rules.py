@@ -1378,7 +1378,7 @@ RULES_TO_CHECK = [
         "rule_id": "IAM_008",
         "section": "Identity & Access", 
         "name": "Unused IAM user detected",
-        "severity": SEVERITY["MEDIUM"],
+        "severity": SEVERITY["LOW"],
         "description": "An IAM user account has shown no activity (no console login or API key usage) for over 90 days. Inactive accounts increase the attack surface, as their credentials could be compromised and used by an attacker without being noticed. Regular review and deactivation of inactive accounts is a critical security hygiene practice.",
         "remediation": "Review the identified inactive user accounts. If the user no longer requires access, deactivate or delete the IAM user. If access is still required, ensure the user's credentials are secure and understand why the account has been inactive. This helps maintain the principle of least privilege and reduces security risks.",
         "pci_requirement": "PCI DSS 8.1.4",
