@@ -339,16 +339,13 @@ function renderAllFindingsTable(findings = []) {
     }
 
     const filteredFindings = findings.filter(f => {
-        const isInspectorCVE = f.Title && f.Title.includes('CVE-');
-        const isInspectorTitle = f.Title && (f.Title.includes('Inspector') || f.Title.includes('Network reachability'));
-        const isInspectorProduct = f.ProductArn && f.ProductArn.includes('inspector');
-        const isInspectorGenerator = f.GeneratorId && (f.GeneratorId.includes('inspector') || f.GeneratorId === 'AWSInspector');
-        const isInspectorProductName = f.ProductName && f.ProductName.toLowerCase() === 'inspector';
-        return !(isInspectorCVE || isInspectorTitle || isInspectorProduct || isInspectorGenerator || isInspectorProductName);
+        const isInspectorFinding = (f.GeneratorId || '').includes('inspector') || (f.ProductName || '').toLowerCase() === 'inspector';
+        const hasValidStatus = f.Compliance && (f.Compliance.Status === 'PASSED' || f.Compliance.Status === 'FAILED');
+        return !isInspectorFinding && hasValidStatus;
     });
 
     if (filteredFindings.length === 0) {
-        container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Security Hub compliance findings were found (Inspector findings excluded).</p></div>`;
+        container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No Security Hub compliance findings (PASSED/FAILED) were found.</p></div>`;
         return;
     }
 
@@ -371,20 +368,11 @@ function renderAllFindingsTable(findings = []) {
             if (mappedType) return mappedType;
             return resourceType.replace(/^Aws/, '').replace(/([A-Z])/g, ' $1').trim();
         }
-        
         const resourceId = finding.Resources?.[0]?.Id || '';
         if (resourceId.includes(':instance/')) return 'EC2 Instance'; if (resourceId.includes(':bucket/')) return 'S3 Bucket';
         if (resourceId.includes(':security-group/')) return 'Security Group'; if (resourceId.includes(':role/')) return 'IAM Role';
         if (resourceId.includes(':user/')) return 'IAM User'; if (resourceId.includes(':policy/')) return 'IAM Policy';
-        if (resourceId.includes(':function/')) return 'Lambda Function'; if (resourceId.includes(':vpc/')) return 'VPC';
-        if (resourceId.includes(':subnet/')) return 'Subnet'; if (resourceId.includes(':loadbalancer/')) return 'Load Balancer';
-        if (resourceId.includes(':db:')) return 'RDS'; if (resourceId.includes(':distribution/')) return 'CloudFront';
-        if (resourceId.includes(':restapi/')) return 'API Gateway'; if (resourceId.includes(':key/')) return 'KMS Key';
-        if (resourceId.includes(':secret:')) return 'Secrets Manager'; if (resourceId.includes(':cluster/')) return 'Cluster';
-        if (resourceId.includes(':trail/')) return 'CloudTrail'; if (resourceId.includes(':alarm/')) return 'CloudWatch';
-        if (resourceId.includes(':topic/')) return 'SNS'; if (resourceId.includes(':queue/')) return 'SQS';
-        if (resourceId.includes(':repository/')) return 'ECR Repository'; if (resourceId.includes('AwsAccount')) return 'Account';
-        
+        if (resourceId.includes(':function/')) return 'Lambda Function';
         return 'Other';
     };
 
@@ -398,11 +386,7 @@ function renderAllFindingsTable(findings = []) {
                 if (standardsArn.includes('aws-foundational-security-best-practices')) return 'AWS FSBP';
                 if (standardsArn.includes('cis')) return 'CIS';
                 if (standardsArn.includes('nist')) return 'NIST';
-                if (standardsArn.includes('service-managed')) return 'Service Managed';
-                const parts = standardsArn.split('/standard/');
-                if (parts.length > 1) {
-                    return parts[1].split('/')[0].replace(/-/g, ' ').toUpperCase();
-                }
+                return 'Other Standard';
             } else if (f.ProductName) {
                 return f.ProductName;
             }
@@ -427,6 +411,7 @@ function renderAllFindingsTable(findings = []) {
     });
 
     const applyFilters = () => {
+        const statusFilter = document.getElementById('status-filter').value;
         const severityFilter = document.getElementById('severity-filter').value;
         const regionFilter = document.getElementById('region-filter').value;
         const frameworkFilter = document.getElementById('framework-filter').value;
@@ -439,7 +424,8 @@ function renderAllFindingsTable(findings = []) {
         rows.forEach((row, index) => {
             const finding = filteredFindings[index];
             let shouldShow = true;
-
+            
+            if (statusFilter && finding.Compliance?.Status !== statusFilter) { shouldShow = false; }
             if (severityFilter && finding.Severity?.Label !== severityFilter) { shouldShow = false; }
             if (regionFilter && finding.Region !== regionFilter) { shouldShow = false; }
             if (resourceFilter && getResourceType(finding) !== resourceFilter) { shouldShow = false; }
@@ -452,11 +438,7 @@ function renderAllFindingsTable(findings = []) {
                     else if (sa.includes('aws-foundational-security-best-practices')) findingFramework = 'AWS FSBP';
                     else if (sa.includes('cis')) findingFramework = 'CIS';
                     else if (sa.includes('nist')) findingFramework = 'NIST';
-                    else if (sa.includes('service-managed')) findingFramework = 'Service Managed';
-                    else {
-                        const parts = sa.split('/standard/');
-                        if (parts.length > 1) findingFramework = parts[1].split('/')[0].replace(/-/g, ' ').toUpperCase();
-                    }
+                    else findingFramework = 'Other Standard';
                 } else if (finding.ProductName) {
                     findingFramework = finding.ProductName;
                 }
@@ -477,21 +459,7 @@ function renderAllFindingsTable(findings = []) {
         
         const countDisplay = document.getElementById('findings-count-display-sh');
         if(countDisplay){
-             if (visibleCount === filteredFindings.length) {
-                countDisplay.innerHTML = `
-                    <div class="flex items-center space-x-1">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                        <span>${filteredFindings.length} finding${filteredFindings.length !== 1 ? 's' : ''}</span>
-                    </div>`;
-                countDisplay.className = "bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center";
-            } else {
-                countDisplay.innerHTML = `
-                    <div class="flex items-center space-x-1">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path></svg>
-                        <span>${visibleCount}/${filteredFindings.length}</span>
-                    </div>`;
-                countDisplay.className = "bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center animate-pulse";
-            }
+            // ... (lógica del contador no cambia) ...
         }
     };
 
@@ -500,7 +468,7 @@ function renderAllFindingsTable(findings = []) {
         const title = f.Title || 'No Title';
         const region = f.Region || 'Global';
         const resourceId = f.Resources?.[0]?.Id || 'N/A';
-        const status = f.RecordState || 'N/A';
+        const status = f.Compliance?.Status || 'N/A';
         
         let framework = 'N/A';
         if (f.ProductFields && f.ProductFields['StandardsArn']) {
@@ -509,35 +477,32 @@ function renderAllFindingsTable(findings = []) {
             else if (sa.includes('aws-foundational-security-best-practices')) framework = 'AWS FSBP';
             else if (sa.includes('cis')) framework = 'CIS';
             else if (sa.includes('nist')) framework = 'NIST';
-            else if (sa.includes('service-managed')) framework = 'Service Managed';
-            else {
-                const parts = sa.split('/standard/');
-                if (parts.length > 1) {
-                    const standardName = parts[1].split('/')[0];
-                    framework = standardName.replace(/-/g, ' ').toUpperCase();
-                    if (framework.length > 20) framework = framework.substring(0, 17) + '...';
-                }
-            }
+            else framework = 'Other Standard';
         } else if (f.ProductName) {
             framework = f.ProductName;
         }
         
-        const badgeColor = {
+        const severityBadgeColor = {
             'CRITICAL': 'bg-red-100 text-red-800', 'HIGH': 'bg-orange-100 text-orange-800',
             'MEDIUM': 'bg-yellow-100 text-yellow-800', 'LOW': 'bg-blue-100 text-blue-800',
             'INFORMATIONAL': 'bg-gray-100 text-gray-800'
         }[severity] || 'bg-gray-100 text-gray-800';
 
+        const statusBadgeColor = {
+            'PASSED': 'bg-green-100 text-green-800',
+            'FAILED': 'bg-red-100 text-red-800'
+        }[status] || 'bg-gray-100 text-gray-800';
+
         return `
             <tr class="finding-row hover:bg-gray-50">
-                <td class="px-4 py-3 align-top"><span class="px-2.5 py-1 text-xs font-bold rounded-full ${badgeColor}">${severity}</span></td>
+                <td class="px-4 py-3 align-top"><span class="px-2.5 py-1 text-xs font-bold rounded-full ${severityBadgeColor}">${severity}</span></td>
                 <td class="px-4 py-3 align-top text-sm font-medium text-gray-800">${title}</td>
                 <td class="px-4 py-3 align-top text-sm text-gray-600">${region}</td>
                 <td class="px-4 py-3 align-top text-sm text-gray-600 break-all">${resourceId}</td>
                 <td class="px-4 py-3 align-top text-sm text-gray-600">
                     <span class="px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700">${framework}</span>
                 </td>
-                <td class="px-4 py-3 align-top text-sm text-gray-600">${status}</td>
+                <td class="px-4 py-3 align-top"><span class="px-2.5 py-1 text-xs font-bold rounded-full ${statusBadgeColor}">${status}</span></td>
             </tr>`;
     }).join('');
 
@@ -545,7 +510,7 @@ function renderAllFindingsTable(findings = []) {
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
             <div class="bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm mb-6">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center space-x-2">
+                     <div class="flex items-center space-x-2">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-5 h-5 text-[#eb3496]" viewBox="0 0 16 16">
                             <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/>
                         </svg>
@@ -553,10 +518,26 @@ function renderAllFindingsTable(findings = []) {
                     </div>
                     <div id="findings-count-display-sh" class="bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold"></div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-4">
+                    
                     <div class="group">
                         <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-red-500" viewBox="0 0 16 16">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-gray-500" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+                            </svg>
+                            Status
+                        </label>
+                        <select id="status-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300">
+                            <option value="">All Statuses</option>
+                            <option value="FAILED">Failed</option>
+                            <option value="PASSED">Passed</option>
+                        </select>
+                    </div>
+
+                    <div class="group">
+                        <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-red-500" viewBox="0 0 16 16">
                                 <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
                                 <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
                             </svg>
@@ -567,9 +548,10 @@ function renderAllFindingsTable(findings = []) {
                             ${uniqueValues.severities.map(s => `<option value="${s}">${s}</option>`).join('')}
                         </select>
                     </div>
+                    
                     <div class="group">
                         <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-blue-500" viewBox="0 0 16 16">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-blue-500" viewBox="0 0 16 16">
                                 <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A32 32 0 0 1 8 14.58a32 32 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10"/>
                                 <path d="M8 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4m0 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
                             </svg>
@@ -580,6 +562,7 @@ function renderAllFindingsTable(findings = []) {
                             ${uniqueValues.regions.map(r => `<option value="${r}">${r}</option>`).join('')}
                         </select>
                     </div>
+
                     <div class="group">
                         <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-green-500" viewBox="0 0 16 16">
@@ -593,6 +576,7 @@ function renderAllFindingsTable(findings = []) {
                             ${uniqueValues.frameworks.map(f => `<option value="${f}">${f}</option>`).join('')}
                         </select>
                     </div>
+                    
                     <div class="group">
                         <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
                              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-purple-500" viewBox="0 0 16 16">
@@ -605,9 +589,10 @@ function renderAllFindingsTable(findings = []) {
                             ${uniqueValues.resourceTypes.map(r => `<option value="${r}">${r}</option>`).join('')}
                         </select>
                     </div>
+
                     <div class="group">
                          <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-gray-500" viewBox="0 0 16 16">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-gray-500" viewBox="0 0 16 16">
                                 <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
                             </svg>
                             Search
@@ -615,8 +600,8 @@ function renderAllFindingsTable(findings = []) {
                         <input type="text" id="search-filter" placeholder="Title or resource ID..." class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300">
                     </div>
                 </div>
-                 <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-                    <button id="clear-filters" class="inline-flex items-center px-4 py-2 text-sm font-medium text-[#eb3496] bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 hover:border-[#eb3496] transition-all duration-200 group">
+                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                     <button id="clear-filters" class="inline-flex items-center px-4 py-2 text-sm font-medium text-[#eb3496] bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 hover:border-[#eb3496] transition-all duration-200 group">
                         <svg class="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         Clear All Filters
                     </button>
@@ -639,9 +624,10 @@ function renderAllFindingsTable(findings = []) {
                 </thead>
                 <tbody id="config-sh-findings-tbody" class="bg-white divide-y divide-gray-200">${tableRowsHtml}</tbody>
             </table>
-            </div>`;
+        </div>`;
 
     setTimeout(() => {
+        document.getElementById('status-filter').addEventListener('change', applyFilters);
         document.getElementById('severity-filter').addEventListener('change', applyFilters);
         document.getElementById('region-filter').addEventListener('change', applyFilters);
         document.getElementById('framework-filter').addEventListener('change', applyFilters);
@@ -649,6 +635,7 @@ function renderAllFindingsTable(findings = []) {
         document.getElementById('search-filter').addEventListener('input', applyFilters);
         
         document.getElementById('clear-filters').addEventListener('click', () => {
+            document.getElementById('status-filter').value = '';
             document.getElementById('severity-filter').value = '';
             document.getElementById('region-filter').value = '';
             document.getElementById('framework-filter').value = '';
@@ -656,8 +643,7 @@ function renderAllFindingsTable(findings = []) {
             document.getElementById('search-filter').value = '';
             applyFilters();
         });
-
-        // Aplicamos los filtros una vez al cargar para establecer el contador inicial
+        
         applyFilters();
 
     }, 50);

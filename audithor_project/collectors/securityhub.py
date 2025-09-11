@@ -101,7 +101,7 @@ def get_and_filter_security_hub_findings(session, region_statuses):
         try:
             sh_client = session.client("securityhub", region_name=region_name)
             paginator = sh_client.get_paginator('get_findings')
-            pages = paginator.paginate(Filters={'RecordState': [{'Value': 'ACTIVE', 'Comparison': 'EQUALS'}]})
+            pages = paginator.paginate()
             for page in pages:
                 all_findings.extend(page['Findings'])
         except ClientError:
