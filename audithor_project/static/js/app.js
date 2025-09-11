@@ -49,7 +49,6 @@ import { openModalWithKmsPolicy, openModalWithSecretDetails } from '/static/js/v
 import { showCloudtrailEventDetails } from '/static/js/views/06_cloudtrail.js';
 import { toggleAlarmDetails } from '/static/js/views/07_cloudwatch.js';
 import { openModalWithEc2Tags, openModalWithLambdaTags, openModalWithLambdaRole } from '/static/js/views/10_compute.js';
-import { showComplianceDetails } from '/static/js/views/15_config_sh.js';
 
 // Importar iconos
 import { SIDEBAR_ICONS } from '/static/js/icons.js';
@@ -760,7 +759,6 @@ window.showCloudtrailEventDetails = showCloudtrailEventDetails;
 window.openModalWithKmsPolicy = openModalWithKmsPolicy;
 window.openModalWithLambdaRole = openModalWithLambdaRole;
 window.openModalWithEcrPolicy = openModalWithEcrPolicy;
-window.showComplianceDetails = showComplianceDetails;
 window.copyToClipboard = copyToClipboard;
 window.buildCodePipelineView = buildCodePipelineView;
 window.openModalWithUserRoles = openModalWithUserRoles;

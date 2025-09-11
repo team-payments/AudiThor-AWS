@@ -171,3 +171,106 @@ export const setupPagination = (paginationContainer, ulContainer, items, renderP
     renderPageFunction(ulContainer, items, currentPage, rowsPerPage);
     updatePaginationButtons();
 };
+
+// Nueva versión de setupPagination que acepta un objeto de configuración
+export const setupPaginationNew = (config) => {
+    const { rowsSelector, paginationContainerSelector, rowsPerPage = 15 } = config;
+    
+    // Verificar que los selectores existen
+    const rows = document.querySelectorAll(rowsSelector);
+    const paginationContainer = document.getElementById(paginationContainerSelector.replace('#', ''));
+    
+    if (!rows || rows.length === 0) {
+        console.warn('setupPaginationNew: No rows found with selector:', rowsSelector);
+        return;
+    }
+    
+    if (!paginationContainer) {
+        console.warn('setupPaginationNew: Pagination container not found:', paginationContainerSelector);
+        return;
+    }
+
+    const totalRows = rows.length;
+    
+    if (totalRows <= rowsPerPage) {
+        // No necesita paginación
+        return;
+    }
+
+    const pageCount = Math.ceil(totalRows / rowsPerPage);
+    let currentPage = 1;
+
+    const showPage = (page) => {
+        const startIndex = (page - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        
+        rows.forEach((row, index) => {
+            if (index >= startIndex && index < endIndex) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    };
+
+    const updatePaginationButtons = () => {
+        paginationContainer.innerHTML = '';
+        
+        if (pageCount <= 1) return;
+        
+        const paginationDiv = document.createElement('div');
+        paginationDiv.className = 'flex items-center justify-between';
+        
+        // Información de página
+        const pageInfo = document.createElement('div');
+        pageInfo.className = 'text-sm text-gray-700';
+        pageInfo.textContent = `Showing ${((currentPage - 1) * rowsPerPage) + 1} to ${Math.min(currentPage * rowsPerPage, totalRows)} of ${totalRows} results`;
+        
+        // Controles de navegación
+        const nav = document.createElement('div');
+        nav.className = 'flex space-x-1';
+        
+        // Botón anterior
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = 'Previous';
+        prevBtn.className = `px-3 py-1 text-sm border rounded ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}`;
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => {
+            if (currentPage > 1) {
+                currentPage--;
+                showPage(currentPage);
+                updatePaginationButtons();
+            }
+        };
+        
+        // Número de página actual
+        const pageNum = document.createElement('span');
+        pageNum.className = 'px-3 py-1 text-sm bg-[#eb3496] text-white rounded';
+        pageNum.textContent = currentPage;
+        
+        // Botón siguiente
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Next';
+        nextBtn.className = `px-3 py-1 text-sm border rounded ${currentPage === pageCount ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}`;
+        nextBtn.disabled = currentPage === pageCount;
+        nextBtn.onclick = () => {
+            if (currentPage < pageCount) {
+                currentPage++;
+                showPage(currentPage);
+                updatePaginationButtons();
+            }
+        };
+        
+        nav.appendChild(prevBtn);
+        nav.appendChild(pageNum);
+        nav.appendChild(nextBtn);
+        
+        paginationDiv.appendChild(pageInfo);
+        paginationDiv.appendChild(nav);
+        paginationContainer.appendChild(paginationDiv);
+    };
+
+    // Inicializar
+    showPage(currentPage);
+    updatePaginationButtons();
+};
