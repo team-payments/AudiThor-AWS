@@ -1246,6 +1246,60 @@ def check_secrets_long_rotation_interval(audit_data):
     return failing_resources
 
 
+# Coloca esta función en la sección 2, junto a las otras funciones de chequeo.
+
+def check_unused_iam_users(audit_data):
+    """
+    Verifica si existen usuarios de IAM que no han tenido actividad (login en consola o uso de access key)
+    en los últimos 90 días.
+    """
+    failing_resources = []
+    users = audit_data.get("iam", {}).get("users", [])
+    ninety_days = timedelta(days=90)
+    now = datetime.now(timezone.utc)
+
+    for user in users:
+        last_activity = None
+
+        # 1. Comprobar la última vez que se usó la contraseña
+        if user.get("PasswordLastUsed"):
+            try:
+                password_used_date = datetime.fromisoformat(user["PasswordLastUsed"])
+                last_activity = password_used_date
+            except (ValueError, TypeError):
+                pass  # Ignorar si la fecha es inválida
+
+        # 2. Comprobar la última vez que se usó cada clave de acceso
+        for key in user.get("AccessKeys", []):
+            if key.get("AccessKeyLastUsed"):
+                try:
+                    key_used_date = datetime.fromisoformat(key["AccessKeyLastUsed"])
+                    # Actualizar si esta actividad es más reciente
+                    if last_activity is None or key_used_date > last_activity:
+                        last_activity = key_used_date
+                except (ValueError, TypeError):
+                    continue
+        
+        # 3. Evaluar la inactividad
+        # Si nunca hubo actividad (last_activity es None) y el usuario tiene más de 90 días, se considera inactivo.
+        # O si la última actividad fue hace más de 90 días.
+        if last_activity:
+            if (now - last_activity) > ninety_days:
+                failing_resources.append(user.get("UserName"))
+        else:
+            # Si no hay registro de actividad, comprobamos la fecha de creación del usuario.
+            # Un usuario recién creado sin actividad no debería ser marcado como inactivo.
+            try:
+                create_date = datetime.fromisoformat(user.get("CreateDate"))
+                if (now - create_date) > ninety_days:
+                    failing_resources.append(user.get("UserName"))
+            except (ValueError, TypeError):
+                # Si no podemos determinar la fecha de creación, lo añadimos por seguridad
+                failing_resources.append(user.get("UserName"))
+
+    return failing_resources
+
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -1319,6 +1373,16 @@ RULES_TO_CHECK = [
         "remediation": "Replace the current virtual MFA device with a hardware MFA device. Purchase a compatible hardware MFA device (such as a FIDO2/WebAuthn security key or an OATH-TOTP hardware token), then go to the AWS Console root user security credentials section to remove the current virtual MFA device and configure the new hardware device.",
         "pci_requirement": "PCI DSS 8.5.1",
         "check_function": check_root_mfa_not_hardware
+    },
+    {
+        "rule_id": "IAM_008",
+        "section": "Identity & Access", 
+        "name": "Unused IAM user detected",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An IAM user account has shown no activity (no console login or API key usage) for over 90 days. Inactive accounts increase the attack surface, as their credentials could be compromised and used by an attacker without being noticed. Regular review and deactivation of inactive accounts is a critical security hygiene practice.",
+        "remediation": "Review the identified inactive user accounts. If the user no longer requires access, deactivate or delete the IAM user. If access is still required, ensure the user's credentials are secure and understand why the account has been inactive. This helps maintain the principle of least privilege and reduces security risks.",
+        "pci_requirement": "PCI DSS 8.1.4",
+        "check_function": check_unused_iam_users
     },
     {
         "rule_id": "GUARDDUTY_001",

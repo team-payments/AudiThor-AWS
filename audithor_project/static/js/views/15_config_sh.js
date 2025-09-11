@@ -329,27 +329,22 @@ function renderConfigSHStatusTable(serviceStatus = []) {
     return tableHtml;
 }
 
-
 function renderAllFindingsTable(findings = []) {
     const container = document.getElementById('config-sh-findings-content');
     if (!container) return;
 
-    // CORRECCIÓN: Validar que findings es un array
     if (!Array.isArray(findings)) {
         console.warn('findings is not an array:', findings);
         findings = [];
     }
 
-    // NUEVO: Filtrar findings de Inspector
     const filteredFindings = findings.filter(f => {
-        // Excluir findings de Inspector basándose en diferentes criterios
         const isInspectorCVE = f.Title && f.Title.includes('CVE-');
         const isInspectorTitle = f.Title && (f.Title.includes('Inspector') || f.Title.includes('Network reachability'));
         const isInspectorProduct = f.ProductArn && f.ProductArn.includes('inspector');
-        const isInspectorGenerator = f.GeneratorId && f.GeneratorId.includes('inspector');
-        
-        // Retornar false (excluir) si es de Inspector
-        return !(isInspectorCVE || isInspectorTitle || isInspectorProduct || isInspectorGenerator);
+        const isInspectorGenerator = f.GeneratorId && (f.GeneratorId.includes('inspector') || f.GeneratorId === 'AWSInspector');
+        const isInspectorProductName = f.ProductName && f.ProductName.toLowerCase() === 'inspector';
+        return !(isInspectorCVE || isInspectorTitle || isInspectorProduct || isInspectorGenerator || isInspectorProductName);
     });
 
     if (filteredFindings.length === 0) {
@@ -357,85 +352,42 @@ function renderAllFindingsTable(findings = []) {
         return;
     }
 
-    // Función mejorada para detectar tipos de recurso
     const getResourceType = (finding) => {
-        // Primero intentar usar el campo Type si existe
         const resourceType = finding.Resources?.[0]?.Type;
         if (resourceType) {
-            // Mapear tipos AWS estándar a nombres legibles
             const typeMapping = {
-                'AwsEc2Instance': 'EC2 Instance',
-                'AwsS3Bucket': 'S3 Bucket',
-                'AwsEc2SecurityGroup': 'Security Group',
-                'AwsIamRole': 'IAM Role',
-                'AwsIamUser': 'IAM User',
-                'AwsIamPolicy': 'IAM Policy',
-                'AwsLambdaFunction': 'Lambda Function',
-                'AwsEc2Vpc': 'VPC',
-                'AwsEc2Subnet': 'Subnet',
-                'AwsElbv2LoadBalancer': 'Load Balancer',
-                'AwsElbLoadBalancer': 'Classic Load Balancer',
-                'AwsRdsDbInstance': 'RDS Instance',
-                'AwsRdsDbCluster': 'RDS Cluster',
-                'AwsCloudFrontDistribution': 'CloudFront',
-                'AwsApiGatewayRestApi': 'API Gateway',
-                'AwsKmsKey': 'KMS Key',
-                'AwsSecretsManagerSecret': 'Secrets Manager',
-                'AwsEcsCluster': 'ECS Cluster',
-                'AwsEksCluster': 'EKS Cluster',
-                'AwsSnsSubscription': 'SNS',
-                'AwsSqsQueue': 'SQS Queue',
-                'AwsCloudTrailTrail': 'CloudTrail',
-                'AwsCloudWatchAlarm': 'CloudWatch',
-                'AwsAutoScalingGroup': 'Auto Scaling',
-                'AwsConfigConfigurationRecorder': 'Config',
-                'AwsGuardDutyDetector': 'GuardDuty',
-                'AwsWafWebAcl': 'WAF',
-                'AwsCodeBuildProject': 'CodeBuild',
-                'AwsCodePipelinePipeline': 'CodePipeline',
-                'AwsRedshiftCluster': 'Redshift',
-                'AwsElasticSearchDomain': 'OpenSearch',
-                'AwsBackupBackupVault': 'Backup Vault',
-                'AwsEcrRepository': 'ECR Repository'
+                'AwsEc2Instance': 'EC2 Instance', 'AwsS3Bucket': 'S3 Bucket', 'AwsEc2SecurityGroup': 'Security Group',
+                'AwsIamRole': 'IAM Role', 'AwsIamUser': 'IAM User', 'AwsIamPolicy': 'IAM Policy', 'AwsLambdaFunction': 'Lambda Function',
+                'AwsEc2Vpc': 'VPC', 'AwsEc2Subnet': 'Subnet', 'AwsElbv2LoadBalancer': 'Load Balancer', 'AwsElbLoadBalancer': 'Classic Load Balancer',
+                'AwsRdsDbInstance': 'RDS Instance', 'AwsRdsDbCluster': 'RDS Cluster', 'AwsCloudFrontDistribution': 'CloudFront',
+                'AwsApiGatewayRestApi': 'API Gateway', 'AwsKmsKey': 'KMS Key', 'AwsSecretsManagerSecret': 'Secrets Manager',
+                'AwsEcsCluster': 'ECS Cluster', 'AwsEksCluster': 'EKS Cluster', 'AwsSnsSubscription': 'SNS', 'AwsSqsQueue': 'SQS Queue',
+                'AwsCloudTrailTrail': 'CloudTrail', 'AwsCloudWatchAlarm': 'CloudWatch', 'AwsAutoScalingGroup': 'Auto Scaling',
+                'AwsConfigConfigurationRecorder': 'Config', 'AwsGuardDutyDetector': 'GuardDuty', 'AwsWafWebAcl': 'WAF',
+                'AwsCodeBuildProject': 'CodeBuild', 'AwsCodePipelinePipeline': 'CodePipeline', 'AwsRedshiftCluster': 'Redshift',
+                'AwsElasticSearchDomain': 'OpenSearch', 'AwsBackupBackupVault': 'Backup Vault', 'AwsEcrRepository': 'ECR Repository'
             };
-            
             const mappedType = typeMapping[resourceType];
             if (mappedType) return mappedType;
-            
-            // Si no está en el mapeo, extraer nombre genérico
-            const genericType = resourceType.replace(/^Aws/, '').replace(/([A-Z])/g, ' $1').trim();
-            return genericType;
+            return resourceType.replace(/^Aws/, '').replace(/([A-Z])/g, ' $1').trim();
         }
         
-        // Fallback: analizar Resource ID con patrones mejorados
         const resourceId = finding.Resources?.[0]?.Id || '';
-        if (resourceId.includes(':instance/')) return 'EC2 Instance';
-        if (resourceId.includes(':bucket/')) return 'S3 Bucket';
-        if (resourceId.includes(':security-group/')) return 'Security Group';
-        if (resourceId.includes(':role/')) return 'IAM Role';
-        if (resourceId.includes(':user/')) return 'IAM User';
-        if (resourceId.includes(':policy/')) return 'IAM Policy';
-        if (resourceId.includes(':function/')) return 'Lambda Function';
-        if (resourceId.includes(':vpc/')) return 'VPC';
-        if (resourceId.includes(':subnet/')) return 'Subnet';
-        if (resourceId.includes(':loadbalancer/')) return 'Load Balancer';
-        if (resourceId.includes(':db:')) return 'RDS';
-        if (resourceId.includes(':distribution/')) return 'CloudFront';
-        if (resourceId.includes(':restapi/')) return 'API Gateway';
-        if (resourceId.includes(':key/')) return 'KMS Key';
-        if (resourceId.includes(':secret:')) return 'Secrets Manager';
-        if (resourceId.includes(':cluster/')) return 'Cluster';
-        if (resourceId.includes(':trail/')) return 'CloudTrail';
-        if (resourceId.includes(':alarm/')) return 'CloudWatch';
-        if (resourceId.includes(':topic/')) return 'SNS';
-        if (resourceId.includes(':queue/')) return 'SQS';
-        if (resourceId.includes(':repository/')) return 'ECR Repository';
-        if (resourceId.includes('AwsAccount')) return 'Account';
+        if (resourceId.includes(':instance/')) return 'EC2 Instance'; if (resourceId.includes(':bucket/')) return 'S3 Bucket';
+        if (resourceId.includes(':security-group/')) return 'Security Group'; if (resourceId.includes(':role/')) return 'IAM Role';
+        if (resourceId.includes(':user/')) return 'IAM User'; if (resourceId.includes(':policy/')) return 'IAM Policy';
+        if (resourceId.includes(':function/')) return 'Lambda Function'; if (resourceId.includes(':vpc/')) return 'VPC';
+        if (resourceId.includes(':subnet/')) return 'Subnet'; if (resourceId.includes(':loadbalancer/')) return 'Load Balancer';
+        if (resourceId.includes(':db:')) return 'RDS'; if (resourceId.includes(':distribution/')) return 'CloudFront';
+        if (resourceId.includes(':restapi/')) return 'API Gateway'; if (resourceId.includes(':key/')) return 'KMS Key';
+        if (resourceId.includes(':secret:')) return 'Secrets Manager'; if (resourceId.includes(':cluster/')) return 'Cluster';
+        if (resourceId.includes(':trail/')) return 'CloudTrail'; if (resourceId.includes(':alarm/')) return 'CloudWatch';
+        if (resourceId.includes(':topic/')) return 'SNS'; if (resourceId.includes(':queue/')) return 'SQS';
+        if (resourceId.includes(':repository/')) return 'ECR Repository'; if (resourceId.includes('AwsAccount')) return 'Account';
         
         return 'Other';
     };
 
-    // Obtener valores únicos para los filtros
     const uniqueValues = {
         severities: [...new Set(filteredFindings.map(f => f.Severity?.Label).filter(Boolean))],
         regions: [...new Set(filteredFindings.map(f => f.Region).filter(Boolean))],
@@ -451,13 +403,14 @@ function renderAllFindingsTable(findings = []) {
                 if (parts.length > 1) {
                     return parts[1].split('/')[0].replace(/-/g, ' ').toUpperCase();
                 }
+            } else if (f.ProductName) {
+                return f.ProductName;
             }
             return null;
         }).filter(Boolean))],
         resourceTypes: [...new Set(filteredFindings.map(f => getResourceType(f)).filter(Boolean))]
     };
 
-    // Ordenar los arrays de valores únicos
     uniqueValues.severities.sort((a, b) => {
         const order = { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4 };
         return (order[a] || 99) - (order[b] || 99);
@@ -466,7 +419,6 @@ function renderAllFindingsTable(findings = []) {
     uniqueValues.frameworks.sort();
     uniqueValues.resourceTypes.sort();
 
-    // Ordenar hallazgos por severidad
     const severityOrder = { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4 };
     filteredFindings.sort((a, b) => {
         const severityA = severityOrder[a.Severity?.Label] ?? 99;
@@ -474,7 +426,6 @@ function renderAllFindingsTable(findings = []) {
         return severityA - severityB;
     });
 
-    // Función para aplicar filtros
     const applyFilters = () => {
         const severityFilter = document.getElementById('severity-filter').value;
         const regionFilter = document.getElementById('region-filter').value;
@@ -489,68 +440,61 @@ function renderAllFindingsTable(findings = []) {
             const finding = filteredFindings[index];
             let shouldShow = true;
 
-            // Filtro por severidad
-            if (severityFilter && finding.Severity?.Label !== severityFilter) {
-                shouldShow = false;
-            }
+            if (severityFilter && finding.Severity?.Label !== severityFilter) { shouldShow = false; }
+            if (regionFilter && finding.Region !== regionFilter) { shouldShow = false; }
+            if (resourceFilter && getResourceType(finding) !== resourceFilter) { shouldShow = false; }
 
-            // Filtro por región
-            if (regionFilter && finding.Region !== regionFilter) {
-                shouldShow = false;
-            }
-
-            // Filtro por framework
             if (frameworkFilter) {
-                let framework = 'N/A';
+                let findingFramework = null;
                 if (finding.ProductFields && finding.ProductFields['StandardsArn']) {
-                    const standardsArn = finding.ProductFields['StandardsArn'];
-                    if (standardsArn.includes('pci-dss')) framework = 'PCI DSS';
-                    else if (standardsArn.includes('aws-foundational-security-best-practices')) framework = 'AWS FSBP';
-                    else if (standardsArn.includes('cis')) framework = 'CIS';
-                    else if (standardsArn.includes('nist')) framework = 'NIST';
-                    else if (standardsArn.includes('service-managed')) framework = 'Service Managed';
+                    const sa = finding.ProductFields['StandardsArn'];
+                    if (sa.includes('pci-dss')) findingFramework = 'PCI DSS';
+                    else if (sa.includes('aws-foundational-security-best-practices')) findingFramework = 'AWS FSBP';
+                    else if (sa.includes('cis')) findingFramework = 'CIS';
+                    else if (sa.includes('nist')) findingFramework = 'NIST';
+                    else if (sa.includes('service-managed')) findingFramework = 'Service Managed';
                     else {
-                        const parts = standardsArn.split('/standard/');
-                        if (parts.length > 1) {
-                            framework = parts[1].split('/')[0].replace(/-/g, ' ').toUpperCase();
-                        }
+                        const parts = sa.split('/standard/');
+                        if (parts.length > 1) findingFramework = parts[1].split('/')[0].replace(/-/g, ' ').toUpperCase();
                     }
+                } else if (finding.ProductName) {
+                    findingFramework = finding.ProductName;
                 }
-                if (framework !== frameworkFilter) {
+                if (findingFramework !== frameworkFilter) {
                     shouldShow = false;
                 }
             }
 
-            // Filtro por tipo de recurso (MEJORADO)
-            if (resourceFilter) {
-                const resourceType = getResourceType(finding);
-                if (resourceType !== resourceFilter) {
-                    shouldShow = false;
-                }
-            }
-
-            // Filtro por búsqueda de texto
             if (searchFilter) {
                 const title = (finding.Title || '').toLowerCase();
                 const resourceId = (finding.Resources?.[0]?.Id || '').toLowerCase();
-                if (!title.includes(searchFilter) && !resourceId.includes(searchFilter)) {
-                    shouldShow = false;
-                }
+                if (!title.includes(searchFilter) && !resourceId.includes(searchFilter)) { shouldShow = false; }
             }
 
-            if (shouldShow) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
+            row.style.display = shouldShow ? '' : 'none';
+            if (shouldShow) visibleCount++;
         });
-
-        // Actualizar contador
-        document.getElementById('visible-findings-count').textContent = `Showing ${visibleCount} of ${filteredFindings.length} findings`;
+        
+        const countDisplay = document.getElementById('findings-count-display-sh');
+        if(countDisplay){
+             if (visibleCount === filteredFindings.length) {
+                countDisplay.innerHTML = `
+                    <div class="flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                        <span>${filteredFindings.length} finding${filteredFindings.length !== 1 ? 's' : ''}</span>
+                    </div>`;
+                countDisplay.className = "bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center";
+            } else {
+                countDisplay.innerHTML = `
+                    <div class="flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path></svg>
+                        <span>${visibleCount}/${filteredFindings.length}</span>
+                    </div>`;
+                countDisplay.className = "bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center animate-pulse";
+            }
+        }
     };
 
-    // Crear HTML de la tabla con filtros
     let tableRowsHtml = filteredFindings.map(f => {
         const severity = f.Severity?.Label || 'N/A';
         const title = f.Title || 'No Title';
@@ -558,37 +502,29 @@ function renderAllFindingsTable(findings = []) {
         const resourceId = f.Resources?.[0]?.Id || 'N/A';
         const status = f.RecordState || 'N/A';
         
-        // Extraer el framework/standard
         let framework = 'N/A';
         if (f.ProductFields && f.ProductFields['StandardsArn']) {
-            const standardsArn = f.ProductFields['StandardsArn'];
-            if (standardsArn.includes('pci-dss')) {
-                framework = 'PCI DSS';
-            } else if (standardsArn.includes('aws-foundational-security-best-practices')) {
-                framework = 'AWS FSBP';
-            } else if (standardsArn.includes('cis')) {
-                framework = 'CIS';
-            } else if (standardsArn.includes('nist')) {
-                framework = 'NIST';
-            } else if (standardsArn.includes('service-managed')) {
-                framework = 'Service Managed';
-            } else {
-                const parts = standardsArn.split('/standard/');
+            const sa = f.ProductFields['StandardsArn'];
+            if (sa.includes('pci-dss')) framework = 'PCI DSS';
+            else if (sa.includes('aws-foundational-security-best-practices')) framework = 'AWS FSBP';
+            else if (sa.includes('cis')) framework = 'CIS';
+            else if (sa.includes('nist')) framework = 'NIST';
+            else if (sa.includes('service-managed')) framework = 'Service Managed';
+            else {
+                const parts = sa.split('/standard/');
                 if (parts.length > 1) {
                     const standardName = parts[1].split('/')[0];
                     framework = standardName.replace(/-/g, ' ').toUpperCase();
-                    if (framework.length > 20) {
-                        framework = framework.substring(0, 17) + '...';
-                    }
+                    if (framework.length > 20) framework = framework.substring(0, 17) + '...';
                 }
             }
+        } else if (f.ProductName) {
+            framework = f.ProductName;
         }
         
         const badgeColor = {
-            'CRITICAL': 'bg-red-100 text-red-800',
-            'HIGH': 'bg-orange-100 text-orange-800',
-            'MEDIUM': 'bg-yellow-100 text-yellow-800',
-            'LOW': 'bg-blue-100 text-blue-800',
+            'CRITICAL': 'bg-red-100 text-red-800', 'HIGH': 'bg-orange-100 text-orange-800',
+            'MEDIUM': 'bg-yellow-100 text-yellow-800', 'LOW': 'bg-blue-100 text-blue-800',
             'INFORMATIONAL': 'bg-gray-100 text-gray-800'
         }[severity] || 'bg-gray-100 text-gray-800';
 
@@ -607,57 +543,89 @@ function renderAllFindingsTable(findings = []) {
 
     container.innerHTML = `
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-            <!-- Filtros -->
-            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Severity</label>
-                        <select id="severity-filter" class="w-full text-sm border border-gray-300 rounded-md px-2 py-1">
+            <div class="bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-5 h-5 text-[#eb3496]" viewBox="0 0 16 16">
+                            <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/>
+                        </svg>
+                        <h3 class="text-lg font-bold text-gray-800">Filter Options</h3>
+                    </div>
+                    <div id="findings-count-display-sh" class="bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
+                    <div class="group">
+                        <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-red-500" viewBox="0 0 16 16">
+                                <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
+                                <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+                            </svg>
+                            Severity
+                        </label>
+                        <select id="severity-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300">
                             <option value="">All Severities</option>
                             ${uniqueValues.severities.map(s => `<option value="${s}">${s}</option>`).join('')}
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Region</label>
-                        <select id="region-filter" class="w-full text-sm border border-gray-300 rounded-md px-2 py-1">
+                    <div class="group">
+                        <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-blue-500" viewBox="0 0 16 16">
+                                <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A32 32 0 0 1 8 14.58a32 32 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10"/>
+                                <path d="M8 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4m0 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+                            </svg>
+                            Region
+                        </label>
+                        <select id="region-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300">
                             <option value="">All Regions</option>
                             ${uniqueValues.regions.map(r => `<option value="${r}">${r}</option>`).join('')}
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Framework</label>
-                        <select id="framework-filter" class="w-full text-sm border border-gray-300 rounded-md px-2 py-1">
+                    <div class="group">
+                        <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-green-500" viewBox="0 0 16 16">
+                                <path d="M10 13.5a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-6a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5zm-2.5.5a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5-.5zm-3 0a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5z"/>
+                                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+                            </svg>
+                            Framework
+                        </label>
+                        <select id="framework-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300">
                             <option value="">All Frameworks</option>
                             ${uniqueValues.frameworks.map(f => `<option value="${f}">${f}</option>`).join('')}
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Resource Type</label>
-                        <select id="resource-filter" class="w-full text-sm border border-gray-300 rounded-md px-2 py-1">
+                    <div class="group">
+                        <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-purple-500" viewBox="0 0 16 16">
+                                <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464z"/>
+                            </svg>
+                            Resource Type
+                        </label>
+                        <select id="resource-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300">
                             <option value="">All Resources</option>
                             ${uniqueValues.resourceTypes.map(r => `<option value="${r}">${r}</option>`).join('')}
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Search</label>
-                        <input type="text" id="search-filter" placeholder="Search title or resource..." 
-                               class="w-full text-sm border border-gray-300 rounded-md px-2 py-1">
+                    <div class="group">
+                         <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-gray-500" viewBox="0 0 16 16">
+                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                            </svg>
+                            Search
+                        </label>
+                        <input type="text" id="search-filter" placeholder="Title or resource ID..." class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300">
                     </div>
-                    <div class="flex items-end">
-                        <button id="clear-filters" class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
-                            Clear Filters
-                        </button>
+                </div>
+                 <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <button id="clear-filters" class="inline-flex items-center px-4 py-2 text-sm font-medium text-[#eb3496] bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 hover:border-[#eb3496] transition-all duration-200 group">
+                        <svg class="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Clear All Filters
+                    </button>
+                    <div class="flex items-center space-x-2 text-sm text-gray-600">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        <span>Filters update results instantly</span>
                     </div>
                 </div>
             </div>
-            
-            <!-- Contador de resultados -->
-            <div class="mb-4 text-sm text-gray-600">
-                <span id="visible-findings-count">Showing ${filteredFindings.length} of ${filteredFindings.length} findings</span>
-                <span class="text-gray-400">(${findings.length - filteredFindings.length} Inspector findings filtered out)</span>
-            </div>
-            
-            <!-- Tabla -->
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
@@ -671,10 +639,8 @@ function renderAllFindingsTable(findings = []) {
                 </thead>
                 <tbody id="config-sh-findings-tbody" class="bg-white divide-y divide-gray-200">${tableRowsHtml}</tbody>
             </table>
-            <div id="config-sh-findings-pagination" class="mt-4"></div>
-        </div>`;
+            </div>`;
 
-    // Configurar event listeners para los filtros
     setTimeout(() => {
         document.getElementById('severity-filter').addEventListener('change', applyFilters);
         document.getElementById('region-filter').addEventListener('change', applyFilters);
@@ -691,16 +657,8 @@ function renderAllFindingsTable(findings = []) {
             applyFilters();
         });
 
-        // Configurar paginación
-        const rows = document.querySelectorAll('#config-sh-findings-tbody .finding-row');
-        const paginationContainer = document.getElementById('config-sh-findings-pagination');
-        
-        if (rows.length > 0 && paginationContainer) {
-            setupPaginationNew({
-                rowsSelector: '#config-sh-findings-tbody .finding-row',
-                paginationContainerSelector: '#config-sh-findings-pagination',
-                rowsPerPage: 15
-            });
-        }
+        // Aplicamos los filtros una vez al cargar para establecer el contador inicial
+        applyFilters();
+
     }, 50);
 }
