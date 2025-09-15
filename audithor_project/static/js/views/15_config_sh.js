@@ -7,12 +7,17 @@
 import { handleTabClick, createStatusBadge, log, setupPaginationNew } from '../utils.js';
 
 
-
-
 function processFrameworkSummaryData(findings = []) {
     if (!Array.isArray(findings)) return {};
 
     const summary = {};
+    // --- NUEVO: Objeto para almacenar los totales generales ---
+    const overallTotals = {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        severities: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }
+    };
 
     const getFramework = (finding) => {
         if (finding.ProductFields && finding.ProductFields['StandardsArn']) {
@@ -28,7 +33,6 @@ function processFrameworkSummaryData(findings = []) {
         return 'Unknown';
     };
     
-    // Filtrar solo los hallazgos con estado PASSED o FAILED para el resumen
     const relevantFindings = findings.filter(f => f.Compliance && ['PASSED', 'FAILED'].includes(f.Compliance.Status));
 
     for (const finding of relevantFindings) {
@@ -40,34 +44,39 @@ function processFrameworkSummaryData(findings = []) {
                 total: 0,
                 passed: 0,
                 failed: 0,
-                severities: {
-                    CRITICAL: 0,
-                    HIGH: 0,
-                    MEDIUM: 0,
-                    LOW: 0
-                }
+                severities: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }
             };
         }
 
+        // Actualizar contadores por framework
         summary[framework].total++;
         const status = finding.Compliance.Status;
         
+        // --- NUEVO: Actualizar contadores generales ---
+        overallTotals.total++;
+
         if (status === 'PASSED') {
             summary[framework].passed++;
+            overallTotals.passed++; // <- Añadido
         } else if (status === 'FAILED') {
             summary[framework].failed++;
-            const severity = finding.Severity?.Label || 'LOW'; // Asumir LOW si no hay severidad
+            overallTotals.failed++; // <- Añadido
+            const severity = finding.Severity?.Label || 'LOW';
             if (summary[framework].severities[severity] !== undefined) {
                 summary[framework].severities[severity]++;
+                overallTotals.severities[severity]++; // <- Añadido
             }
         }
     }
 
-    return summary;
+    // --- NUEVO: Devolver un objeto con ambos resultados ---
+    return { frameworkData: summary, overallTotals };
 }
 
-function renderFrameworkSummaryTable(summaryData) {
-    if (Object.keys(summaryData).length === 0) {
+function renderFrameworkSummaryTable(summaryObject) {
+    const { frameworkData, overallTotals } = summaryObject;
+
+    if (Object.keys(frameworkData).length === 0) {
         return '<p class="text-center text-gray-500 mt-8">No compliance summary data available to display.</p>';
     }
 
@@ -78,33 +87,61 @@ function renderFrameworkSummaryTable(summaryData) {
         LOW: 'bg-blue-500 text-white'
     };
     
-    // Ordenar frameworks alfabéticamente
-    const sortedFrameworks = Object.keys(summaryData).sort();
+    const getProgressBar = (passed, total) => {
+        const percentage = total > 0 ? Math.round((passed / total) * 100) : 100;
+        let colorClass = 'bg-green-500'; // Verde por defecto para >= 80%
+        if (percentage < 50) {
+            colorClass = 'bg-red-500';
+        } else if (percentage < 80) {
+            colorClass = 'bg-yellow-500';
+        }
+        
+        return `
+            <div class="flex items-center">
+                <span class="w-12 text-sm font-bold text-gray-800">${percentage}%</span>
+                <div class="w-full bg-gray-200 rounded-full h-3 ml-2">
+                    <div class="${colorClass} h-3 rounded-full" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+    };
+    
+    const sortedFrameworks = Object.keys(frameworkData).sort();
 
     let tableRows = sortedFrameworks.map(framework => {
-        const data = summaryData[framework];
+        const data = frameworkData[framework];
         
         const severitiesHtml = Object.entries(data.severities)
-            .filter(([, count]) => count > 0) // Solo mostrar severidades con hallazgos
-            .map(([severity, count]) => {
-                const colorClass = severityColors[severity] || 'bg-gray-400 text-white';
-                return `<span class="inline-block text-xs font-semibold mr-2 px-2.5 py-1 rounded-full ${colorClass}">${severity}: ${count}</span>`;
-            }).join('');
+            .filter(([, count]) => count > 0)
+            .map(([severity, count]) => `<span class="inline-block text-xs font-semibold mr-2 px-2.5 py-1 rounded-full ${severityColors[severity] || ''}">${severity}: ${count}</span>`)
+            .join('');
 
         return `
             <tr class="hover:bg-gray-50">
-                <td class="px-5 py-4 whitespace-nowrap">
-                    <div class="text-sm font-semibold text-gray-800">${framework}</div>
-                </td>
+                <td class="px-5 py-4 whitespace-nowrap"><div class="text-sm font-semibold text-gray-800">${framework}</div></td>
                 <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-center text-gray-700">${data.total}</td>
                 <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-center text-green-600">${data.passed}</td>
                 <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-center text-red-600">${data.failed}</td>
-                <td class="px-5 py-4 text-sm text-gray-600">
-                    ${severitiesHtml || '-'}
-                </td>
-            </tr>
-        `;
+                <td class="px-5 py-4">${getProgressBar(data.passed, data.total)}</td>
+                <td class="px-5 py-4 text-sm text-gray-600">${severitiesHtml || '-'}</td>
+            </tr>`;
     }).join('');
+
+    const totalSeveritiesHtml = Object.entries(overallTotals.severities)
+        .filter(([, count]) => count > 0)
+        .map(([severity, count]) => `<span class="inline-block text-xs font-semibold mr-2 px-2.5 py-1 rounded-full ${severityColors[severity] || ''}">${severity}: ${count}</span>`)
+        .join('');
+
+    let footerRow = `
+        <tr class="bg-gray-100 font-bold border-t-2 border-gray-300">
+            <td class="px-5 py-4 text-sm text-gray-900">OVERALL</td>
+            <td class="px-5 py-4 text-center text-sm text-gray-900">${overallTotals.total}</td>
+            <td class="px-5 py-4 text-center text-sm text-green-700">${overallTotals.passed}</td>
+            <td class="px-5 py-4 text-center text-sm text-red-700">${overallTotals.failed}</td>
+            <td class="px-5 py-4">${getProgressBar(overallTotals.passed, overallTotals.total)}</td>
+            <td class="px-5 py-4">${totalSeveritiesHtml}</td>
+        </tr>
+    `;
 
     return `
         <div class="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
@@ -116,18 +153,20 @@ function renderFrameworkSummaryTable(summaryData) {
                         <th class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Checks</th>
                         <th class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Passed</th>
                         <th class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compliance</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed Findings Breakdown</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     ${tableRows}
                 </tbody>
+                <tfoot class="bg-gray-50">
+                    ${footerRow}
+                </tfoot>
             </table>
         </div>
     `;
 }
-
-
 
 
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
@@ -338,13 +377,13 @@ function createConfigSHSummaryCardsHtml() {
             </div>
         </div>
         <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full">
-            <div><p class="text-sm text-gray-500">Total Active Findings</p></div>
-            <div class="flex justify-between items-end pt-4"><p id="config-sh-total-findings" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-orange-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-exclamation w-6 h-6 text-orange-600" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/><path d="M7.001 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.553.553 0 0 1-1.1 0z"/></svg></div>
+            <div><p class="text-sm text-gray-500">Total Compliance Checks</p></div>
+            <div class="flex justify-between items-end pt-4"><p id="config-sh-total-checks" class="text-3xl font-bold text-[#204071]">--</p><div class="bg-orange-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-exclamation w-6 h-6 text-orange-600" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/><path d="M7.001 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.553.553 0 0 1-1.1 0z"/></svg></div>
             </div>
         </div>
         <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm flex flex-col justify-between h-full">
-            <div><p class="text-sm text-gray-500">Critical / High Findings</p></div>
-            <div class="flex justify-between items-end pt-4"><p id="config-sh-critical-findings" class="text-3xl font-bold text-red-600">--</p><div class="bg-red-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-exclamation w-6 h-6 text-red-600" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/><path d="M7.001 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.553.553 0 0 1-1.1 0z"/></svg></div>
+            <div><p class="text-sm text-gray-500">Total Failed Findings</p></div>
+            <div class="flex justify-between items-end pt-4"><p id="config-sh-failed-findings" class="text-3xl font-bold text-red-600">--</p><div class="bg-red-100 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-exclamation w-6 h-6 text-red-600" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/><path d="M7.001 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.553.553 0 0 1-1.1 0z"/></svg></div>
             </div>
         </div>
     </div>
@@ -352,7 +391,6 @@ function createConfigSHSummaryCardsHtml() {
 }
 
 function updateConfigSHSummaryCards(serviceStatus = [], findings = []) {
-    // CORRECCIÓN: Validar que los parámetros son arrays
     if (!Array.isArray(serviceStatus)) {
         console.warn('serviceStatus is not an array:', serviceStatus);
         serviceStatus = [];
@@ -361,24 +399,28 @@ function updateConfigSHSummaryCards(serviceStatus = [], findings = []) {
         console.warn('findings is not an array:', findings);
         findings = [];
     }
-    
+
+    const complianceFindings = findings.filter(f => {
+        const isInspectorFinding = (f.GeneratorId || '').includes('inspector') || (f.ProductName || '').toLowerCase() === 'inspector';
+        const hasValidStatus = f.Compliance && (f.Compliance.Status === 'PASSED' || f.Compliance.Status === 'FAILED');
+        return !isInspectorFinding && hasValidStatus;
+    });
+
+    const totalFailedCount = complianceFindings.filter(f => f.Compliance.Status === 'FAILED').length;
+
     const totalRegions = serviceStatus.length;
     const configEnabledCount = serviceStatus.filter(s => s.ConfigEnabled).length;
     const shEnabledCount = serviceStatus.filter(s => s.SecurityHubEnabled).length;
-    const criticalHighCount = findings.filter(f => {
-        const severity = f.Severity?.Label;
-        return severity && ['CRITICAL', 'HIGH'].includes(severity);
-    }).length;
-
+    
     const configElement = document.getElementById('config-sh-config-enabled');
     const shElement = document.getElementById('config-sh-sh-enabled');
-    const totalElement = document.getElementById('config-sh-total-findings');
-    const criticalElement = document.getElementById('config-sh-critical-findings');
+    const totalChecksElement = document.getElementById('config-sh-total-checks');
+    const failedElement = document.getElementById('config-sh-failed-findings');
 
     if (configElement) configElement.textContent = `${configEnabledCount} / ${totalRegions}`;
     if (shElement) shElement.textContent = `${shEnabledCount} / ${totalRegions}`;
-    if (totalElement) totalElement.textContent = findings.length;
-    if (criticalElement) criticalElement.textContent = criticalHighCount;
+    if (totalChecksElement) totalChecksElement.textContent = complianceFindings.length;
+    if (failedElement) failedElement.textContent = totalFailedCount;
 }
 
 function renderConfigSHStatusTable(serviceStatus = []) {
