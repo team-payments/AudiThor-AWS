@@ -7,32 +7,147 @@
 import { handleTabClick, createStatusBadge, log, setupPaginationNew } from '../utils.js';
 
 
+
+
+function processFrameworkSummaryData(findings = []) {
+    if (!Array.isArray(findings)) return {};
+
+    const summary = {};
+
+    const getFramework = (finding) => {
+        if (finding.ProductFields && finding.ProductFields['StandardsArn']) {
+            const sa = finding.ProductFields['StandardsArn'];
+            if (sa.includes('pci-dss')) return 'PCI DSS';
+            if (sa.includes('aws-foundational-security-best-practices')) return 'AWS FSBP';
+            if (sa.includes('cis')) return 'CIS';
+            if (sa.includes('nist')) return 'NIST';
+            return 'Other Standard';
+        } else if (finding.ProductName) {
+            return finding.ProductName;
+        }
+        return 'Unknown';
+    };
+    
+    // Filtrar solo los hallazgos con estado PASSED o FAILED para el resumen
+    const relevantFindings = findings.filter(f => f.Compliance && ['PASSED', 'FAILED'].includes(f.Compliance.Status));
+
+    for (const finding of relevantFindings) {
+        const framework = getFramework(finding);
+        if (framework === 'Unknown') continue;
+
+        if (!summary[framework]) {
+            summary[framework] = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                severities: {
+                    CRITICAL: 0,
+                    HIGH: 0,
+                    MEDIUM: 0,
+                    LOW: 0
+                }
+            };
+        }
+
+        summary[framework].total++;
+        const status = finding.Compliance.Status;
+        
+        if (status === 'PASSED') {
+            summary[framework].passed++;
+        } else if (status === 'FAILED') {
+            summary[framework].failed++;
+            const severity = finding.Severity?.Label || 'LOW'; // Asumir LOW si no hay severidad
+            if (summary[framework].severities[severity] !== undefined) {
+                summary[framework].severities[severity]++;
+            }
+        }
+    }
+
+    return summary;
+}
+
+function renderFrameworkSummaryTable(summaryData) {
+    if (Object.keys(summaryData).length === 0) {
+        return '<p class="text-center text-gray-500 mt-8">No compliance summary data available to display.</p>';
+    }
+
+    const severityColors = {
+        CRITICAL: 'bg-red-600 text-white',
+        HIGH: 'bg-orange-500 text-white',
+        MEDIUM: 'bg-yellow-400 text-black',
+        LOW: 'bg-blue-500 text-white'
+    };
+    
+    // Ordenar frameworks alfabéticamente
+    const sortedFrameworks = Object.keys(summaryData).sort();
+
+    let tableRows = sortedFrameworks.map(framework => {
+        const data = summaryData[framework];
+        
+        const severitiesHtml = Object.entries(data.severities)
+            .filter(([, count]) => count > 0) // Solo mostrar severidades con hallazgos
+            .map(([severity, count]) => {
+                const colorClass = severityColors[severity] || 'bg-gray-400 text-white';
+                return `<span class="inline-block text-xs font-semibold mr-2 px-2.5 py-1 rounded-full ${colorClass}">${severity}: ${count}</span>`;
+            }).join('');
+
+        return `
+            <tr class="hover:bg-gray-50">
+                <td class="px-5 py-4 whitespace-nowrap">
+                    <div class="text-sm font-semibold text-gray-800">${framework}</div>
+                </td>
+                <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-center text-gray-700">${data.total}</td>
+                <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-center text-green-600">${data.passed}</td>
+                <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-center text-red-600">${data.failed}</td>
+                <td class="px-5 py-4 text-sm text-gray-600">
+                    ${severitiesHtml || '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <div class="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+            <h3 class="text-lg font-bold text-[#204071] mb-4">Compliance Summary by Framework</h3>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Framework</th>
+                        <th class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Checks</th>
+                        <th class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Passed</th>
+                        <th class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed Findings Breakdown</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${tableRows}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+
+
+
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
 export const buildConfigSHView = () => {
-    console.log('=== buildConfigSHView DEBUG ===');
-    console.log('window.configSHApiData:', window.configSHApiData)
     const container = document.getElementById('config-sh-view');
     const executionDate = (window.configSHApiData || window.configSHStatusApiData)?.metadata?.executionDate || 'Analysis not run.';
 
     if (window.configSHApiData) {
         const results = window.configSHApiData.results || {};
-        console.log('=== RESULTS DEBUG ===');
-        console.log('results:', results);
-        console.log('results.service_status:', results.service_status);
-        console.log('results.findings:', results.findings);
         const service_status = results.service_status || [];
         
-        // CORRECCIÓN: Verificar que findings existe y es un array
         let findings = results.findings || [];
-        console.log('=== AFTER ASSIGNMENT DEBUG ===');
-        console.log('service_status after assignment:', service_status);
-        console.log('findings after assignment:', findings);
-        console.log('service_status is Array:', Array.isArray(service_status));
-        console.log('findings is Array:', Array.isArray(findings));
         if (!Array.isArray(findings)) {
             console.warn('Findings is not an array:', findings);
             findings = [];
         }
+
+        // --- MODIFICACIÓN: Procesar y renderizar la nueva tabla ---
+        const frameworkSummaryData = processFrameworkSummaryData(findings);
+        const frameworkSummaryTableHtml = renderFrameworkSummaryTable(frameworkSummaryData);
         
         container.innerHTML = `
             <header class="flex justify-between items-center mb-6">
@@ -50,7 +165,10 @@ export const buildConfigSHView = () => {
                     </nav>
                 </div>
                 <div id="config-sh-tab-content-container">
-                    <div id="config-sh-summary-content" class="config-sh-tab-content">${createConfigSHSummaryCardsHtml()}</div>
+                    <div id="config-sh-summary-content" class="config-sh-tab-content">
+                        ${createConfigSHSummaryCardsHtml()}
+                        <div id="framework-summary-container">${frameworkSummaryTableHtml}</div>
+                    </div>
                     <div id="config-sh-status-content" class="config-sh-tab-content hidden">${renderConfigSHStatusTable(service_status)}</div>
                     <div id="config-sh-findings-content" class="config-sh-tab-content hidden"></div>
                 </div>
