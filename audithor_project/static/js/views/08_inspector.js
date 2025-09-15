@@ -40,6 +40,9 @@ export const buildInspectorView = () => {
                             <span id="deep-inspector-scan-btn-text">Search Inspector Findings</span>
                             <div id="deep-inspector-scan-spinner" class="spinner hidden"></div>
                         </button>
+                        
+                        <div id="deep-inspector-scan-error" class="hidden text-left"></div>
+
                     </div>
                 </div>
             </div>
@@ -60,16 +63,34 @@ const runDeepInspectorAnalysis = async () => {
     const runBtn = document.getElementById('run-deep-inspector-scan-btn');
     const btnText = document.getElementById('deep-inspector-scan-btn-text');
     const spinner = document.getElementById('deep-inspector-scan-spinner');
+    const errorContainer = document.getElementById('deep-inspector-scan-error');
 
+    // Resetear estado antes de empezar
     runBtn.disabled = true;
     spinner.classList.remove('hidden');
     btnText.textContent = 'Searching Findings…';
+    if (errorContainer) {
+        errorContainer.classList.add('hidden');
+        errorContainer.innerHTML = '';
+    }
     log('Starting deep search of Inspector findings…', 'info');
 
-    // These need to be accessed from the global scope, which is fine for now
     const accessKeyInput = document.getElementById('access-key-input');
     const secretKeyInput = document.getElementById('secret-key-input');
     const sessionTokenInput = document.getElementById('session-token-input');
+
+    if (!accessKeyInput.value.trim() || !secretKeyInput.value.trim()) {
+        const errorMessage = 'Access Key or Secret Key not provided.';
+        log(`Error in deep Inspector search: ${errorMessage}`, 'error');
+        if (errorContainer) {
+            errorContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg mt-4"><h4 class="font-bold">Error</h4><p>${errorMessage}</p></div>`;
+            errorContainer.classList.remove('hidden');
+        }
+        runBtn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Search Inspector Findings';
+        return;
+    }
 
     const payload = {
         access_key: accessKeyInput.value.trim(),
@@ -78,6 +99,7 @@ const runDeepInspectorAnalysis = async () => {
     };
 
     try {
+        // --- CORRECCIÓN AQUÍ ---
         const response = await fetch('http://127.0.0.1:5001/api/run-inspector-findings-audit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -94,17 +116,20 @@ const runDeepInspectorAnalysis = async () => {
 
         log('Deep Inspector analysis results rendered.', 'success');
 
-        // This function is in app.js, so we need to call it via the window object
         if (window.runAndDisplayHealthyStatus) {
             window.runAndDisplayHealthyStatus();
         }
 
     } catch(e) {
         log(`Error in deep Inspector search: ${e.message}`, 'error');
-        const deepScanContainer = document.getElementById('inspector-deep-scan-content'); // Corrected selector
-        if(deepScanContainer) {
-            deepScanContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+        if(errorContainer) {
+            errorContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg mt-4"><h4 class="font-bold">Error</h4><p>${e.message}</p></div>`;
+            errorContainer.classList.remove('hidden');
         }
+    } finally {
+        runBtn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Search Inspector Findings';
     }
 };
 
