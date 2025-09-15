@@ -90,6 +90,7 @@ export const buildConfigSHView = () => {
                             <span id="deep-scan-btn-text">Run Deep Dive Analysis</span>
                             <div id="deep-scan-spinner" class="spinner hidden"></div>
                         </button>
+                        <div id="deep-scan-error-container" class="hidden text-left mt-4"></div>
                     </div>
                 </div>
             </div>`;
@@ -121,15 +122,22 @@ async function runDeepConfigSHAnalysis() {
     const runBtn = document.getElementById('run-deep-scan-btn');
     const btnText = document.getElementById('deep-scan-btn-text');
     const spinner = document.getElementById('deep-scan-spinner');
+    // Nuevo: Selector para el contenedor de errores
+    const errorContainer = document.getElementById('deep-scan-error-container');
     
     if (!runBtn || !btnText || !spinner) {
         log('Error: Required elements not found for deep scan', 'error');
         return;
     }
     
+    // Resetear estado antes de empezar
     runBtn.disabled = true;
     spinner.classList.remove('hidden');
     btnText.textContent = 'Analyzing… (this can take a few minutes)';
+    if (errorContainer) {
+        errorContainer.classList.add('hidden'); // Ocultar errores previos
+        errorContainer.innerHTML = '';
+    }
     log('Starting deep analysis of Config & Security Hub…', 'info');
 
     const accessKeyInput = document.getElementById('access-key-input');
@@ -156,10 +164,6 @@ async function runDeepConfigSHAnalysis() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-
-        console.log('=== RESPONSE DEBUG ===');
-        console.log('Response OK:', response.ok);
-        console.log('Response status:', response.status);
         
         if (!response.ok) {
             const errorData = await response.json();
@@ -167,28 +171,14 @@ async function runDeepConfigSHAnalysis() {
         }
         
         const responseData = await response.json();
-        console.log('=== RESPONSE DATA DEBUG ===');
-        console.log('Full response:', responseData);
-        console.log('Response.results:', responseData.results);
-        console.log('Response.results type:', typeof responseData.results);
         
-        // CORRECCIÓN: Validar la estructura de la respuesta
         if (!responseData || !responseData.results) {
-            console.log('service_status:', responseData.results.service_status);
-            console.log('service_status type:', typeof responseData.results.service_status);
-            console.log('findings:', responseData.results.findings);
-            console.log('findings type:', typeof responseData.results.findings);
             throw new Error('Invalid response structure from deep scan API');
         }
         
         window.configSHApiData = responseData;
         
         log('Deep analysis of Config & Security Hub completed.', 'success');
-        
-        // Log para debug
-        console.log('Deep scan response:', responseData);
-        console.log('Service status:', responseData.results?.service_status);
-        console.log('Findings:', responseData.results?.findings);
         
         buildConfigSHView();
 
@@ -200,13 +190,14 @@ async function runDeepConfigSHAnalysis() {
         log(`Error in deep analysis: ${e.message}`, 'error');
         console.error('Deep scan error details:', e);
         
-        const initialContainer = document.getElementById('config-sh-initial-view');
-        if(initialContainer) {
-            initialContainer.innerHTML = `
+        // Modificado: Muestra el error en su contenedor sin borrar el botón
+        if(errorContainer) {
+            errorContainer.innerHTML = `
                 <div class="bg-red-50 text-red-700 p-4 rounded-lg">
                     <h4 class="font-bold">Error</h4>
                     <p>${e.message}</p>
                 </div>`;
+            errorContainer.classList.remove('hidden');
         }
     } finally {
         runBtn.disabled = false;
