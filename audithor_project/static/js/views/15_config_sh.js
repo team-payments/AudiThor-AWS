@@ -170,11 +170,12 @@ function renderFrameworkSummaryTable(summaryObject) {
 
 
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
+
+
 export const buildConfigSHView = () => {
     const container = document.getElementById('config-sh-view');
     const executionDate = (window.configSHApiData || window.configSHStatusApiData)?.metadata?.executionDate || 'Analysis not run.';
 
-    // --- NOVEDAD: Se añade la estructura del Modal al final del contenedor principal. ---
     const modalHtml = `
         <div id="finding-details-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden transition-opacity duration-300">
             <div id="modal-panel" class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0">
@@ -189,80 +190,90 @@ export const buildConfigSHView = () => {
         </div>
     `;
 
+    // --- NOVEDAD: Separamos la lógica para decidir qué mostrar en la sección de resumen ---
+    let summaryContentHtml;
     if (window.configSHApiData) {
-        const results = window.configSHApiData.results || {};
-        const service_status = results.service_status || [];
-        
-        let findings = results.findings || [];
-        if (!Array.isArray(findings)) {
-            console.warn('Findings is not an array:', findings);
-            findings = [];
-        }
-
+        // Si SÍ tenemos datos del análisis profundo, mostramos la tabla de resultados.
+        const findings = window.configSHApiData.results?.findings || [];
         const frameworkSummaryData = processFrameworkSummaryData(findings);
-        const frameworkSummaryTableHtml = renderFrameworkSummaryTable(frameworkSummaryData);
-        
-        container.innerHTML = `
-            <header class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-[#204071]">Config & Security Hub Status</h2>
-                    <p class="text-sm text-gray-500">${executionDate}</p>
-                </div>
-            </header>
-            <div id="config-sh-results-view">
-                <div class="border-b border-gray-200 mb-6">
-                    <nav class="-mb-px flex flex-wrap space-x-6" id="config-sh-tabs">
-                        <a href="#" data-tab="config-sh-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
-                        <a href="#" data-tab="config-sh-status-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Service Status</a>
-                        <a href="#" data-tab="config-sh-findings-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">All Findings</a>
-                    </nav>
-                </div>
-                <div id="config-sh-tab-content-container">
-                    <div id="config-sh-summary-content" class="config-sh-tab-content">
-                        ${createConfigSHSummaryCardsHtml()}
-                        <div id="framework-summary-container">${frameworkSummaryTableHtml}</div>
-                    </div>
-                    <div id="config-sh-status-content" class="config-sh-tab-content hidden">${renderConfigSHStatusTable(service_status)}</div>
-                    <div id="config-sh-findings-content" class="config-sh-tab-content hidden"></div>
+        summaryContentHtml = renderFrameworkSummaryTable(frameworkSummaryData);
+    } else {
+        // Si NO tenemos datos, mostramos el panel con el botón para iniciar el análisis.
+        summaryContentHtml = `
+            <div class="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
+                <div class="max-w-md mx-auto">
+                    <button id="run-deep-scan-btn" class="inline-flex items-center justify-center bg-[#eb3496] text-white px-5 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <div id="deep-scan-spinner" class="spinner-sm mr-2 hidden"></div>
+                        <span id="deep-scan-btn-text">Run Deep Dive Analysis</span>
+                    </button>
+                    <div id="deep-scan-error-container" class="mt-4 text-left"></div>
                 </div>
             </div>
-            ${modalHtml}`; // --- NOVEDAD: El HTML del modal se inyecta aquí.
+        `;
+    }
 
-        updateConfigSHSummaryCards(service_status, findings);
+    const service_status_data = window.configSHStatusApiData?.results?.service_status || [];
+
+    container.innerHTML = `
+        <header class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-[#204071]">Config & Security Hub Status</h2>
+                <p class="text-sm text-gray-500">${executionDate}</p>
+            </div>
+        </header>
+        <div id="config-sh-results-view">
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="-mb-px flex flex-wrap space-x-6" id="config-sh-tabs">
+                    <a href="#" data-tab="config-sh-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
+                    <a href="#" data-tab="config-sh-status-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Service Status</a>
+                    <a href="#" data-tab="config-sh-findings-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">All Findings</a>
+                </nav>
+            </div>
+            <div id="config-sh-tab-content-container">
+                <div id="config-sh-summary-content" class="config-sh-tab-content">
+                    ${createConfigSHSummaryCardsHtml()}
+                    <div id="framework-summary-container">${summaryContentHtml}</div>
+                </div>
+                <div id="config-sh-status-content" class="config-sh-tab-content hidden">${renderConfigSHStatusTable(service_status_data)}</div>
+                <div id="config-sh-findings-content" class="config-sh-tab-content hidden"></div>
+            </div>
+        </div>
+        ${modalHtml}`;
+
+    // Actualizamos las tarjetas de resumen y la tabla de findings si hay datos
+    if (window.configSHApiData) {
+        const findings = window.configSHApiData.results?.findings || [];
+        updateConfigSHSummaryCards(service_status_data, findings);
         renderAllFindingsTable(findings);
-        
-        const tabsNav = container.querySelector('#config-sh-tabs');
-        if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.config-sh-tab-content'));
-        
-        // --- NOVEDAD: Listeners para cerrar el modal ---
-        const modal = document.getElementById('finding-details-modal');
-        const modalPanel = document.getElementById('modal-panel');
-        const closeBtn = document.getElementById('modal-close-btn');
-
-        const closeModal = () => {
-            modalPanel.classList.remove('scale-100', 'opacity-100');
-            modalPanel.classList.add('scale-95', 'opacity-0');
-            modal.classList.add('opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        };
-        
-        if (modal && closeBtn && modalPanel) {
-            closeBtn.addEventListener('click', closeModal);
-            modal.addEventListener('click', (event) => {
-                if (event.target === modal) {
-                    closeModal();
-                }
-            });
-        }
-
-    } else if (window.configSHStatusApiData) {
-        // ... (El resto de la función no necesita cambios, se mantiene igual)
-        // Resto del código...
     } else {
-        // ... (El resto de la función no necesita cambios, se mantiene igual)
-        // Resto del código...
+        // Si no hay datos, al menos actualizamos las tarjetas con la información de estado
+        updateConfigSHSummaryCards(service_status_data, []);
+    }
+    
+    // --- NOVEDAD: Añadimos el "escuchador" para el botón SOLO si se ha renderizado ---
+    const deepScanBtn = document.getElementById('run-deep-scan-btn');
+    if (deepScanBtn) {
+        deepScanBtn.addEventListener('click', runDeepConfigSHAnalysis);
+    }
+    
+    // El resto de los listeners se mantienen igual
+    const tabsNav = container.querySelector('#config-sh-tabs');
+    if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.config-sh-tab-content'));
+    
+    const modal = document.getElementById('finding-details-modal');
+    const modalPanel = document.getElementById('modal-panel');
+    const closeBtn = document.getElementById('modal-close-btn');
+
+    const closeModal = () => {
+        modalPanel.classList.remove('scale-100', 'opacity-100');
+        modalPanel.classList.add('scale-95', 'opacity-0');
+        modal.classList.add('opacity-0');
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    };
+    
+    if (modal && closeBtn && modalPanel) {
+        closeBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (event) => { if (event.target === modal) { closeModal(); } });
     }
 };
 
