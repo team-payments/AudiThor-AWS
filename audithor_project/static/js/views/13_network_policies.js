@@ -214,42 +214,66 @@ const renderSGsTable = (sgs, allRegions, selectedRegion = 'all') => {
     return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControl}${table}</div>`;
 };        
 
+
+// 13_network_policies.js
+
+// 13_network_policies.js
+
 const renderVpcDiagram = (vpcs, subnets, instances, lambdas, rdsInstances, auroraClusters) => {
     if (!vpcs || vpcs.length === 0) return '<p class="text-center text-gray-500">No VPCs were found to display in the diagram.</p>';
+    
     let diagramHtml = '<div class="space-y-8">';
+
     vpcs.forEach(vpc => {
+        // Filtros previos por VPC
         const vpcSubnets = subnets.filter(s => s.VpcId === vpc.VpcId);
         const vpcInstances = instances.filter(i => vpcSubnets.some(s => s.SubnetId === i.SubnetId));
         const vpcLambdas = lambdas.filter(l => l.VpcConfig && l.VpcConfig.VpcId === vpc.VpcId);
         const vpcRds = rdsInstances.filter(r => r.VpcId === vpc.VpcId);
         const vpcAurora = auroraClusters.filter(a => a.VpcId === vpc.VpcId);
+
+        // Separar BBDD por número de subredes
+        const singleSubnetRds = vpcRds.filter(r => r.SubnetIds && r.SubnetIds.length === 1);
+        const multiSubnetRds = vpcRds.filter(r => r.SubnetIds && r.SubnetIds.length > 1);
+        const singleSubnetAurora = vpcAurora.filter(a => a.SubnetIds && a.SubnetIds.length === 1);
+        const multiSubnetAurora = vpcAurora.filter(a => a.SubnetIds && a.SubnetIds.length > 1);
+
         const totalResources = vpcInstances.length + vpcLambdas.length + vpcRds.length + vpcAurora.length;
 
-        diagramHtml += `<div class="bg-white border border-gray-200 rounded-xl shadow-md"><div class="bg-gray-50 p-3 border-b border-gray-200 rounded-t-xl"><h3 class="text-lg font-bold text-[#204071]">${vpc.Tags['Name'] || vpc.VpcId}</h3><p class="text-sm text-gray-500 font-mono">${vpc.Region} | ${vpc.VpcId} | ${vpc.CidrBlock} | ${vpcSubnets.length} subnets | ${totalResources} resources</p></div><div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
+        diagramHtml += `<div class="bg-white border border-gray-200 rounded-xl shadow-md"><div class="bg-gray-50 p-3 border-b border-gray-200 rounded-t-xl"><h3 class="text-lg font-bold text-[#204071]">${vpc.Tags['Name'] || vpc.VpcId}</h3><p class="text-sm text-gray-500 font-mono">${vpc.Region} | ${vpc.VpcId} | ${vpc.CidrBlock} | ${vpcSubnets.length} subnets | ${totalResources} resources</p></div><div class="p-4">`;
+        
+        diagramHtml += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
+
         vpcSubnets.sort((a,b) => (a.Tags['Name'] || a.SubnetId).localeCompare(b.Tags['Name'] || b.SubnetId)).forEach(subnet => {
             diagramHtml += `<div class="bg-slate-50 border border-blue-200 rounded-lg p-3 flex flex-col"><div class="border-b border-blue-200 pb-2 mb-3"><p class="font-bold text-sm text-blue-800">${subnet.Tags['Name'] || subnet.SubnetId}</p><p class="text-xs text-gray-500 font-mono">${subnet.CidrBlock}</p></div><div class="space-y-2 flex-grow">`;
-            const subnetInstances = instances.filter(i => i.SubnetId === subnet.SubnetId);
+            
+            // --- CÓDIGO COMPLETO PARA EC2 ---
+            const subnetInstances = vpcInstances.filter(i => i.SubnetId === subnet.SubnetId);
             if (subnetInstances.length > 0) {
-                subnetInstances.sort((a,b) => (a.Tags['Name'] || a.InstanceId).localeCompare(b.Tags['Name'] || b.InstanceId)).forEach(instance => {
+                subnetInstances.forEach(instance => {
                     const state = instance.State.toLowerCase();
                     let bgColor = (state === 'running') ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300';
                     const instanceName = instance.Tags['Name'] || instance.InstanceId;
                     diagramHtml += `<div class="${bgColor} p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${instanceName}">${instanceName}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${instance.InstanceType}</span><span>${instance.State}</span></div></div>`;
                 });
             }
-            const subnetLambdas = lambdas.filter(l => l.VpcConfig && l.VpcConfig.SubnetIds && l.VpcConfig.SubnetIds.includes(subnet.SubnetId));
+
+            // --- CÓDIGO COMPLETO PARA LAMBDA ---
+            const subnetLambdas = vpcLambdas.filter(l => l.VpcConfig?.SubnetIds?.includes(subnet.SubnetId));
             if (subnetLambdas.length > 0) {
-                subnetLambdas.sort((a,b) => a.FunctionName.localeCompare(b.FunctionName)).forEach(lambda => {
+                subnetLambdas.forEach(lambda => {
                     diagramHtml += `<div class="bg-purple-100 border border-purple-300 p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${lambda.FunctionName}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/><path d="M6.854 4.646a.5.5 0 0 1 0 .708L4.207 8l2.647 2.646a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0m2.292 0a.5.5 0 0 0 0 .708L11.793 8l-2.647 2.646a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0"/></svg>${lambda.FunctionName}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${lambda.Runtime}</span></div></div>`;
                 });
             }
-            const subnetRds = rdsInstances.filter(r => r.SubnetIds && r.SubnetIds.includes(subnet.SubnetId));
+
+            // --- Lógica para BBDD de subred única ---
+            const subnetRds = singleSubnetRds.filter(r => r.SubnetIds[0] === subnet.SubnetId);
             if (subnetRds.length > 0) {
-                subnetRds.forEach(rds => {
+                 subnetRds.forEach(rds => {
                     diagramHtml += `<div class="bg-blue-100 border border-blue-300 p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${rds.DBInstanceIdentifier}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M4.318 2.687C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4c0-.374.356-.875 1.318-1.313M13 5.698V7c0 .374-.356.875-1.318 1.313C10.766 8.729 9.464 9 8 9s-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.711 6.427 7 8 7s3.022-.289 4.096-.777A5 5 0 0 0 13 5.698M14 4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16s3.022-.289 4.096-.777C13.125 14.755 14 14.007 14 13zm-1 4.698V10c0 .374-.356.875-1.318 1.313C10.766 11.729 9.464 12 8 12s-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10s3.022-.289 4.096-.777A5 5 0 0 0 13 8.698m0 3V13c0 .374-.356.875-1.318 1.313C10.766 14.729 9.464 15 8 15s-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13s3.022-.289 4.096-.777c.324-.147.633-.323.904-.525"/></svg>${rds.DBInstanceIdentifier}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${rds.Engine}</span></div></div>`;
                 });
             }
-            const subnetAurora = auroraClusters.filter(c => c.SubnetIds && c.SubnetIds.includes(subnet.SubnetId));
+            const subnetAurora = singleSubnetAurora.filter(c => c.SubnetIds[0] === subnet.SubnetId);
             if (subnetAurora.length > 0) {
                 subnetAurora.forEach(aurora => {
                     diagramHtml += `<div class="bg-teal-100 border border-teal-300 p-2 rounded-md text-xs"><p class="font-semibold text-gray-800 truncate" title="${aurora.ClusterIdentifier}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M4.318 2.687C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4c0-.374.356-.875 1.318-1.313M13 5.698V7c0 .374-.356.875-1.318 1.313C10.766 8.729 9.464 9 8 9s-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.711 6.427 7 8 7s3.022-.289 4.096-.777A5 5 0 0 0 13 5.698M14 4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16s3.022-.289 4.096-.777C13.125 14.755 14 14.007 14 13zm-1 4.698V10c0 .374-.356.875-1.318 1.313C10.766 11.729 9.464 12 8 12s-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10s3.022-.289 4.096-.777A5 5 0 0 0 13 8.698m0 3V13c0 .374-.356.875-1.318 1.313C10.766 14.729 9.464 15 8 15s-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13s3.022-.289 4.096-.777c.324-.147.633-.323.904-.525"/></svg>${aurora.ClusterIdentifier}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${aurora.Engine}</span></div></div>`;
@@ -262,12 +286,32 @@ const renderVpcDiagram = (vpcs, subnets, instances, lambdas, rdsInstances, auror
 
             diagramHtml += `</div></div>`;
         });
+        diagramHtml += `</div>`;
+
+        // --- SECCIÓN COMPLETA PARA BBDD MULTI-SUBRED ---
+        if (multiSubnetRds.length > 0 || multiSubnetAurora.length > 0) {
+            diagramHtml += `<div class="mt-6 pt-4 border-t border-gray-200">
+                <h4 class="text-md font-bold text-[#204071] mb-3">Recursos Multi-Subred (Alta Disponibilidad)</h4>
+                <div class="flex flex-wrap gap-4">`;
+            
+            multiSubnetRds.forEach(rds => {
+                diagramHtml += `<div class="bg-blue-100 border border-blue-300 p-2 rounded-md text-xs w-48"><p class="font-semibold text-gray-800 truncate" title="${rds.DBInstanceIdentifier}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M4.318 2.687C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4c0-.374.356-.875 1.318-1.313M13 5.698V7c0 .374-.356.875-1.318 1.313C10.766 8.729 9.464 9 8 9s-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.711 6.427 7 8 7s3.022-.289 4.096-.777A5 5 0 0 0 13 5.698M14 4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16s3.022-.289 4.096-.777C13.125 14.755 14 14.007 14 13zm-1 4.698V10c0 .374-.356.875-1.318 1.313C10.766 11.729 9.464 12 8 12s-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10s3.022-.289 4.096-.777A5 5 0 0 0 13 8.698m0 3V13c0 .374-.356.875-1.318 1.313C10.766 14.729 9.464 15 8 15s-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13s3.022-.289 4.096-.777c.324-.147.633-.323.904-.525"/></svg>${rds.DBInstanceIdentifier}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${rds.Engine}</span></div></div>`;
+            });
+            multiSubnetAurora.forEach(aurora => {
+                diagramHtml += `<div class="bg-teal-100 border border-teal-300 p-2 rounded-md text-xs w-48"><p class="font-semibold text-gray-800 truncate" title="${aurora.ClusterIdentifier}"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="inline-block mr-1" viewBox="0 0 16 16"><path d="M4.318 2.687C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4c0-.374.356-.875 1.318-1.313M13 5.698V7c0 .374-.356.875-1.318 1.313C10.766 8.729 9.464 9 8 9s-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.711 6.427 7 8 7s3.022-.289 4.096-.777A5 5 0 0 0 13 5.698M14 4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16s3.022-.289 4.096-.777C13.125 14.755 14 14.007 14 13zm-1 4.698V10c0 .374-.356.875-1.318 1.313C10.766 11.729 9.464 12 8 12s-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10s3.022-.289 4.096-.777A5 5 0 0 0 13 8.698m0 3V13c0 .374-.356.875-1.318 1.313C10.766 14.729 9.464 15 8 15s-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13s3.022-.289 4.096-.777c.324-.147.633-.323.904-.525"/></svg>${aurora.ClusterIdentifier}</p><div class="flex justify-between items-center text-gray-600"><span class="font-mono">${aurora.Engine}</span></div></div>`;
+            });
+            
+            diagramHtml += `</div></div>`;
+        }
+        
         diagramHtml += `</div></div>`;
     });
 
     diagramHtml += '</div>';
     return diagramHtml;
 };
+
+
 
 const renderNetworkDetailView = (allRegions) => {
     const regionOptions = allRegions.map(r => `<option value="${r}">${r}</option>`).join('');
