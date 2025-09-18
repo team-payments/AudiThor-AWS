@@ -435,21 +435,35 @@ def check_inspector_ecr_scanning_disabled(audit_data):
             
     return failing_resources
 
+# rules.py
+
 def check_network_connectivity_exists(audit_data):
     """
-    Verifica si existen componentes de red avanzados que justifiquen una revisión de segmentación.
+    Verifica si existen componentes de red avanzados y devuelve una lista
+    de los tipos de servicio específicos encontrados.
     """
+    # Lista para almacenar los nombres de los servicios detectados
+    found_services = []
+    
+    # Obtener los datos de conectividad de forma segura
     connectivity_data = audit_data.get("connectivity", {})
     
-    peering_exists = len(connectivity_data.get("peering_connections", [])) > 0
-    tgw_exists = len(connectivity_data.get("tgw_attachments", [])) > 0
-    vpn_exists = len(connectivity_data.get("vpn_connections", [])) > 0
-    endpoints_exist = len(connectivity_data.get("vpc_endpoints", [])) > 0
-
-    if peering_exists or tgw_exists or vpn_exists or endpoints_exist:
-        return ["Servicios de Conectividad de Red Avanzada"]
+    # Comprobar cada tipo de servicio y añadir su nombre a la lista si existe
+    if connectivity_data.get("peering_connections"):
+        found_services.append({"resource": "VPC Peering Connections", "region": "Global"})
         
-    return []
+    if connectivity_data.get("tgw_attachments"):
+        found_services.append({"resource": "Transit Gateway Attachments", "region": "Global"})
+        
+    if connectivity_data.get("vpn_connections"):
+        found_services.append({"resource": "Site-to-Site VPN Connections", "region": "Global"})
+        
+    if connectivity_data.get("vpc_endpoints"):
+        found_services.append({"resource": "VPC Endpoints", "region": "Global"})
+
+    # Devolver la lista de servicios encontrados
+    return found_services
+
 
 def check_acm_expired_certificates(audit_data):
     """
