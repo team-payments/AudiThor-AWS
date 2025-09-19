@@ -72,7 +72,7 @@ def collect_database_data(session):
                     if "aurora" in cluster.get("Engine", ""):
                         kms_key_id = cluster.get("KmsKeyId")
                         key_id_for_lookup = kms_key_id.split('/')[-1] if kms_key_id else None
-                        
+                        sg_ids = [sg['VpcSecurityGroupId'] for sg in cluster.get('VpcSecurityGroups', [])]
                         subnet_ids, vpc_id = get_subnet_and_vpc_info(cluster.get("DBSubnetGroup"))
                         
                         aurora_clusters.append({
@@ -86,7 +86,8 @@ def collect_database_data(session):
                             "KmsKeyAlias": alias_map.get(key_id_for_lookup, kms_key_id or "N/A"),
                             "ARN": cluster.get("DBClusterArn"),
                             "SubnetIds": subnet_ids,
-                            "VpcId": vpc_id # <-- AHORA CORRECTO
+                            "VpcId": vpc_id,
+                            "SecurityGroupIds": sg_ids
                         })
             
             # --- 3. Collect RDS Instances (CORREGIDO) ---
@@ -99,6 +100,8 @@ def collect_database_data(session):
                         
                         db_subnet_group = instance.get("DBSubnetGroup", {})
                         subnet_ids, vpc_id = get_subnet_and_vpc_info(db_subnet_group.get('DBSubnetGroupName'))
+                        sg_ids = [sg['VpcSecurityGroupId'] for sg in instance.get('VpcSecurityGroups', [])]
+
 
                         rds_instances.append({
                             "Region": region,
@@ -113,7 +116,8 @@ def collect_database_data(session):
                             "KmsKeyAlias": alias_map.get(key_id_for_lookup, kms_key_id or "N/A"),
                             "ARN": instance.get("DBInstanceArn"),
                             "SubnetIds": subnet_ids,
-                            "VpcId": vpc_id # <-- AHORA CORRECTO
+                            "VpcId": vpc_id,
+                            "SecurityGroupIds": sg_ids
                         })
 
             # --- 4. Collect DynamoDB Tables (sin cambios) ---
@@ -142,7 +146,7 @@ def collect_database_data(session):
                 for cluster in page.get("DBClusters", []):
                     kms_key_id = cluster.get("KmsKeyId")
                     key_id_for_lookup = kms_key_id.split('/')[-1] if kms_key_id else None
-                    
+                    sg_ids = [sg['VpcSecurityGroupId'] for sg in cluster.get('VpcSecurityGroups', [])]
                     subnet_ids, vpc_id = get_subnet_and_vpc_info(cluster.get("DBSubnetGroup"))
 
                     documentdb_clusters.append({
@@ -152,7 +156,8 @@ def collect_database_data(session):
                         "KmsKeyId": kms_key_id, "KmsKeyAlias": alias_map.get(key_id_for_lookup, kms_key_id or "N/A"),
                         "ARN": cluster.get("DBClusterArn"),
                         "SubnetIds": subnet_ids,
-                        "VpcId": vpc_id # <-- AHORA CORRECTO
+                        "VpcId": vpc_id,
+                        "SecurityGroupIds": sg_ids
                     })
 
         except ClientError as e:

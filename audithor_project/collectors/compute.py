@@ -73,7 +73,7 @@ def collect_compute_data(session):
                             "State": instance.get("State", {}).get("Name"),
                             "PublicIpAddress": instance.get("PublicIpAddress", "N/A"),
                             "SubnetId": instance.get("SubnetId"),
-                            "SecurityGroups": [sg['GroupName'] for sg in instance.get('SecurityGroups', [])],
+                            "SecurityGroups": [sg['GroupId'] for sg in instance.get('SecurityGroups', [])],
                             "IamInstanceProfile": iam_profile_name,
                             "OperatingSystem": os_info,
                             "Tags": tags_dict,

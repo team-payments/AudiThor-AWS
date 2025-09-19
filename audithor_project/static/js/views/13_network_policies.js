@@ -9,6 +9,7 @@ import { handleTabClick, log } from '../utils.js';
 
 // --- FUNCIÓN PRINCIPAL DE LA VISTA (EXPORTADA) ---
 export const buildNetworkPoliciesView = () => {
+    // --- Esta parte inicial no cambia ---
     const container = document.getElementById('network-policies-view');
     if (!window.networkPoliciesApiData || !window.computeApiData || !window.databasesApiData) {
         container.innerHTML = '<p class="text-center text-gray-500">Network Policies, Compute, or Databases data not available.</p>';
@@ -19,96 +20,61 @@ export const buildNetworkPoliciesView = () => {
     const { ec2_instances, lambda_functions } = window.computeApiData.results;
     const { rds_instances, aurora_clusters } = window.databasesApiData.results;
 
-    const activeRegions = [...new Set(vpcs.map(v => v.Region))].sort();
-    const regionOptionsHtml = activeRegions.map(r => `<option value="${r}">${r}</option>`).join('');
+    const allResources = {
+        ec2: ec2_instances, lambda: lambda_functions,
+        rds: rds_instances, aurora: aurora_clusters
+    };
 
+    // El HTML principal se dibuja primero, con la estructura de pestañas correcta
     container.innerHTML = `
-        <header class="flex justify-between items-center mb-6">
-            <div>
-                <h2 class="text-2xl font-bold text-[#204071]">Network Security Policies</h2>
-                <p class="text-sm text-gray-500">${window.networkPoliciesApiData.metadata.executionDate}</p>
+        <h2 class="text-2xl font-bold text-[#204071] mb-2">Network Security Policies</h2>
+        <p class="text-sm text-gray-500 mb-6">${window.networkPoliciesApiData.metadata.executionDate}</p>
+
+        <div class="mt-8">
+            <div class="border-b border-gray-200">
+                <nav id="network-policies-tabs" class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <a href="#" data-tab="np-summary-content" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-[#eb3496] text-[#eb3496]">Summary</a>
+                    <a href="#" data-tab="np-vpcs-content" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">VPCs (${vpcs.length})</a>
+                    <a href="#" data-tab="np-acls-content" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Network ACLs (${acls.length})</a>
+                    <a href="#" data-tab="np-sgs-content" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Security Groups (${security_groups.length})</a>
+                    <a href="#" data-tab="np-detail-content" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Details</a>
+                </nav>
             </div>
-        </header>
-        <div class="border-b border-gray-200 mb-6">
-            <nav class="-mb-px flex flex-wrap space-x-6" id="network-policies-tabs">
-                <a href="#" data-tab="np-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>
-                <a href="#" data-tab="np-vpcs-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">VPCs (${vpcs.length})</a>
-                <a href="#" data-tab="np-acls-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Network ACLs (${acls.length})</a>
-                <a href="#" data-tab="np-sgs-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Security Groups (${security_groups.length})</a>
-                <a href="#" data-tab="np-detail-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Details</a>
-            </nav>
-        </div>
-        <div id="network-policies-tab-content-container">
-            <div id="np-summary-content" class="network-policies-tab-content">
-                ${createNetworkPoliciesSummaryCardsHtml()}
-                <div id="vpc-diagram-container" class="mt-8">
-                    <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
-                        <h3 class="text-xl font-bold text-[#204071]">Network Diagram</h3>
-                        <div class="flex items-center gap-x-6 gap-y-2 flex-wrap">
-                            <div class="flex items-center gap-2">
-                                <label for="vpc-diagram-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
-                                <select id="vpc-diagram-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
-                                    <option value="all">All Regions</option>
-                                    ${regionOptionsHtml}
-                                </select>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="vpc-diagram-hide-empty-filter" class="h-4 w-4 rounded border-gray-300 text-[#eb3496] focus:ring-[#eb3496]">
-                                <label for="vpc-diagram-hide-empty-filter" class="text-sm font-medium text-gray-700">Hide empty VPCs</label>
-                            </div>
-                        </div>
+            <div id="network-policies-tab-content-container" class="py-6">
+                <div id="np-summary-content" class="network-policies-tab-content">
+                    <div id="np-summary-cards"></div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-8">
+                        <h3 class="font-bold text-lg mb-4 text-[#204071]">Network Diagram</h3>
+                        <div id="np-diagram-container"></div>
                     </div>
-                    <div id="diagram-content-wrapper"></div>
                 </div>
+                <div id="np-vpcs-content" class="network-policies-tab-content hidden"></div>
+                <div id="np-acls-content" class="network-policies-tab-content hidden"></div>
+                <div id="np-sgs-content" class="network-policies-tab-content hidden"></div>
+                <div id="np-detail-content" class="network-policies-tab-content hidden"></div>
             </div>
-            <div id="np-vpcs-content" class="network-policies-tab-content hidden"></div>
-            <div id="np-acls-content" class="network-policies-tab-content hidden"></div>
-            <div id="np-sgs-content" class="network-policies-tab-content hidden"></div>
-            <div id="np-detail-content" class="network-policies-tab-content hidden"></div>
         </div>
     `;
 
-    updateNetworkPoliciesSummaryCards(vpcs, acls, security_groups);
-
-    const diagramWrapper = document.getElementById('diagram-content-wrapper');
-    const regionFilter = document.getElementById('vpc-diagram-region-filter');
-    const hideEmptyFilter = document.getElementById('vpc-diagram-hide-empty-filter');
-
-    const updateDiagram = () => {
-        const selectedRegion = regionFilter.value;
-        const hideEmpty = hideEmptyFilter.checked;
-        let filteredVpcs = (selectedRegion === 'all') ? vpcs : vpcs.filter(v => v.Region === selectedRegion);
-
-        if (hideEmpty) {
-            filteredVpcs = filteredVpcs.filter(vpc => {
-                const hasEc2 = ec2_instances.some(i => {
-                    const subnet = subnets.find(s => s.SubnetId === i.SubnetId);
-                    return subnet && subnet.VpcId === vpc.VpcId;
-                });
-                const hasLambda = lambda_functions.some(l => l.VpcConfig && l.VpcConfig.VpcId === vpc.VpcId);
-                const hasRds = rds_instances.some(r => r.VpcId === vpc.VpcId);
-                const hasAurora = aurora_clusters.some(a => a.VpcId === vpc.VpcId);
-                return hasEc2 || hasLambda || hasRds || hasAurora;
-            });
-        }
-        diagramWrapper.innerHTML = renderVpcDiagram(filteredVpcs, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters);
-    };
-
-    if (regionFilter) regionFilter.addEventListener('change', updateDiagram);
-    if (hideEmptyFilter) hideEmptyFilter.addEventListener('change', updateDiagram);
-    
-    updateDiagram();
-    
+    // Se obtienen las referencias a los elementos
+    const summaryCardsContainer = document.getElementById('np-summary-cards');
+    const diagramContainer = document.getElementById('np-diagram-container');
     const vpcsContainer = document.getElementById('np-vpcs-content');
     const aclsContainer = document.getElementById('np-acls-content');
     const sgsContainer = document.getElementById('np-sgs-content');
     const detailContainer = document.getElementById('np-detail-content');
+
+    // Se rellena el contenido inicial
+    summaryCardsContainer.innerHTML = createNetworkPoliciesSummaryCardsHtml();
+    updateNetworkPoliciesSummaryCards(vpcs, acls, security_groups);
+    diagramContainer.innerHTML = renderVpcDiagram(vpcs, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters);
     
     vpcsContainer.innerHTML = renderVPCsTable(vpcs, all_regions, 'all');
     aclsContainer.innerHTML = renderACLsTable(acls, all_regions, 'all');
-    sgsContainer.innerHTML = renderSGsTable(security_groups, all_regions, 'all');
+    sgsContainer.innerHTML = renderSGsTable(security_groups, all_regions, 'all', allResources);
     detailContainer.innerHTML = renderNetworkDetailView(all_regions || []);
 
+    // Se restauran los listeners a su versión simple y funcional
     container.addEventListener('change', (e) => {
         const selectedRegion = e.target.value;
         switch (e.target.id) {
@@ -119,16 +85,103 @@ export const buildNetworkPoliciesView = () => {
                 aclsContainer.innerHTML = renderACLsTable(acls.filter(a => selectedRegion === 'all' || a.Region === selectedRegion), all_regions, selectedRegion);
                 break;
             case 'sg-region-filter':
-                sgsContainer.innerHTML = renderSGsTable(security_groups.filter(sg => selectedRegion === 'all' || sg.Region === selectedRegion), all_regions, selectedRegion);
+                const filteredSGs = security_groups.filter(sg => selectedRegion === 'all' || sg.Region === selectedRegion);
+                sgsContainer.innerHTML = renderSGsTable(filteredSGs, all_regions, selectedRegion, allResources);
                 break;
         }
     });
     
-    const detailRunBtn = detailContainer.querySelector('#np-run-detail-btn');
-    if(detailRunBtn) detailRunBtn.addEventListener('click', runNetworkDetailAnalysis);
+    if (sgsContainer) {
+        sgsContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('.view-sg-resources-btn');
+            if (button) {
+                const groupId = button.dataset.groupId;
+                const region = button.dataset.region;
+                openModalWithAssociatedResources(groupId, region);
+            }
+        });
+    }
 
+    // CORRECCIÓN: Se restaura el listener simple para los tabs, que funciona con la estructura HTML correcta
     const tabsNav = container.querySelector('#network-policies-tabs');
-    if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.network-policies-tab-content'));
+    if (tabsNav) {
+        tabsNav.addEventListener('click', handleTabClick(tabsNav, '.network-policies-tab-content'));
+    }
+};
+
+
+// Reemplaza tu función existente con esta versión mejorada con logs
+
+const openModalWithAssociatedResources = (groupId, region) => {
+    // --- LOGS INICIALES ---
+    console.log("--- INICIANDO BÚSQUEDA DE RECURSOS ---");
+    console.log(`Buscando para SG: ${groupId} en Región: ${region}`);
+    
+    const { ec2_instances, lambda_functions } = window.computeApiData.results;
+    const { rds_instances, aurora_clusters } = window.databasesApiData.results;
+
+    // --- LOGS PARA EC2 (LA PARTE IMPORTANTE) ---
+    console.log(`Total de instancias EC2 a revisar: ${ec2_instances.length}`);
+    
+    const associatedEc2 = ec2_instances.filter(i => {
+        // Para cada instancia, hacemos las comprobaciones por separado para poder loguearlas
+        const regionMatch = i.Region === region;
+        const sgMatch = i.SecurityGroups.includes(groupId);
+
+        // Creamos un grupo de logs para mantener la consola ordenada
+        console.groupCollapsed(`Revisando instancia: ${i.InstanceId}`);
+            console.log("ID de Instancia:", i.InstanceId);
+            console.log("Región de la Instancia:", i.Region);
+            console.log("SGs de la Instancia:", i.SecurityGroups); // ¡Clave!
+            console.log("--- Comprobaciones ---");
+            console.log(`¿Coincide Región? (${i.Region} === ${region}) -> ${regionMatch}`);
+            console.log(`¿Incluye SG? (${groupId}) -> ${sgMatch}`);
+        console.groupEnd();
+
+        return regionMatch && sgMatch;
+    });
+
+    // --- LOG DEL RESULTADO FINAL ---
+    console.log("Resultado final (instancias EC2 encontradas):", associatedEc2);
+
+    // Filtrar los otros recursos (sin logs para mantenerlo simple por ahora)
+    const associatedLambdas = lambda_functions.filter(l => l.Region === region && l.VpcConfig?.SecurityGroupIds?.includes(groupId));
+    const associatedRds = rds_instances.filter(r => r.Region === region && r.SecurityGroupIds?.includes(groupId));
+    const associatedAurora = aurora_clusters.filter(c => c.Region === region && c.SecurityGroupIds?.includes(groupId));
+
+    // Construir el HTML para el contenido del modal (sin cambios)
+    let modalContentHtml = '<div class="text-left space-y-4">';
+
+    const createResourceList = (title, resources, idField) => {
+        let html = `<div><h4 class="font-bold text-md text-[#204071] border-b pb-1 mb-2">${title} (${resources.length})</h4>`;
+        if (resources.length > 0) {
+            html += '<ul class="list-disc pl-5 space-y-1 text-sm">';
+            resources.forEach(res => {
+                const name = res.Tags?.Name ? `(${res.Tags.Name})` : '';
+                html += `<li><span class="font-mono bg-gray-100 px-1 rounded">${res[idField]}</span> ${name}</li>`;
+            });
+            html += '</ul>';
+        } else {
+            html += '<p class="text-sm text-gray-500">No associated resources found.</p>';
+        }
+        html += '</div>';
+        return html;
+    };
+
+    modalContentHtml += createResourceList('EC2 Instances', associatedEc2, 'InstanceId');
+    modalContentHtml += createResourceList('Lambda Functions', associatedLambdas, 'FunctionName');
+    modalContentHtml += createResourceList('RDS Instances', associatedRds, 'DBInstanceIdentifier');
+    modalContentHtml += createResourceList('Aurora Clusters', associatedAurora, 'ClusterIdentifier');
+    modalContentHtml += '</div>';
+
+    // Abrir el modal (sin cambios)
+    const modal = document.getElementById('details-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+
+    modalTitle.textContent = `Associated Resources for ${groupId}`;
+    modalContent.innerHTML = modalContentHtml;
+    modal.classList.remove('hidden');
 };
 
 
@@ -201,18 +254,43 @@ const renderACLsTable = (acls, allRegions, selectedRegion = 'all') => {
     return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControl}${table}</div>`;
 };        
 
-const renderSGsTable = (sgs, allRegions, selectedRegion = 'all') => {
+const renderSGsTable = (sgs, allRegions, selectedRegion = 'all', allResources) => {
     const regionOptions = allRegions.map(r => `<option value="${r}" ${selectedRegion === r ? 'selected' : ''}>${r}</option>`).join('');
     const filterControl = `<div class="mb-4 flex items-center gap-2"><label for="sg-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label><select id="sg-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5"><option value="all">All Regions</option>${regionOptions}</select></div>`;
+    
     if (!sgs || sgs.length === 0) return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No Security Groups matching the selected filters were found.</p></div>`;
-    let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+    
+    let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Associated Resources</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+    
     sgs.sort((a,b) => a.Region.localeCompare(b.Region)).forEach(sg => {
+        const ec2Count = allResources.ec2.filter(i => i.Region === sg.Region && i.SecurityGroups.includes(sg.GroupId)).length;
+        const lambdaCount = allResources.lambda.filter(l => l.Region === sg.Region && l.VpcConfig?.SecurityGroupIds?.includes(sg.GroupId)).length;
+        const rdsCount = allResources.rds.filter(r => r.Region === sg.Region && r.SecurityGroupIds?.includes(sg.GroupId)).length;
+        const auroraCount = allResources.aurora.filter(a => a.Region === sg.Region && a.SecurityGroupIds?.includes(sg.GroupId)).length;
+        const totalCount = ec2Count + lambdaCount + rdsCount + auroraCount;
+
+        let countCellHtml = `<span class="text-gray-500">${totalCount}</span>`;
+        if (totalCount > 0) {
+            countCellHtml = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${totalCount}</span>`;
+        }
+
         const tagsStr = Object.entries(sg.Tags).map(([k, val]) => `${k}:${val}`).join(', ') || '-';
-        table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${sg.Region}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${sg.GroupId}</td><td class="px-4 py-4 text-sm text-gray-600 break-all">${sg.GroupName}</td><td class="px-4 py-4 text-sm text-gray-600 break-all">${sg.Description}</td><td class="px-4 py-4 text-sm text-gray-600 break-all">${tagsStr}</td></tr>`;
+        const actionButton = `<button class="view-sg-resources-btn bg-[#204071] text-white px-2 py-1 rounded-md text-xs hover:bg-[#1a335a]" data-group-id="${sg.GroupId}" data-region="${sg.Region}">View Resources</button>`;
+        
+        table += `<tr class="hover:bg-gray-50">
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${sg.Region}</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${sg.GroupId}</td>
+            <td class="px-4 py-4 text-sm text-gray-600 break-all">${sg.GroupName}</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-center">${countCellHtml}</td>
+            <td class="px-4 py-4 text-sm text-gray-600 break-all">${sg.Description}</td>
+            <td class="px-4 py-4 text-sm text-gray-600 break-all">${tagsStr}</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm">${actionButton}</td>
+        </tr>`;
     });
+
     table += '</tbody></table></div>';
     return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControl}${table}</div>`;
-};        
+};
 
 
 // 13_network_policies.js
