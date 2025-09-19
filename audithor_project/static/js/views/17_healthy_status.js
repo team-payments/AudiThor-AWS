@@ -30,6 +30,7 @@ export const buildHealthyStatusView = () => {
                 <a href="#" data-tab="hs-findings-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Findings</a>
                 <a href="#" data-tab="hs-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Generate Report</a>
                 <a href="#" data-tab="hs-inventory-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Scoped Inventory</a>
+                <a href="#" data-tab="hs-notes-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Auditor's Notes</a>
             </nav>
         </div>
 
@@ -143,6 +144,7 @@ export const buildHealthyStatusView = () => {
 
             <div id="hs-report-content" class="healthy-status-tab-content hidden"></div>
             <div id="hs-inventory-content" class="healthy-status-tab-content hidden"></div>
+            <div id="hs-notes-content" class="healthy-status-tab-content hidden"></div>
         </div>
         
         <style>
@@ -934,6 +936,68 @@ const renderUnifiedScopedInventoryTable = (items) => {
             </table>
         </div>
     </div>`;
+};
+
+
+export const buildAuditorNotesView = () => {
+    const container = document.getElementById('hs-notes-content');
+    if (!container) return;
+
+    const notes = window.auditorNotes || [];
+
+    // --- LÍNEA DE DEPURACIÓN ---
+    console.log('Building notes view. Notes found:', notes);
+
+    if (notes.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-center text-gray-500">You haven't written any notes yet.</p>
+                <p class="text-center text-xs text-gray-400 mt-2">Click the floating pen icon to start documenting your findings.</p>
+            </div>`;
+        return;
+    }
+
+    // Agrupar notas por vista
+    const groupedNotes = notes.reduce((acc, note) => {
+        const key = note.view || 'general';
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(note);
+        return acc;
+    }, {});
+
+    let html = '<div class="space-y-6">';
+
+    for (const view in groupedNotes) {
+        const notesForView = groupedNotes[view].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        const viewLink = document.querySelector(`#sidebar-nav a[data-view="${view}"]`);
+        const viewTitle = viewLink ? viewLink.querySelector('span div:last-child').textContent : view.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+        html += `
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-lg text-[#204071] mb-4 border-b pb-2">${viewTitle}</h3>
+                <div class="space-y-4">
+        `;
+
+        notesForView.forEach(note => {
+            const date = new Date(note.timestamp).toLocaleString();
+            const content = note.content.replace(/\n/g, '<br>');
+
+            html += `
+                <div class="p-4 bg-blue-50/50 border-l-4 border-blue-300 rounded-r-lg">
+                    <p class="text-gray-800 text-sm">${content}</p>
+                    <p class="text-right text-xs text-gray-500 mt-2">${date}</p>
+                </div>
+            `;
+        });
+
+        html += '</div></div>';
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
 };
 
 window.removeFilter = removeFilter;

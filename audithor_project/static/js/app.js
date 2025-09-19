@@ -39,7 +39,7 @@ import { buildConnectivityView } from '/static/js/views/14_connectivity.js';
 import { buildConfigSHView } from '/static/js/views/15_config_sh.js';
 import { buildCodePipelineView } from '/static/js/views/18_codepipeline.js';
 import { buildPlaygroundView } from '/static/js/views/16_playground.js';
-import { buildHealthyStatusView, buildGeminiReportView, buildScopedInventoryView } from '/static/js/views/17_healthy_status.js';
+import { buildHealthyStatusView, buildGeminiReportView, buildScopedInventoryView, buildAuditorNotesView } from '/static/js/views/17_healthy_status.js';
 
 
 // Importar las funciones que se usarán en onclick
@@ -80,6 +80,7 @@ window.lastCloudtrailLookupResults = [];
 window.lastHealthyStatusFindings = [];
 window.trailAlertsData = null;
 window.scopedResources = {};
+window.auditorNotes = [];
 
 // 3. SELECTORES
 let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
@@ -154,6 +155,90 @@ const removeResourceScope = (arn) => {
     rerenderCurrentView(); // Función para refrescar la vista actual
 };
 
+
+const NOTES_STORAGE_KEY = 'audiThorAuditorNotes';
+
+const loadAuditorNotes = () => {
+    const stored = localStorage.getItem(NOTES_STORAGE_KEY);
+    try {
+        window.auditorNotes = stored ? JSON.parse(stored) : [];
+        log(`${window.auditorNotes.length} notas del auditor cargadas.`, 'info');
+    } catch (error) {
+        log(`Error al parsear las notas desde localStorage: ${error.message}. Se reiniciarán las notas.`, 'error');
+        console.error("Datos de notas corruptos en localStorage:", stored);
+        window.auditorNotes = [];
+        localStorage.removeItem(NOTES_STORAGE_KEY);
+    }
+};
+
+
+const saveAuditorNotes = () => {
+    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(window.auditorNotes));
+};
+
+const saveAuditorNote = (noteContent, view, tab) => {
+    const newNote = {
+        id: Date.now(),
+        view: view,
+        tab: tab,
+        timestamp: new Date().toISOString(),
+        content: noteContent
+    };
+    window.auditorNotes.push(newNote);
+    saveAuditorNotes(); 
+    log(`Nota guardada para ${view}/${tab}.`, 'success');
+    
+    // Actualizar siempre la vista de notas, independientemente de dónde estemos
+    buildAuditorNotesView();
+};
+
+const openNotesModal = () => {
+    const modal = document.getElementById('notes-modal');
+    const title = document.getElementById('notes-modal-title');
+    const textarea = document.getElementById('notes-modal-textarea');
+    const saveBtn = document.getElementById('notes-modal-save-btn');
+    const cancelBtn = document.getElementById('notes-modal-cancel-btn');
+
+    if (!modal) return;
+
+    // Capturar contexto
+    const activeViewLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+    const viewName = activeViewLink ? activeViewLink.dataset.view : 'unknown';
+    const viewText = activeViewLink ? activeViewLink.querySelector('span div:last-child').textContent : 'Unknown';
+
+    const activeViewContainer = document.getElementById(`${viewName}-view`);
+    let tabName = 'main';
+    let tabText = 'Main';
+    if (activeViewContainer) {
+        const activeTabLink = activeViewContainer.querySelector('.tab-link.border-\\[\\#eb3496\\]');
+        if (activeTabLink) {
+            tabName = activeTabLink.dataset.tab;
+            tabText = activeTabLink.textContent.split('(')[0].trim();
+        }
+    }
+
+    title.textContent = `New Note for: ${viewText} / ${tabText}`;
+    textarea.value = '';
+
+    const handleSave = () => {
+        if (textarea.value.trim()) {
+            saveAuditorNote(textarea.value.trim(), viewName, tabName);
+            modal.classList.add('hidden');
+        }
+    };
+
+    // Limpiar listeners para evitar duplicados
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+    newSaveBtn.addEventListener('click', handleSave);
+
+    cancelBtn.onclick = () => modal.classList.add('hidden');
+
+    modal.classList.remove('hidden');
+    textarea.focus();
+};
+
+
 // Refresca la vista activa para que los cambios de scope se reflejen inmediatamente
 const rerenderCurrentView = () => {
     const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
@@ -167,7 +252,7 @@ const rerenderCurrentView = () => {
         'compute': buildComputeView,
         'databases': buildDatabasesView,
         'kms': buildKmsSecretsView,
-        // ... añade aquí el resto de tus funciones build...()
+        'healthy-status': buildHealthyStatusView,
     };
 
     if (viewBuilderMap[viewName]) {
@@ -240,6 +325,7 @@ const handleMainNavClick = (e) => {
     if (targetView === 'healthy-status') {
         log('Refreshing scoped inventory view...', 'info');
         buildScopedInventoryView();
+        buildAuditorNotesView();
     }
 };
 
@@ -421,6 +507,9 @@ const createInitialEmptyState = () => `<div class="text-center py-16 bg-white ro
     <p class="mt-1 text-sm text-gray-500">Enter your credentials and click "Scan Account"</p>
 </div>`;
 
+
+
+
 const exportResultsToJson = () => {
     if (!window.iamApiData) {
         alert("Aviso: Debes ejecutar un análisis primero antes de exportar los resultados.");
@@ -472,7 +561,8 @@ const exportResultsToJson = () => {
             codepipeline: window.codepipelineApiData?.results || null,
             // MODIFICACIÓN: Incluir datos completos de TrailAlerts
             trailAlerts: window.trailAlertsData || null,
-            audiThorScopeData: window.scopedResources
+            audiThorScopeData: window.scopedResources,
+            audiThorAuditorNotes: window.auditorNotes || []
         }
     };
     
@@ -570,6 +660,18 @@ const handleJsonImport = (event) => {
             } else {
                 window.scopedResources = {}; // Limpiar si el fichero no tiene datos de scope
                 saveScopedResources();
+            }
+
+            if (results.audiThorAuditorNotes) {
+                // Solo carga las notas si existen en el fichero importado.
+                window.auditorNotes = results.audiThorAuditorNotes;
+                saveAuditorNotes(); 
+                log(`Importadas ${window.auditorNotes.length} notas del auditor desde el fichero.`, 'success');
+            } else {
+                // Si el fichero no tiene notas, LIMPIAR las actuales en lugar de mantenerlas
+                window.auditorNotes = [];
+                saveAuditorNotes();
+                log('Notas del auditor limpiadas al importar nuevo cliente.', 'info');
             }
 
 
@@ -754,6 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleLogBtn = document.getElementById('toggle-log-btn');
     logPanel = document.getElementById('log-panel');
     loadScopedResources();
+    loadAuditorNotes();
 
     // Cargar iconos de la barra lateral
     loadSidebarIcons();
@@ -763,6 +866,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarNav) {
         sidebarNav.addEventListener('click', handleMainNavClick);
     }
+
+    // Configurar botón de notas
+    const openNotesButton = document.getElementById('open-notes-btn');
+    if (openNotesButton) {
+        openNotesButton.addEventListener('click', openNotesModal);
+    }
+
 
     // Configurar botón de análisis
     if (runAnalysisBtn) {
