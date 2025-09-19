@@ -79,6 +79,7 @@ window.allAvailableRegions = [];
 window.lastCloudtrailLookupResults = [];
 window.lastHealthyStatusFindings = [];
 window.trailAlertsData = null;
+window.scopedResources = {};
 
 // 3. SELECTORES
 let views, mainNavLinks, runAnalysisBtn, accessKeyInput, secretKeyInput, sessionTokenInput, loadingSpinner, buttonText, errorMessageDiv, logContainer, clearLogBtn, toggleLogBtn, logPanel;
@@ -121,6 +122,98 @@ const loadSidebarIcons = () => {
         }
     });
 };
+
+// --- NUEVO: FUNCIONES DE GESTIÓN DE SCOPE ---
+const SCOPE_STORAGE_KEY = 'audiThorScopedResources';
+
+const loadScopedResources = () => {
+    const stored = localStorage.getItem(SCOPE_STORAGE_KEY);
+    window.scopedResources = stored ? JSON.parse(stored) : {};
+    log(`${Object.keys(window.scopedResources).length} recursos marcados cargados desde localStorage.`, 'info');
+};
+
+const saveScopedResources = () => {
+    localStorage.setItem(SCOPE_STORAGE_KEY, JSON.stringify(window.scopedResources));
+};
+
+const setResourceScope = (arn, comment) => {
+    if (arn && comment) {
+        window.scopedResources[arn] = { comment: comment };
+        log(`Recurso ${arn} marcado como 'in scope'.`, 'success');
+    }
+    saveScopedResources();
+    rerenderCurrentView(); // Función para refrescar la vista actual
+};
+
+const removeResourceScope = (arn) => {
+    if (arn && window.scopedResources[arn]) {
+        delete window.scopedResources[arn];
+        log(`Recurso ${arn} desmarcado.`, 'info');
+    }
+    saveScopedResources();
+    rerenderCurrentView(); // Función para refrescar la vista actual
+};
+
+// Refresca la vista activa para que los cambios de scope se reflejen inmediatamente
+const rerenderCurrentView = () => {
+    const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+    if (!activeLink) return;
+    const viewName = activeLink.dataset.view;
+    
+    // Mapeo de nombre de vista a función de renderizado
+    const viewBuilderMap = {
+        'iam': buildIamView,
+        'exposure': buildExposureView,
+        'compute': buildComputeView,
+        'databases': buildDatabasesView,
+        'kms': buildKmsSecretsView,
+        // ... añade aquí el resto de tus funciones build...()
+    };
+
+    if (viewBuilderMap[viewName]) {
+        log(`Refrescando vista '${viewName}' para actualizar el scope...`, 'info');
+        viewBuilderMap[viewName]();
+    }
+};
+
+// Función para abrir y manejar el modal de scope
+const openScopeModal = (arn, currentComment = '') => {
+    const modal = document.getElementById('scope-modal');
+    const title = document.getElementById('scope-modal-title');
+    const textarea = document.getElementById('scope-comment-textarea');
+    const saveBtn = document.getElementById('scope-modal-save-btn');
+    const unscopeBtn = document.getElementById('scope-modal-unscope-btn');
+    const closeBtn = document.getElementById('scope-modal-close-btn');
+
+    if (!modal) return;
+
+    title.textContent = `Marcar Recurso: ${arn.split('/').pop()}`;
+    textarea.value = decodeURIComponent(currentComment);
+
+    // Limpiar listeners antiguos para evitar ejecuciones múltiples
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+    const newUnscopeBtn = unscopeBtn.cloneNode(true);
+    unscopeBtn.parentNode.replaceChild(newUnscopeBtn, unscopeBtn);
+
+    newSaveBtn.addEventListener('click', () => {
+        setResourceScope(arn, textarea.value);
+        modal.classList.add('hidden');
+    });
+
+    newUnscopeBtn.addEventListener('click', () => {
+        removeResourceScope(arn);
+        modal.classList.add('hidden');
+    });
+
+    closeBtn.onclick = () => modal.classList.add('hidden');
+
+    modal.classList.remove('hidden');
+    textarea.focus();
+};
+
+
 
 const handleMainNavClick = (e) => {
     e.preventDefault();
@@ -374,7 +467,8 @@ const exportResultsToJson = () => {
             connectivity: window.connectivityApiData?.results || null,
             codepipeline: window.codepipelineApiData?.results || null,
             // MODIFICACIÓN: Incluir datos completos de TrailAlerts
-            trailAlerts: window.trailAlertsData || null
+            trailAlerts: window.trailAlertsData || null,
+            audiThorScopeData: window.scopedResources
         }
     };
     
@@ -442,6 +536,9 @@ const handleJsonImport = (event) => {
             window.connectivityApiData = results.connectivity ? { metadata: metadata, results: results.connectivity } : null;
             window.codepipelineApiData = results.codepipeline ? { metadata: metadata, results: results.codepipeline } : null;
             
+
+
+
             const playgroundImportData = results.playground || {};
             window.playgroundApiData = {
                 metadata: metadata,
@@ -462,6 +559,17 @@ const handleJsonImport = (event) => {
 
             log('Data imported into the application state.', 'success');
             
+            if (results.audiThorScopeData) {
+                window.scopedResources = results.audiThorScopeData;
+                saveScopedResources(); // Guardarlo en localStorage
+                log(`Importados ${Object.keys(window.scopedResources).length} recursos marcados.`, 'success');
+            } else {
+                window.scopedResources = {}; // Limpiar si el fichero no tiene datos de scope
+                saveScopedResources();
+            }
+
+
+
             // 1. Construir el contenido de todas las vistas en segundo plano
             // NOTA: buildCloudtrailView() ya se ejecuta aquí y manejará los datos de TrailAlerts automáticamente
             buildAndRenderAllViews();
@@ -641,6 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearLogBtn = document.getElementById('clear-log-btn');
     toggleLogBtn = document.getElementById('toggle-log-btn');
     logPanel = document.getElementById('log-panel');
+    loadScopedResources();
 
     // Cargar iconos de la barra lateral
     loadSidebarIcons();
@@ -763,3 +872,4 @@ window.copyToClipboard = copyToClipboard;
 window.buildCodePipelineView = buildCodePipelineView;
 window.openModalWithUserRoles = openModalWithUserRoles;
 window.openModalWithSecretDetails = openModalWithSecretDetails;
+window.openScopeModal = openScopeModal;

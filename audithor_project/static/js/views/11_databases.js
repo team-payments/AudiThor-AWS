@@ -174,10 +174,12 @@ const formatBytes = (bytes, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
  
+
 const renderRdsTable = (instances) => {
     if (!instances || instances.length === 0) return '<div class="bg-white p-6 rounded-xl border border-gray-100"><p class="text-center text-gray-500">No standalone RDS instances were found.</p></div>';
     
     let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                '<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' +
@@ -192,7 +194,17 @@ const renderRdsTable = (instances) => {
             ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">YES</span>`
             : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">NO</span>`;
 
-        table += `<tr class="hover:bg-gray-50">
+        const scopeDetails = window.scopedResources[i.ARN];
+        const isScoped = !!scopeDetails;
+        const rowClass = isScoped ? 'bg-pink-50 hover:bg-pink-100' : 'hover:bg-gray-50';
+        const scopeComment = isScoped ? scopeDetails.comment : '';
+        const scopeIcon = isScoped 
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bullseye w-5 h-5 text-pink-600" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="M8 13A5 5 0 1 1 8 3a5 5 0 0 1 0 10m0 1A6 6 0 1 0 8 2a6 6 0 0 0 0 12"/><path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6m0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/><path d="M9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/></svg>` 
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bullseye w-5 h-5 text-gray-400" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="M8 13A5 5 0 1 1 8 3a5 5 0 0 1 0 10m0 1A6 6 0 1 0 8 2a6 6 0 0 0 0 12"/><path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6m0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/><path d="M9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/></svg>`;
+        const scopeButton = `<button onclick="openScopeModal('${i.ARN}', '${encodeURIComponent(scopeComment)}')" title="${isScoped ? `Marcado: ${scopeComment}` : 'Marcar este recurso'}" class="p-1 rounded-full hover:bg-gray-200 transition">${scopeIcon}</button>`;
+
+        table += `<tr class="${rowClass}">
+                    <td class="px-2 py-4 whitespace-nowrap text-sm text-center">${scopeButton}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${i.Region}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${i.DBInstanceIdentifier}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm">${createStatusBadge(i.DBInstanceStatus)}</td>

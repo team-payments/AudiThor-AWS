@@ -89,6 +89,14 @@ export const buildNetworkPoliciesView = () => {
     sgsContainer.innerHTML = renderSGsTable(security_groups, all_regions, 'all', allResources, false);
     detailContainer.innerHTML = renderNetworkDetailView(all_regions || []);
 
+
+    const runDetailBtn = document.getElementById('np-run-detail-btn');
+        if (runDetailBtn) {
+            runDetailBtn.addEventListener('click', runNetworkDetailAnalysis);
+        }
+
+
+
     container.addEventListener('change', (e) => {
         const selectedRegion = e.target.value;
         switch (e.target.id) {
