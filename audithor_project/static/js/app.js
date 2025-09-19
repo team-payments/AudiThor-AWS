@@ -176,7 +176,7 @@ const saveAuditorNotes = () => {
     localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(window.auditorNotes));
 };
 
-const saveOrUpdateNote = (noteId, noteContent, noteTitle, noteArn, view, tab) => {
+const saveOrUpdateNote = (noteId, noteContent, noteTitle, noteArn, noteControl, view, tab) => {
     if (noteId) {
         // --- Lógica para ACTUALIZAR una nota existente ---
         const noteIndex = window.auditorNotes.findIndex(note => note.id === noteId);
@@ -184,6 +184,7 @@ const saveOrUpdateNote = (noteId, noteContent, noteTitle, noteArn, view, tab) =>
             window.auditorNotes[noteIndex].title = noteTitle;
             window.auditorNotes[noteIndex].content = noteContent;
             window.auditorNotes[noteIndex].arn = noteArn;
+            window.auditorNotes[noteIndex].controlId = noteControl;
             window.auditorNotes[noteIndex].lastModified = new Date().toISOString();
             log(`Nota con ID ${noteId} actualizada.`, 'success');
         }
@@ -196,6 +197,7 @@ const saveOrUpdateNote = (noteId, noteContent, noteTitle, noteArn, view, tab) =>
             timestamp: new Date().toISOString(),
             title: noteTitle,
             arn: noteArn,
+            controlId: noteControl,
             content: noteContent
         };
         window.auditorNotes.push(newNote);
@@ -214,6 +216,7 @@ const openNotesModal = (noteId = null) => {
     const cancelBtn = document.getElementById('notes-modal-cancel-btn');
     const titleInput = document.getElementById('notes-modal-title-input');
     const arnInput = document.getElementById('notes-modal-arn-input');
+    const controlInput = document.getElementById('notes-modal-control-input');
 
     let noteToEdit = null;
 
@@ -227,6 +230,7 @@ const openNotesModal = (noteId = null) => {
         titleHeader.textContent = 'Edit Note';
         titleInput.value = noteToEdit.title;
         arnInput.value = noteToEdit.arn || '';
+        controlInput.value = noteToEdit.controlId || '';
         textarea.value = noteToEdit.content;
 
     } else {
@@ -237,19 +241,21 @@ const openNotesModal = (noteId = null) => {
         textarea.value = '';
         titleInput.value = '';
         arnInput.value = '';
+        controlInput.value = '';
     }
 
     const handleSave = () => {
         const noteContent = textarea.value.trim();
         const noteTitle = titleInput.value.trim();
         const noteArn = arnInput.value.trim();
+        const noteControl = controlInput.value.trim();
         
         const activeViewLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
         const viewName = activeViewLink ? activeViewLink.dataset.view : 'unknown';
 
         if (noteContent && noteTitle) {
             // Pasamos el ID si estamos editando, o null si estamos creando
-            saveOrUpdateNote(noteToEdit ? noteToEdit.id : null, noteContent, noteTitle, noteArn, viewName, 'main');
+            saveOrUpdateNote(noteToEdit ? noteToEdit.id : null, noteContent, noteTitle, noteArn, noteControl, viewName, 'main');
             modal.classList.add('hidden');
         } else {
             alert('Por favor, introduce al menos un título y el contenido de la nota.');

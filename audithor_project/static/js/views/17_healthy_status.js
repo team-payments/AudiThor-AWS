@@ -992,6 +992,17 @@ export const buildAuditorNotesView = () => {
                 `;
             }
 
+            let controlHtml = '';
+            if (note.controlId) {
+                controlHtml = `
+                    <div class="mt-2 bg-yellow-50 p-2 rounded-md border-l-2 border-yellow-300">
+                        <code class="text-xs text-yellow-900 break-all">
+                            <span class="font-semibold">Control:</span> ${note.controlId}
+                        </code>
+                    </div>
+                `;
+            }
+
             // Esta es la plantilla CORRECTA de la nota, ahora clicleable
             html += `
                 <div class="p-4 bg-blue-50/50 border-l-4 border-blue-300 rounded-r-lg shadow-sm cursor-pointer hover:shadow-md hover:border-blue-400 transition-shadow" 
@@ -1002,6 +1013,7 @@ export const buildAuditorNotesView = () => {
                     </div>
                     <p class="text-gray-700 text-sm mt-2 truncate">${contentPreview}</p>
                     ${arnHtml}
+                    ${controlHtml}
                 </div>
             `;
         });
