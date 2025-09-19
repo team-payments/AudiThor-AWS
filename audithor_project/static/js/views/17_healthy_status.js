@@ -29,6 +29,7 @@ export const buildHealthyStatusView = () => {
             <nav class="-mb-px flex space-x-6" id="healthy-status-tabs">
                 <a href="#" data-tab="hs-findings-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Findings</a>
                 <a href="#" data-tab="hs-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Generate Report</a>
+                <a href="#" data-tab="hs-inventory-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Scoped Inventory</a>
             </nav>
         </div>
 
@@ -141,6 +142,7 @@ export const buildHealthyStatusView = () => {
             </div>
 
             <div id="hs-report-content" class="healthy-status-tab-content hidden"></div>
+            <div id="hs-inventory-content" class="healthy-status-tab-content hidden"></div>
         </div>
         
         <style>
@@ -175,8 +177,8 @@ export const buildHealthyStatusView = () => {
     }
     
     setupFilterEventListeners();
-    
     buildGeminiReportView();
+    buildScopedInventoryView();
 };
 
 // --- FILTER SETUP ---
@@ -831,6 +833,107 @@ export const initializeFiltersAfterDataLoad = (findings) => {
     renderHealthyStatusFindings(findings);
     
     setupFilterEventListeners();
+};
+
+
+/**
+ * Construye la vista de inventario de recursos marcados (scoped) en una tabla unificada.
+ */
+export const buildScopedInventoryView = () => {
+    const container = document.getElementById('hs-inventory-content');
+    if (!container) return;
+
+    const scopedResources = window.scopedResources || {};
+    const arns = Object.keys(scopedResources);
+
+    if (arns.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-center text-gray-500">No resources have been marked as 'in scope' yet.</p>
+                <p class="text-center text-xs text-gray-400 mt-2">You can mark resources in their respective sections (e.g., Compute, Databases).</p>
+            </div>`;
+        return;
+    }
+
+    // Unificar todos los recursos en una sola lista con un formato estándar
+    const unifiedScopedItems = [];
+    arns.forEach(arn => {
+        const comment = scopedResources[arn].comment;
+        const service = arn.split(':')[2];
+
+        switch (service) {
+            case 'ec2':
+                const ec2Instance = window.computeApiData?.results?.ec2_instances.find(i => i.ARN === arn);
+                if (ec2Instance) {
+                    unifiedScopedItems.push({
+                        type: 'EC2 Instance',
+                        region: ec2Instance.Region,
+                        identifier: ec2Instance.InstanceId,
+                        details: `Public IP: ${ec2Instance.PublicIpAddress || '-'}`,
+                        comment: comment
+                    });
+                }
+                break;
+            case 'lambda':
+                const lambdaFunc = window.computeApiData?.results?.lambda_functions.find(f => f.ARN === arn);
+                if (lambdaFunc) {
+                    unifiedScopedItems.push({
+                        type: 'Lambda Function',
+                        region: lambdaFunc.Region,
+                        identifier: lambdaFunc.FunctionName,
+                        details: `Runtime: ${lambdaFunc.Runtime}`,
+                        comment: comment
+                    });
+                }
+                break;
+            case 'rds':
+                const rdsInstance = window.databasesApiData?.results?.rds_instances.find(db => db.ARN === arn);
+                if (rdsInstance) {
+                    unifiedScopedItems.push({
+                        type: 'RDS Instance',
+                        region: rdsInstance.Region,
+                        identifier: rdsInstance.DBInstanceIdentifier,
+                        details: `Public Access: ${rdsInstance.PubliclyAccessible ? '<span class="text-red-600 font-bold">YES</span>' : 'NO'}`,
+                        comment: comment
+                    });
+                }
+                break;
+        }
+    });
+
+    // Renderizar la tabla unificada
+    container.innerHTML = renderUnifiedScopedInventoryTable(unifiedScopedItems);
+};
+
+const renderUnifiedScopedInventoryTable = (items) => {
+    let tableRows = items.map(item => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${item.region}</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">${item.type}</td>
+            <td class="px-4 py-4 text-sm font-medium text-gray-800 break-all">${item.identifier}</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${item.details}</td>
+            <td class="px-4 py-4 text-sm text-gray-600">${item.comment}</td>
+        </tr>
+    `).join('');
+
+    return `
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+        <h3 class="font-bold text-lg mb-4 text-[#204071]">Scoped Resources Inventory</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource Identifier</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason for Scoping</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">${tableRows}</tbody>
+            </table>
+        </div>
+    </div>`;
 };
 
 window.removeFilter = removeFilter;

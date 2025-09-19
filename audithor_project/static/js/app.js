@@ -39,7 +39,7 @@ import { buildConnectivityView } from '/static/js/views/14_connectivity.js';
 import { buildConfigSHView } from '/static/js/views/15_config_sh.js';
 import { buildCodePipelineView } from '/static/js/views/18_codepipeline.js';
 import { buildPlaygroundView } from '/static/js/views/16_playground.js';
-import { buildHealthyStatusView, buildGeminiReportView } from '/static/js/views/17_healthy_status.js';
+import { buildHealthyStatusView, buildGeminiReportView, buildScopedInventoryView } from '/static/js/views/17_healthy_status.js';
 
 
 // Importar las funciones que se usarán en onclick
@@ -236,6 +236,10 @@ const handleMainNavClick = (e) => {
     const targetViewElement = document.getElementById(`${targetView}-view`);
     if (targetViewElement) {
         targetViewElement.classList.remove('hidden');
+    }
+    if (targetView === 'healthy-status') {
+        log('Refreshing scoped inventory view...', 'info');
+        buildScopedInventoryView();
     }
 };
 
