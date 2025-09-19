@@ -9,7 +9,6 @@ import { handleTabClick, log } from '../utils.js';
 
 // --- FUNCIÓN PRINCIPAL DE LA VISTA (EXPORTADA) ---
 export const buildNetworkPoliciesView = () => {
-    // --- Esta parte inicial no cambia ---
     const container = document.getElementById('network-policies-view');
     if (!window.networkPoliciesApiData || !window.computeApiData || !window.databasesApiData) {
         container.innerHTML = '<p class="text-center text-gray-500">Network Policies, Compute, or Databases data not available.</p>';
@@ -25,7 +24,6 @@ export const buildNetworkPoliciesView = () => {
         rds: rds_instances, aurora: aurora_clusters
     };
 
-    // El HTML principal se dibuja primero, con la estructura de pestañas correcta
     container.innerHTML = `
         <h2 class="text-2xl font-bold text-[#204071] mb-2">Network Security Policies</h2>
         <p class="text-sm text-gray-500 mb-6">${window.networkPoliciesApiData.metadata.executionDate}</p>
@@ -56,7 +54,6 @@ export const buildNetworkPoliciesView = () => {
         </div>
     `;
 
-    // Se obtienen las referencias a los elementos
     const summaryCardsContainer = document.getElementById('np-summary-cards');
     const diagramContainer = document.getElementById('np-diagram-container');
     const vpcsContainer = document.getElementById('np-vpcs-content');
@@ -64,17 +61,34 @@ export const buildNetworkPoliciesView = () => {
     const sgsContainer = document.getElementById('np-sgs-content');
     const detailContainer = document.getElementById('np-detail-content');
 
-    // Se rellena el contenido inicial
+    const applySgFiltersAndRender = () => {
+        const selectedRegion = document.getElementById('sg-region-filter').value;
+        const hideEmpty = document.getElementById('sg-hide-empty-filter').checked;
+
+        let filteredSGs = security_groups.filter(sg => selectedRegion === 'all' || sg.Region === selectedRegion);
+
+        if (hideEmpty) {
+            filteredSGs = filteredSGs.filter(sg => {
+                const ec2Count = allResources.ec2.filter(i => i.Region === sg.Region && i.SecurityGroups.includes(sg.GroupId)).length;
+                const lambdaCount = allResources.lambda.filter(l => l.Region === sg.Region && l.VpcConfig?.SecurityGroupIds?.includes(sg.GroupId)).length;
+                const rdsCount = allResources.rds.filter(r => r.Region === sg.Region && r.SecurityGroupIds?.includes(sg.GroupId)).length;
+                const auroraCount = allResources.aurora.filter(a => a.Region === sg.Region && a.SecurityGroupIds?.includes(sg.GroupId)).length;
+                return (ec2Count + lambdaCount + rdsCount + auroraCount) > 0;
+            });
+        }
+        
+        sgsContainer.innerHTML = renderSGsTable(filteredSGs, all_regions, selectedRegion, allResources, hideEmpty);
+    };
+
     summaryCardsContainer.innerHTML = createNetworkPoliciesSummaryCardsHtml();
     updateNetworkPoliciesSummaryCards(vpcs, acls, security_groups);
     diagramContainer.innerHTML = renderVpcDiagram(vpcs, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters);
     
     vpcsContainer.innerHTML = renderVPCsTable(vpcs, all_regions, 'all');
     aclsContainer.innerHTML = renderACLsTable(acls, all_regions, 'all');
-    sgsContainer.innerHTML = renderSGsTable(security_groups, all_regions, 'all', allResources);
+    sgsContainer.innerHTML = renderSGsTable(security_groups, all_regions, 'all', allResources, false);
     detailContainer.innerHTML = renderNetworkDetailView(all_regions || []);
 
-    // Se restauran los listeners a su versión simple y funcional
     container.addEventListener('change', (e) => {
         const selectedRegion = e.target.value;
         switch (e.target.id) {
@@ -85,8 +99,8 @@ export const buildNetworkPoliciesView = () => {
                 aclsContainer.innerHTML = renderACLsTable(acls.filter(a => selectedRegion === 'all' || a.Region === selectedRegion), all_regions, selectedRegion);
                 break;
             case 'sg-region-filter':
-                const filteredSGs = security_groups.filter(sg => selectedRegion === 'all' || sg.Region === selectedRegion);
-                sgsContainer.innerHTML = renderSGsTable(filteredSGs, all_regions, selectedRegion, allResources);
+            case 'sg-hide-empty-filter':
+                applySgFiltersAndRender();
                 break;
         }
     });
@@ -102,7 +116,6 @@ export const buildNetworkPoliciesView = () => {
         });
     }
 
-    // CORRECCIÓN: Se restaura el listener simple para los tabs, que funciona con la estructura HTML correcta
     const tabsNav = container.querySelector('#network-policies-tabs');
     if (tabsNav) {
         tabsNav.addEventListener('click', handleTabClick(tabsNav, '.network-policies-tab-content'));
@@ -254,10 +267,25 @@ const renderACLsTable = (acls, allRegions, selectedRegion = 'all') => {
     return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControl}${table}</div>`;
 };        
 
-const renderSGsTable = (sgs, allRegions, selectedRegion = 'all', allResources) => {
+const renderSGsTable = (sgs, allRegions, selectedRegion = 'all', allResources, hideEmptyChecked = false) => {
     const regionOptions = allRegions.map(r => `<option value="${r}" ${selectedRegion === r ? 'selected' : ''}>${r}</option>`).join('');
-    const filterControl = `<div class="mb-4 flex items-center gap-2"><label for="sg-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label><select id="sg-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5"><option value="all">All Regions</option>${regionOptions}</select></div>`;
     
+    // Se añade el HTML del checkbox al control de filtros.
+    const isChecked = hideEmptyChecked ? 'checked' : '';
+    const filterControl = `
+      <div class="mb-4 flex items-center gap-6">
+        <div class="flex items-center gap-2">
+          <label for="sg-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label>
+          <select id="sg-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5">
+            <option value="all">All Regions</option>${regionOptions}
+          </select>
+        </div>
+        <div class="flex items-center">
+          <input id="sg-hide-empty-filter" type="checkbox" ${isChecked} class="h-4 w-4 rounded border-gray-300 text-[#eb3496] focus:ring-[#eb3496]">
+          <label for="sg-hide-empty-filter" class="ml-2 text-sm font-medium text-gray-700">Hide SGs with no resources</label>
+        </div>
+      </div>`;
+
     if (!sgs || sgs.length === 0) return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No Security Groups matching the selected filters were found.</p></div>`;
     
     let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Associated Resources</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
