@@ -42,7 +42,13 @@ export const buildNetworkPoliciesView = () => {
                 <div id="np-summary-content" class="network-policies-tab-content">
                     <div id="np-summary-cards"></div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-8">
-                        <h3 class="font-bold text-lg mb-4 text-[#204071]">Network Diagram</h3>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-lg text-[#204071]">Network Diagram</h3>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="vpc-diagram-hide-empty-filter" class="h-4 w-4 rounded border-gray-300 text-[#eb3496] focus:ring-[#eb3496]">
+                                <label for="vpc-diagram-hide-empty-filter" class="text-sm font-medium text-gray-700">Hide Empty VPCs</label>
+                            </div>
+                        </div>
                         <div id="np-diagram-container"></div>
                     </div>
                 </div>
@@ -97,21 +103,47 @@ export const buildNetworkPoliciesView = () => {
 
 
 
-    container.addEventListener('change', (e) => {
-        const selectedRegion = e.target.value;
-        switch (e.target.id) {
-            case 'vpc-region-filter':
-                vpcsContainer.innerHTML = renderVPCsTable(vpcs.filter(v => selectedRegion === 'all' || v.Region === selectedRegion), all_regions, selectedRegion);
-                break;
-            case 'acl-region-filter':
-                aclsContainer.innerHTML = renderACLsTable(acls.filter(a => selectedRegion === 'all' || a.Region === selectedRegion), all_regions, selectedRegion);
-                break;
-            case 'sg-region-filter':
-            case 'sg-hide-empty-filter':
-                applySgFiltersAndRender();
-                break;
-        }
-    });
+const applyVpcDiagramFiltersAndRender = () => {
+    const hideEmpty = document.getElementById('vpc-diagram-hide-empty-filter')?.checked || false;
+    let vpcsToRender = vpcs;
+    if (hideEmpty) {
+        vpcsToRender = vpcsToRender.filter(vpc => {
+            const hasEc2 = allResources.ec2.some(i => {
+                const subnet = subnets.find(s => s.SubnetId === i.SubnetId);
+                return subnet?.VpcId === vpc.VpcId;
+            });
+            const hasLambda = allResources.lambda.some(l => l.VpcConfig?.VpcId === vpc.VpcId);
+            const hasRds = allResources.rds.some(r => r.VpcId === vpc.VpcId);
+            const hasAurora = allResources.aurora.some(a => a.VpcId === vpc.VpcId);
+            return hasEc2 || hasLambda || hasRds || hasAurora;
+        });
+    }
+    diagramContainer.innerHTML = renderVpcDiagram(vpcsToRender, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters);
+};
+
+// Inicializar el diagrama con el filtro predeterminado
+applyVpcDiagramFiltersAndRender();
+
+container.addEventListener('change', (e) => {
+    const selectedRegion = e.target.value;
+    switch (e.target.id) {
+        case 'vpc-region-filter':
+            vpcsContainer.innerHTML = renderVPCsTable(vpcs.filter(v => selectedRegion === 'all' || v.Region === selectedRegion), all_regions, selectedRegion);
+            break;
+        case 'acl-region-filter':
+            aclsContainer.innerHTML = renderACLsTable(acls.filter(a => selectedRegion === 'all' || a.Region === selectedRegion), all_regions, selectedRegion);
+            break;
+        case 'sg-region-filter':
+        case 'sg-hide-empty-filter':
+            applySgFiltersAndRender();
+            break;
+        case 'vpc-diagram-hide-empty-filter':
+            applyVpcDiagramFiltersAndRender();
+            break;
+    }
+});
+
+
     
     if (sgsContainer) {
         sgsContainer.addEventListener('click', (e) => {
