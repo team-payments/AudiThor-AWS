@@ -176,84 +176,93 @@ const saveAuditorNotes = () => {
     localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(window.auditorNotes));
 };
 
+const saveOrUpdateNote = (noteId, noteContent, noteTitle, noteArn, view, tab) => {
+    if (noteId) {
+        // --- Lógica para ACTUALIZAR una nota existente ---
+        const noteIndex = window.auditorNotes.findIndex(note => note.id === noteId);
+        if (noteIndex > -1) {
+            window.auditorNotes[noteIndex].title = noteTitle;
+            window.auditorNotes[noteIndex].content = noteContent;
+            window.auditorNotes[noteIndex].arn = noteArn;
+            window.auditorNotes[noteIndex].lastModified = new Date().toISOString();
+            log(`Nota con ID ${noteId} actualizada.`, 'success');
+        }
+    } else {
+        // --- Lógica para CREAR una nota nueva (la que ya tenías) ---
+        const newNote = {
+            id: Date.now(),
+            view: view,
+            tab: tab,
+            timestamp: new Date().toISOString(),
+            title: noteTitle,
+            arn: noteArn,
+            content: noteContent
+        };
+        window.auditorNotes.push(newNote);
+        log(`Nota nueva '${noteTitle}' guardada.`, 'success');
+    }
 
-const saveAuditorNote = (noteContent, noteTitle, noteArn, view, tab) => {
-    const newNote = {
-        id: Date.now(),
-        view: view,
-        tab: tab,
-        timestamp: new Date().toISOString(),
-        title: noteTitle, // <-- AHORA SÍ FUNCIONA
-        arn: noteArn,     // <-- AHORA SÍ FUNCIONA
-        content: noteContent
-    };
-    window.auditorNotes.push(newNote);
-    saveAuditorNotes(); 
-    // Usamos el título en el log para que sea más descriptivo
-    log(`Nota '${noteTitle}' guardada para ${view}/${tab}.`, 'success');
-    
-    // Actualizar siempre la vista de notas, independientemente de dónde estemos
-    buildAuditorNotesView();
+    saveAuditorNotes();
+    buildAuditorNotesView(); // Refresca la vista para mostrar los cambios
 };
 
-
-const openNotesModal = () => {
+const openNotesModal = (noteId = null) => {
     const modal = document.getElementById('notes-modal');
-    const titleHeader = document.getElementById('notes-modal-title'); // El H3 del modal
+    const titleHeader = document.getElementById('notes-modal-title');
     const textarea = document.getElementById('notes-modal-textarea');
     const saveBtn = document.getElementById('notes-modal-save-btn');
     const cancelBtn = document.getElementById('notes-modal-cancel-btn');
-    
-    // --- AÑADIR selectores para los nuevos inputs ---
     const titleInput = document.getElementById('notes-modal-title-input');
     const arnInput = document.getElementById('notes-modal-arn-input');
 
-    if (!modal || !titleInput || !arnInput) return;
+    let noteToEdit = null;
 
-    // Capturar contexto
-    const activeViewLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
-    const viewName = activeViewLink ? activeViewLink.dataset.view : 'unknown';
-    const viewText = activeViewLink ? activeViewLink.querySelector('span div:last-child').textContent : 'Unknown';
-
-    let tabName = 'main';
-    let tabText = 'Main';
-    const activeViewContainer = document.getElementById(`${viewName}-view`);
-    if (activeViewContainer) {
-        const activeTabLink = activeViewContainer.querySelector('.tab-link.border-\\[\\#eb3496\\]');
-        if (activeTabLink) {
-            tabName = activeTabLink.dataset.tab;
-            tabText = activeTabLink.textContent.split('(')[0].trim();
+    if (noteId) {
+        // --- MODO EDICIÓN ---
+        noteToEdit = window.auditorNotes.find(note => note.id === noteId);
+        if (!noteToEdit) {
+            log(`Error: No se encontró la nota con ID ${noteId}`, 'error');
+            return;
         }
-    }
+        titleHeader.textContent = 'Edit Note';
+        titleInput.value = noteToEdit.title;
+        arnInput.value = noteToEdit.arn || '';
+        textarea.value = noteToEdit.content;
 
-    titleHeader.textContent = `New Note for: ${viewText} / ${tabText}`;
-    // --- Limpiar todos los campos ---
-    textarea.value = '';
-    titleInput.value = '';
-    arnInput.value = '';
+    } else {
+        // --- MODO CREACIÓN ---
+        const activeViewLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+        const viewText = activeViewLink ? activeViewLink.querySelector('span div:last-child').textContent : 'General';
+        titleHeader.textContent = `New Note for: ${viewText}`;
+        textarea.value = '';
+        titleInput.value = '';
+        arnInput.value = '';
+    }
 
     const handleSave = () => {
         const noteContent = textarea.value.trim();
         const noteTitle = titleInput.value.trim();
         const noteArn = arnInput.value.trim();
+        
+        const activeViewLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+        const viewName = activeViewLink ? activeViewLink.dataset.view : 'unknown';
 
-        if (noteContent && noteTitle) { // Requerimos título y contenido
-            saveAuditorNote(noteContent, noteTitle, noteArn, viewName, tabName);
+        if (noteContent && noteTitle) {
+            // Pasamos el ID si estamos editando, o null si estamos creando
+            saveOrUpdateNote(noteToEdit ? noteToEdit.id : null, noteContent, noteTitle, noteArn, viewName, 'main');
             modal.classList.add('hidden');
         } else {
             alert('Por favor, introduce al menos un título y el contenido de la nota.');
         }
     };
 
-    // Limpiar listeners para evitar duplicados
     const newSaveBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
     newSaveBtn.addEventListener('click', handleSave);
 
     cancelBtn.onclick = () => modal.classList.add('hidden');
-
     modal.classList.remove('hidden');
-    titleInput.focus(); // Poner el foco en el nuevo campo de título
+    titleInput.focus();
 };
 
 
@@ -857,6 +866,74 @@ const populateGeminiRegionFilter = (findings) => {
     });
 };
 
+// app.js
+
+// AÑADE ESTAS DOS NUEVAS FUNCIONES:
+const showNoteDetails = (noteId) => {
+    const modal = document.getElementById('note-details-modal');
+    const titleEl = document.getElementById('note-details-title');
+    const contentEl = document.getElementById('note-details-content');
+    const closeBtn = document.getElementById('note-details-close-btn');
+    const editBtn = document.getElementById('note-details-edit-btn');
+    const deleteBtn = document.getElementById('note-details-delete-btn');
+
+    const note = window.auditorNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    titleEl.textContent = note.title;
+
+    let arnHtml = note.arn ? `
+        <div class="mt-2">
+            <p class="font-semibold text-gray-700">Recurso Asociado:</p>
+            <code class="text-xs text-gray-800 bg-gray-100 p-2 rounded-md block break-all">${note.arn}</code>
+        </div>
+    ` : '';
+
+    contentEl.innerHTML = `
+        <p class="font-semibold text-gray-700">Observaciones:</p>
+        <div class="text-gray-800 bg-gray-50 p-3 rounded-md border">${note.content.replace(/\n/g, '<br>')}</div>
+        ${arnHtml}
+        <p class="text-xs text-gray-400 mt-4">Creada: ${new Date(note.timestamp).toLocaleString()}</p>
+    `;
+
+    // Limpiamos listeners para evitar duplicados
+    const newEditBtn = editBtn.cloneNode(true);
+    editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+    newEditBtn.addEventListener('click', () => {
+        modal.classList.add('hidden'); // Ocultamos el modal de detalles
+        openNotesModal(noteId); // Abrimos el modal de edición
+    });
+
+    const newDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+    newDeleteBtn.addEventListener('click', () => deleteAuditorNote(noteId));
+
+    closeBtn.onclick = () => modal.classList.add('hidden');
+    modal.classList.remove('hidden');
+};
+
+const deleteAuditorNote = (noteId) => {
+    const confirmation = confirm('¿Estás seguro de que quieres eliminar esta nota? Esta acción no se puede deshacer.');
+    if (confirmation) {
+        const noteIndex = window.auditorNotes.findIndex(note => note.id === noteId);
+        if (noteIndex > -1) {
+            window.auditorNotes.splice(noteIndex, 1);
+            saveAuditorNotes();
+            buildAuditorNotesView();
+            log(`Nota con ID ${noteId} eliminada.`, 'success');
+            
+            // Cerramos el modal de detalles si está abierto
+            const modal = document.getElementById('note-details-modal');
+            if (modal) modal.classList.add('hidden');
+
+        } else {
+            log(`Error: No se pudo eliminar la nota con ID ${noteId}`, 'error');
+        }
+    }
+};
+
+
+
 // 5. PUNTO DE ENTRADA
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar selectores
@@ -888,7 +965,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configurar botón de notas
     const openNotesButton = document.getElementById('open-notes-btn');
     if (openNotesButton) {
-        openNotesButton.addEventListener('click', openNotesModal);
+        // La clave es llamar a la función dentro de una función de flecha
+        openNotesButton.addEventListener('click', () => openNotesModal()); 
     }
 
 
@@ -1006,3 +1084,6 @@ window.buildCodePipelineView = buildCodePipelineView;
 window.openModalWithUserRoles = openModalWithUserRoles;
 window.openModalWithSecretDetails = openModalWithSecretDetails;
 window.openScopeModal = openScopeModal;
+window.openNotesModal = openNotesModal;
+window.showNoteDetails = showNoteDetails;
+window.deleteAuditorNote = deleteAuditorNote;

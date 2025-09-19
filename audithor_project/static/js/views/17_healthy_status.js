@@ -978,35 +978,32 @@ export const buildAuditorNotesView = () => {
 
         notesForView.forEach(note => {
             const date = new Date(note.timestamp).toLocaleString();
-            const content = note.content.replace(/\n/g, '<br>');
+            // Quitamos el replace de <br> aquí para el truncate
+            const contentPreview = note.content.replace(/\n/g, ' '); 
             
-            // --- INICIO DE LA PLANTILLA DE NOTA MODIFICADA ---
             let arnHtml = '';
             if (note.arn) {
-                // Usamos window.copyToClipboard que ya está disponible globalmente
                 arnHtml = `
-                    <div class="mt-3 bg-gray-100 p-2 rounded-md flex items-center justify-between">
+                    <div class="mt-2 bg-gray-100 p-2 rounded-md">
                         <code class="text-xs text-gray-700 break-all">
                             <span class="font-semibold">Resource:</span> ${note.arn}
                         </code>
-                        <button onclick="window.copyToClipboard('${note.arn}', this)" class="ml-2 p-1.5 rounded-md hover:bg-gray-300 transition-colors" title="Copy ARN">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        </button>
                     </div>
                 `;
             }
 
+            // Esta es la plantilla CORRECTA de la nota, ahora clicleable
             html += `
-                <div class="p-4 bg-blue-50/50 border-l-4 border-blue-300 rounded-r-lg shadow-sm">
+                <div class="p-4 bg-blue-50/50 border-l-4 border-blue-300 rounded-r-lg shadow-sm cursor-pointer hover:shadow-md hover:border-blue-400 transition-shadow" 
+                     onclick="window.showNoteDetails(${note.id})">
                     <div class="flex justify-between items-start">
                         <h4 class="text-md font-bold text-gray-800">${note.title || 'Untitled Note'}</h4>
                         <p class="text-xs text-gray-500 flex-shrink-0 ml-4">${date}</p>
                     </div>
-                    <p class="text-gray-700 text-sm mt-2">${content}</p>
+                    <p class="text-gray-700 text-sm mt-2 truncate">${contentPreview}</p>
                     ${arnHtml}
                 </div>
             `;
-            // --- FIN DE LA PLANTILLA MODIFICADA ---
         });
 
         html += '</div></div>';
