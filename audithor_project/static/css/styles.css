@@ -35,82 +35,77 @@ body {
 }
 
 /* Event Log Styles - Mejorados */
-#log-panel { 
-    transition: all 0.3s ease-in-out; 
-    transform-origin: bottom right;
-}
+/* ==== ESTILOS UNIFICADOS PARA ACCIONES FLOTANTES ==== */
 
-#log-panel.minimized { 
-    transform: translateY(100%);
-    opacity: 0;
-    pointer-events: none;
-}
-
-#log-panel.floating { 
+/* Contenedor principal que alinea los botones */
+#floating-actions-container {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 48px;        /* Cambio: reducido de 60px a 48px */
-    height: 48px;       /* Cambio: reducido de 60px a 48px */
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+/* Estilo idéntico para ambos botones flotantes */
+#open-notes-btn,
+#log-panel.floating {
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: linear-gradient(135deg, #eb3496, #d42c86);
+    color: white;
     box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 100;
     border: 3px solid white;
-    opacity: 1;
-    pointer-events: auto;
     transition: all 0.3s ease-in-out;
 }
 
+/* Efecto hover idéntico para ambos */
+#open-notes-btn:hover,
 #log-panel.floating:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 25px rgba(235, 52, 150, 0.6);
 }
 
-#log-panel.floating .log-panel-content {
-    display: none;
-}
-
-#log-panel.floating #floating-icon {
-    display: block;
-}
-
-#log-panel:not(.floating) #floating-icon {
-    display: none;
-}
-
-#log-panel:not(.floating) .log-panel-content {
+/* Estructura del panel de log cuando está MAXIMIZADO */
+#log-panel:not(.floating) {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    max-width: 34rem;
+    height: 16rem;
+    background-color: #1a2b47;
+    color: white;
+    border-top-left-radius: 0.5rem;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
-    height: 100%;
+    padding: 1rem;
+    z-index: 50;
 }
 
-#floating-icon {
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-    display: none;
-}
+/* Lógica para ocultar/mostrar contenido */
+#log-panel.floating .log-panel-content { display: none; }
+#log-panel.floating #floating-icon { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;}
+#log-panel:not(.floating) .log-panel-content { display: flex; flex-direction: column; height: 100%; }
+#log-panel:not(.floating) #floating-icon { display: none; }
 
-/* Animación de pulso para el botón flotante cuando hay nuevos logs */
+/* Animación de pulso */
 #log-panel.floating.new-log {
     animation: pulse-log 2s infinite;
 }
 
 @keyframes pulse-log {
-    0% {
-        box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4);
-    }
-    50% {
-        box-shadow: 0 4px 25px rgba(235, 52, 150, 0.8), 0 0 15px rgba(235, 52, 150, 0.5);
-    }
-    100% {
-        box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4);
-    }
+    0% { box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4); }
+    50% { box-shadow: 0 4px 25px rgba(235, 52, 150, 0.8), 0 0 15px rgba(235, 52, 150, 0.5); }
+    100% { box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4); }
 }
 
 .log-entry { 

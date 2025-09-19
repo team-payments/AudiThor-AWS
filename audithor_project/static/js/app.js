@@ -984,7 +984,8 @@ document.addEventListener('DOMContentLoaded', () => {
         initialView.classList.remove('hidden');
         buildIamView();
     }
-
+    minimizeLogPanel();
+    
     log('Application initialized successfully.', 'success');
 });
 
