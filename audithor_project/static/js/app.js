@@ -176,39 +176,48 @@ const saveAuditorNotes = () => {
     localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(window.auditorNotes));
 };
 
-const saveAuditorNote = (noteContent, view, tab) => {
+
+const saveAuditorNote = (noteContent, noteTitle, noteArn, view, tab) => {
     const newNote = {
         id: Date.now(),
         view: view,
         tab: tab,
         timestamp: new Date().toISOString(),
+        title: noteTitle, // <-- AHORA SÍ FUNCIONA
+        arn: noteArn,     // <-- AHORA SÍ FUNCIONA
         content: noteContent
     };
     window.auditorNotes.push(newNote);
     saveAuditorNotes(); 
-    log(`Nota guardada para ${view}/${tab}.`, 'success');
+    // Usamos el título en el log para que sea más descriptivo
+    log(`Nota '${noteTitle}' guardada para ${view}/${tab}.`, 'success');
     
     // Actualizar siempre la vista de notas, independientemente de dónde estemos
     buildAuditorNotesView();
 };
 
+
 const openNotesModal = () => {
     const modal = document.getElementById('notes-modal');
-    const title = document.getElementById('notes-modal-title');
+    const titleHeader = document.getElementById('notes-modal-title'); // El H3 del modal
     const textarea = document.getElementById('notes-modal-textarea');
     const saveBtn = document.getElementById('notes-modal-save-btn');
     const cancelBtn = document.getElementById('notes-modal-cancel-btn');
+    
+    // --- AÑADIR selectores para los nuevos inputs ---
+    const titleInput = document.getElementById('notes-modal-title-input');
+    const arnInput = document.getElementById('notes-modal-arn-input');
 
-    if (!modal) return;
+    if (!modal || !titleInput || !arnInput) return;
 
     // Capturar contexto
     const activeViewLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
     const viewName = activeViewLink ? activeViewLink.dataset.view : 'unknown';
     const viewText = activeViewLink ? activeViewLink.querySelector('span div:last-child').textContent : 'Unknown';
 
-    const activeViewContainer = document.getElementById(`${viewName}-view`);
     let tabName = 'main';
     let tabText = 'Main';
+    const activeViewContainer = document.getElementById(`${viewName}-view`);
     if (activeViewContainer) {
         const activeTabLink = activeViewContainer.querySelector('.tab-link.border-\\[\\#eb3496\\]');
         if (activeTabLink) {
@@ -217,13 +226,22 @@ const openNotesModal = () => {
         }
     }
 
-    title.textContent = `New Note for: ${viewText} / ${tabText}`;
+    titleHeader.textContent = `New Note for: ${viewText} / ${tabText}`;
+    // --- Limpiar todos los campos ---
     textarea.value = '';
+    titleInput.value = '';
+    arnInput.value = '';
 
     const handleSave = () => {
-        if (textarea.value.trim()) {
-            saveAuditorNote(textarea.value.trim(), viewName, tabName);
+        const noteContent = textarea.value.trim();
+        const noteTitle = titleInput.value.trim();
+        const noteArn = arnInput.value.trim();
+
+        if (noteContent && noteTitle) { // Requerimos título y contenido
+            saveAuditorNote(noteContent, noteTitle, noteArn, viewName, tabName);
             modal.classList.add('hidden');
+        } else {
+            alert('Por favor, introduce al menos un título y el contenido de la nota.');
         }
     };
 
@@ -235,7 +253,7 @@ const openNotesModal = () => {
     cancelBtn.onclick = () => modal.classList.add('hidden');
 
     modal.classList.remove('hidden');
-    textarea.focus();
+    titleInput.focus(); // Poner el foco en el nuevo campo de título
 };
 
 

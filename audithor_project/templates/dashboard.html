@@ -147,28 +147,33 @@
         </div>
     </div>
 
-    <div id="notes-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div id="notes-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="flex justify-between items-center mb-4 pb-3 border-b">
-                    <h3 id="notes-modal-title" class="text-xl leading-6 font-bold text-[#204071]">Auditor's Note</h3>
-                    <button id="notes-modal-cancel-btn" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="notes-modal-title" class="text-xl font-bold text-[#204071]">New Note</h3>
+                <button id="notes-modal-cancel-btn" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="mt-4">
+                <div class="mb-4">
+                    <label for="notes-modal-title-input" class="block text-sm font-medium text-gray-700 mb-1">Título de la Nota</label>
+                    <input type="text" id="notes-modal-title-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Ej: Revisar política de acceso S3">
                 </div>
-                <div class="mt-2 px-2 py-3 space-y-4">
-                    <div>
-                        <label for="notes-modal-textarea" class="block text-sm font-medium text-gray-700 mb-2">
-                            Write down your observations, questions, or reminders for this section:
-                        </label>
-                        <textarea id="notes-modal-textarea" rows="8" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="E.g., 'Need to follow up with the DevOps team about the IAM role policies used by these Lambda functions...'"></textarea>
-                    </div>
+
+                <div class="mb-4">
+                    <label for="notes-modal-arn-input" class="block text-sm font-medium text-gray-700 mb-1">ARN del Recurso (Opcional)</label>
+                    <input type="text" id="notes-modal-arn-input" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5 font-mono" placeholder="arn:aws:iam::123456789012:user/test-user">
                 </div>
-                <div class="items-center px-4 py-3 mt-4 bg-gray-50 rounded-b-md flex justify-end space-x-3">
-                    <button id="notes-modal-save-btn" class="px-4 py-2 bg-[#eb3496] text-white rounded-md hover:bg-[#d42c86] font-bold text-sm">
-                        Save Note
-                    </button>
+                <div>
+                    <label for="notes-modal-textarea" class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                    <textarea id="notes-modal-textarea" rows="6" class="bg-gray-50 border border-gray-300 text-[#204071] text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block w-full p-2.5" placeholder="Escribe tus observaciones, preguntas o recordatorios..."></textarea>
                 </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="notes-modal-save-btn" class="bg-[#eb3496] text-white px-5 py-2.5 rounded-lg font-bold text-md hover:bg-[#d42c86] transition">
+                    Save Note
+                </button>
             </div>
         </div>
     </div>
