@@ -900,6 +900,32 @@ export const buildScopedInventoryView = () => {
                     });
                 }
                 break;
+            
+            case 'secretsmanager':
+                const secret = window.secretsManagerApiData?.results?.secrets.find(s => s.ARN === arn);
+                if (secret) {
+                    unifiedScopedItems.push({
+                        type: 'Secret',
+                        region: secret.Region,
+                        identifier: secret.Name,
+                        details: `Rotation: ${secret.RotationEnabled ? 'Enabled' : 'Disabled'}`,
+                        comment: comment
+                    });
+                }
+                break;
+            case 'kms':
+                const kmsKey = window.kmsApiData?.results?.keys.find(k => k.ARN === arn);
+                if (kmsKey) {
+                    unifiedScopedItems.push({
+                        type: 'KMS Key',
+                        region: kmsKey.Region,
+                        identifier: kmsKey.Aliases || kmsKey.KeyId,
+                        details: `Manager: ${kmsKey.KeyManager}`,
+                        comment: comment
+                    });
+                }
+                break;
+
         }
     });
 
