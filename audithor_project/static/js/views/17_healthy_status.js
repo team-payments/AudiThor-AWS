@@ -926,6 +926,19 @@ export const buildScopedInventoryView = () => {
                 }
                 break;
 
+            case 'acm':
+                const certificate = window.acmApiData?.results?.certificates.find(c => c.CertificateArn === arn);
+                if (certificate) {
+                    unifiedScopedItems.push({
+                        type: 'ACM Certificate',
+                        region: certificate.Region,
+                        identifier: certificate.DomainName,
+                        details: `Status: ${certificate.Status}`,
+                        comment: comment
+                    });
+                }
+                break;
+
         }
     });
 

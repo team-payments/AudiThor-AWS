@@ -33,6 +33,9 @@ export const buildAcmView = () => {
     const container = document.getElementById('acm-view');
     if (!window.acmApiData || !window.securityHubApiData) return;
 
+    
+    const activeTabEl = container.querySelector('#acm-tabs .border-\\[\\#eb3496\\]');
+    const activeTabData = activeTabEl ? activeTabEl.dataset.tab : 'acm-summary-content';
     const { certificates } = window.acmApiData.results;
     const acmSecurityHubFindings = window.securityHubApiData.results.findings.cloudwatchFindings.filter(f => f.Title.includes('Certificate') || f.Title.includes('SSL') || f.Title.includes('TLS'));
 
@@ -73,6 +76,28 @@ export const buildAcmView = () => {
     
     updateAcmSummaryCards(certificates, acmSecurityHubFindings);
     renderSecurityHubFindings(acmSecurityHubFindings, 'sh-acm-findings-container', 'No Security Hub findings related to ACM were found.');
+
+    // Si no es la pestaña por defecto, cambiar la vista activa
+    if (activeTabData !== 'acm-summary-content') {
+        // Quitar el estado activo de la pestaña "Summary" por defecto
+        const defaultActiveLink = container.querySelector('#acm-tabs a[data-tab="acm-summary-content"]');
+        const defaultActiveContent = document.getElementById('acm-summary-content');
+        if (defaultActiveLink && defaultActiveContent) {
+            defaultActiveLink.classList.remove('border-[#eb3496]', 'text-[#eb3496]');
+            defaultActiveLink.classList.add('border-transparent', 'text-gray-500');
+            defaultActiveContent.classList.add('hidden');
+        }
+
+        // Activar la pestaña correcta
+        const newActiveLink = container.querySelector(`#acm-tabs a[data-tab="${activeTabData}"]`);
+        const newActiveContent = document.getElementById(activeTabData);
+        if (newActiveLink && newActiveContent) {
+            newActiveLink.classList.add('border-[#eb3496]', 'text-[#eb3496]');
+            newActiveLink.classList.remove('border-transparent', 'text-gray-500');
+            newActiveContent.classList.remove('hidden');
+        }
+    }
+
 
     const tabsNav = container.querySelector('#acm-tabs');
     if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.acm-tab-content'));
@@ -148,6 +173,7 @@ const renderAcmCertificatesTable = (certificates) => {
     };
 
     let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                    '<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Main Domain</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>' +
@@ -166,8 +192,18 @@ const renderAcmCertificatesTable = (certificates) => {
         const issuedAt = cert.IssuedAt ? new Date(cert.IssuedAt).toLocaleDateString() : 'N/A';
         const expiresAt = cert.NotAfter ? new Date(cert.NotAfter).toLocaleDateString() : 'N/A';
         const sans = cert.SubjectAlternativeNames && cert.SubjectAlternativeNames.length > 0 ? cert.SubjectAlternativeNames.join(', ') : '-';
+        const certArn = cert.CertificateArn || `arn:aws:acm:${region}:certificate/${domainName}`;
+        const scopeDetails = window.scopedResources[certArn];
+        const isScoped = !!scopeDetails;
+        const rowClass = isScoped ? 'bg-pink-50 hover:bg-pink-100' : 'hover:bg-gray-50';
+        const scopeComment = isScoped ? scopeDetails.comment : '';
+        const scopeIcon = isScoped 
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-star w-5 h-5 text-pink-600" viewBox="0 0 16 16"><path d="M7.84 4.1a.178.178 0 0 1 .32 0l.634 1.285a.18.18 0 0 0 .134.098l1.42.206c.145.021.204.2.098.303L9.42 6.993a.18.18 0 0 0-.051.158l.242 1.414a.178.178 0 0 1-.258.187l-1.27-.668a.18.18 0 0 0-.165 0l-1.27.668a.178.178 0 0 1-.257-.187l.242-1.414a.18.18 0 0 0-.05-.158l-1.03-1.001a.178.178 0 0 1 .098-.303l1.42-.206a.18.18 0 0 0 .134-.098z"/><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/></svg>` 
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-star w-5 h-5 text-gray-400" viewBox="0 0 16 16"><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/></svg>`;
+        const scopeButton = `<button onclick="openScopeModal('${certArn}', '${encodeURIComponent(scopeComment)}')" title="${isScoped ? `Marcado: ${scopeComment}` : 'Marcar este recurso'}" class="p-1 rounded-full hover:bg-gray-200 transition">${scopeIcon}</button>`;
 
-        tableHtml += `<tr class="hover:bg-gray-50">
+        tableHtml += `<tr class="${rowClass}">
+                        <td class="px-2 py-4 whitespace-nowrap text-sm text-center">${scopeButton}</td>
                         <td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${domainName}</td>
                         <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${region}</td>
                         <td class="px-4 py-4 align-top whitespace-nowrap"><span class="px-2.5 py-0.5 text-xs font-semibold rounded-full ${statusClass}">${status}</span></td>
@@ -177,6 +213,8 @@ const renderAcmCertificatesTable = (certificates) => {
                         <td class="px-4 py-4 align-top text-sm text-gray-600 break-words">${sans}</td>
                       </tr>`;
     });
+
+    
     tableHtml += '</tbody></table></div>';
     return tableHtml;
 };

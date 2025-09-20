@@ -285,6 +285,7 @@ const rerenderCurrentView = () => {
         'compute': buildComputeView,
         'databases': buildDatabasesView,
         'kms': buildKmsSecretsView,
+        'acm': buildAcmView, 
         'healthy-status': buildHealthyStatusView,
     };
 
