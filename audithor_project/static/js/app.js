@@ -970,11 +970,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Configurar botón de notas
-    const openNotesButton = document.getElementById('open-notes-btn');
-    if (openNotesButton) {
-        // La clave es llamar a la función dentro de una función de flecha
-        openNotesButton.addEventListener('click', () => openNotesModal()); 
+const openNotesButton = document.getElementById('open-notes-btn');
+if (openNotesButton) {
+    openNotesButton.addEventListener('click', () => {
+        // Mostrar menú con opciones
+        showNotesMenu();
+    });
+}
+
+const showNotesMenu = () => {
+    // Crear menú desplegable
+    const existingMenu = document.getElementById('notes-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    const menu = document.createElement('div');
+    menu.id = 'notes-menu';
+    menu.className = 'fixed bottom-20 right-4 bg-white border border-gray-200 rounded-lg shadow-lg z-50';
+    menu.innerHTML = `
+        <div class="p-2">
+            <button onclick="openNotesModal()" class="w-full text-left px-3 py-2 hover:bg-gray-100 rounded flex items-center">
+                Write Note
+            </button>
+            <button onclick="activateElementSelector()" class="w-full text-left px-3 py-2 hover:bg-gray-100 rounded flex items-center">
+                Capture Evidence
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    // Cerrar menú al hacer click fuera
+    setTimeout(() => {
+        document.addEventListener('click', closeMenu, true);
+    }, 100);
+    
+    function closeMenu() {
+        menu.remove();
+        document.removeEventListener('click', closeMenu, true);
     }
+};
 
 
     // Configurar botón de análisis
@@ -1074,6 +1108,256 @@ document.addEventListener('DOMContentLoaded', () => {
     log('Application initialized successfully.', 'success');
 });
 
+// --- SELECTOR VISUAL GLOBAL ---
+let selectorMode = false;
+let originalStyles = new Map();
+
+window.activateElementSelector = () => {
+    if (selectorMode) return; // Ya está activo
+    
+    selectorMode = true;
+    document.body.style.cursor = 'crosshair';
+    document.body.classList.add('element-selector-mode');
+    
+    // Overlay de instrucciones
+    const overlay = document.createElement('div');
+    overlay.id = 'selector-overlay';
+    overlay.innerHTML = `
+        <div class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-[#eb3496] text-white px-4 py-2 rounded-lg shadow-lg z-50">
+            Click on any element to capture evidence | Press ESC to cancel
+        </div>`;
+    document.body.appendChild(overlay);
+    
+    // Event listeners globales
+    document.addEventListener('mouseover', highlightElement, true);
+    document.addEventListener('mouseout', removeHighlight, true);
+    document.addEventListener('click', captureElementOnClick, true);
+    document.addEventListener('keydown', handleSelectorKeydown);
+};
+
+const highlightElement = (e) => {
+    if (!selectorMode) return;
+    
+    // Guardar estilo original
+    originalStyles.set(e.target, {
+        outline: e.target.style.outline,
+        backgroundColor: e.target.style.backgroundColor
+    });
+    
+    // Aplicar highlight
+    e.target.style.outline = '2px solid #eb3496';
+    e.target.style.backgroundColor = 'rgba(235, 52, 150, 0.1)';
+};
+
+const removeHighlight = (e) => {
+    if (!selectorMode) return;
+    
+    // Restaurar estilo original
+    const original = originalStyles.get(e.target);
+    if (original) {
+        e.target.style.outline = original.outline;
+        e.target.style.backgroundColor = original.backgroundColor;
+        originalStyles.delete(e.target);
+    }
+};
+
+const captureElementOnClick = (e) => {
+    if (!selectorMode) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const evidence = extractElementEvidence(e.target);
+    deactivateElementSelector();
+    openNotesModalWithEvidence(evidence);
+};
+
+const deactivateElementSelector = () => {
+    selectorMode = false;
+    document.body.style.cursor = '';
+    document.body.classList.remove('element-selector-mode');
+    
+    // Limpiar overlay
+    const overlay = document.getElementById('selector-overlay');
+    if (overlay) overlay.remove();
+    
+    // Remover event listeners
+    document.removeEventListener('mouseover', highlightElement, true);
+    document.removeEventListener('mouseout', removeHighlight, true);
+    document.removeEventListener('click', captureElementOnClick, true);
+    document.removeEventListener('keydown', handleSelectorKeydown);
+    
+    // Limpiar estilos pendientes
+    originalStyles.clear();
+};
+
+const handleSelectorKeydown = (e) => {
+    if (e.key === 'Escape') {
+        deactivateElementSelector();
+    }
+};
+
+
+const extractElementEvidence = (element) => {
+    const currentView = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]')?.dataset.view;
+    const activeTab = document.querySelector('.tab-link.border-\\[\\#eb3496\\]')?.textContent?.trim();
+    
+    let evidence = {
+        timestamp: new Date().toISOString(),
+        section: getCurrentSectionName(),
+        subSection: activeTab,
+        elementType: 'Unknown Element',
+        data: {},
+        rawHTML: element.outerHTML.substring(0, 500) // Backup de HTML
+    };
+    
+    // Detectar automáticamente el tipo de elemento
+    const row = element.closest('tr');
+    const card = element.closest('.bg-white');
+    
+    // PATRÓN: Filas de tabla
+    if (row && row.closest('tbody')) {
+        evidence = {
+            ...evidence,
+            ...extractTableRowData(row, currentView)
+        };
+    }
+    
+    // PATRÓN: Cards/badges
+    else if (element.closest('.bg-yellow-200') || element.textContent.includes('VIP')) {
+        evidence = {
+            ...evidence,
+            elementType: 'Privileged User Badge',
+            data: { issue: 'Privileged user detected', element: element.textContent.trim() }
+        };
+    }
+    
+    // PATRÓN: Status badges
+    else if (element.closest('.bg-red-100') || element.textContent.includes('NO')) {
+        evidence = {
+            ...evidence,
+            elementType: 'Security Issue Badge',
+            data: { issue: 'Negative security indicator', status: element.textContent.trim() }
+        };
+    }
+    
+    return evidence;
+};
+
+const extractTableRowData = (row, currentView) => {
+    const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim());
+    
+    // Mapeo específico por vista
+    const extractors = {
+        'iam': extractIamUserRow,
+        'acm': extractAcmCertRow,
+        'compute': extractComputeRow,
+        'databases': extractDatabaseRow
+    };
+    
+    const extractor = extractors[currentView] || extractGenericRow;
+    return extractor(cells, row);
+};
+
+// Agregar después de extractAcmCertRow
+const extractComputeRow = (cells, row) => {
+    return {
+        elementType: 'Compute Resource',
+        data: {
+            identifier: cells[1],
+            region: cells[0],
+            status: cells[4] || 'Unknown',
+            issue: cells[4]?.includes('stopped') ? 'Instance stopped' : null
+        }
+    };
+};
+
+const extractDatabaseRow = (cells, row) => {
+    return {
+        elementType: 'Database Resource',
+        data: {
+            identifier: cells[1],
+            region: cells[0],
+            status: cells[2],
+            issue: cells[3]?.includes('YES') ? 'Publicly accessible' : null
+        }
+    };
+};
+
+const extractGenericRow = (cells, row) => {
+    return {
+        elementType: 'Table Row',
+        data: {
+            values: cells,
+            cellCount: cells.length
+        }
+    };
+};
+
+const getCurrentSectionName = () => {
+    const activeView = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+    return activeView?.querySelector('div:last-child')?.textContent || 'Unknown Section';
+};
+
+const openNotesModalWithEvidence = (evidence) => {
+    // Reutilizar la función existente que ya tiene todos los event listeners funcionando
+    openNotesModal();
+    
+    // Esperar a que se abra el modal y luego pre-llenar los campos
+    setTimeout(() => {
+        const titleInput = document.getElementById('notes-modal-title-input');
+        const arnInput = document.getElementById('notes-modal-arn-input');
+        const textarea = document.getElementById('notes-modal-textarea');
+        
+        // Pre-llenar con los datos capturados
+        titleInput.value = `Issue found: ${evidence.data.issue || evidence.elementType}`;
+        arnInput.value = evidence.data.arn || '';
+        
+        const evidenceText = `EVIDENCE CAPTURED:
+Timestamp: ${evidence.timestamp}
+Section: ${evidence.section}
+Sub-section: ${evidence.subSection || 'Main view'}
+Element Type: ${evidence.elementType}
+
+Details:
+${JSON.stringify(evidence.data, null, 2)}
+
+Additional Notes:
+`;
+        
+        textarea.value = evidenceText;
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }, 100);
+};
+
+const extractIamUserRow = (cells, row) => {
+    return {
+        elementType: 'IAM User',
+        data: {
+            username: cells[0]?.replace('VIP', '').trim(),
+            passwordEnabled: cells[1],
+            mfaEnabled: cells[3]?.includes('NO') ? 'NO MFA' : 'MFA Enabled',
+            isPrivileged: row.querySelector('.bg-yellow-200') ? true : false,
+            issue: cells[3]?.includes('NO') ? 'MFA not enabled' : null
+        }
+    };
+};
+
+const extractAcmCertRow = (cells, row) => {
+    return {
+        elementType: 'ACM Certificate',
+        data: {
+            domain: cells[1],
+            region: cells[2],
+            status: cells[3],
+            expirationDate: cells[6],
+            issue: cells[3]?.includes('EXPIRED') ? 'Certificate expired' : null
+        }
+    };
+};
+
+
 // 6. EXPOSICIÓN DE FUNCIONES GLOBALES
 window.openModalWithSsoDetails = openModalWithSsoDetails;
 window.openModalWithAccessKeyDetails = openModalWithAccessKeyDetails;
@@ -1094,3 +1378,5 @@ window.openScopeModal = openScopeModal;
 window.openNotesModal = openNotesModal;
 window.showNoteDetails = showNoteDetails;
 window.deleteAuditorNote = deleteAuditorNote;
+window.activateElementSelector = activateElementSelector;
+window.showNotesMenu = showNotesMenu;
