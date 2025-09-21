@@ -56,6 +56,12 @@ const exposureServiceDescriptions = {
         description: "AWS Security Hub findings specifically related to internet exposure risks, aggregated from various security services like GuardDuty, Inspector, and Config rules.",
         useCases: "Centralized security monitoring, compliance reporting, vulnerability management, security posture assessment, automated remediation triggers.",
         auditConsiderations: "Review critical and high severity findings first. Verify remediation status and assign ownership for resolution. Ensure findings are not being suppressed without proper justification. Track trends and recurring issues for systemic improvements."
+    },
+    "Lambda Credential Harvesting": {
+        title: "Lambda Credential Harvesting",
+        description: "Analysis of AWS Lambda functions to identify potentially hardcoded credentials, API keys, passwords, and other sensitive information in environment variables and configuration.",
+        useCases: "Security auditing, credential leak detection, compliance verification, penetration testing reconnaissance, identifying secrets management gaps.",
+        auditConsiderations: "Review all findings marked as CRITICAL or HIGH severity. Verify that detected patterns are actual credentials and not false positives. Ensure Lambda functions use proper secrets management (AWS Secrets Manager, Parameter Store) instead of hardcoded values. Check for exposed database connection strings and API keys."
     }
 };
 
@@ -67,17 +73,21 @@ export const buildExposureView = () => {
 
     const allExposureServices = [
         "S3 Public Buckets", "EC2 Public Instances", "Security Groups Open", 
-        "ALB/NLB Public", "Lambda URLs", "API Gateway Public"
+        "ALB/NLB Public", "Lambda URLs", "API Gateway Public", "Lambda Credential Harvesting"
     ];
 
     const details = window.exposureApiData.results.details;
     const networkPorts = window.exposureApiData.results.network_ports || [];
+    const lambdaCredentials = window.exposureApiData.results.lambda_credentials || [];  // AÑADIR ESTA LÍNEA
     const securityHubFindings = window.securityHubApiData.results.findings.exposureFindings;
 
     let tabsHtml = `<a href="#" data-tab="exposure-summary-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Summary</a>`;
     
+
     allExposureServices.forEach(service => {
-        const count = Object.values(details[service] || {}).flat().length;
+        const count = service === "Lambda Credential Harvesting" 
+            ? lambdaCredentials.length 
+            : Object.values(details[service] || {}).flat().length;
         const safeId = service.replace(/\s+/g, '-').replace(/\//g, '-');
         tabsHtml += `<a href="#" data-tab="exposure-${safeId}-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">${service} (${count})</a>`;
     });
@@ -109,20 +119,24 @@ export const buildExposureView = () => {
         <div>${contentHtml}</div>`;
 
     updateExposureSummaryCards(window.exposureApiData.results.summary, securityHubFindings);
-    
+
+
     allExposureServices.forEach(service => {
         const safeId = service.replace(/\s+/g, '-').replace(/\//g, '-');
         const serviceContainer = container.querySelector(`#exposure-${safeId}-content`);
 
-        if (service === 'EC2 Public Instances') {
+        if (service === 'Lambda Credential Harvesting') {
+            serviceContainer.innerHTML = renderServiceDescription(exposureServiceDescriptions[service]) + 
+                                    renderLambdaCredentialsTable(lambdaCredentials);
+        } else if (service === 'EC2 Public Instances') {
             const allInstancesWithIndex = (window.computeApiData?.results?.ec2_instances || [])
                 .map((instance, originalIndex) => ({ instance, originalIndex }))
                 .filter(({ instance }) => instance.PublicIpAddress && instance.PublicIpAddress !== 'N/A');
             serviceContainer.innerHTML = renderServiceDescription(exposureServiceDescriptions[service]) + 
-                                       renderPublicEc2InstancesTable(allInstancesWithIndex, window.allAvailableRegions, 'all', 'all');
+                                    renderPublicEc2InstancesTable(allInstancesWithIndex, window.allAvailableRegions, 'all', 'all');
         } else {
             serviceContainer.innerHTML = renderServiceDescription(exposureServiceDescriptions[service]) +
-                                       renderExposureDetails(service, details[service] || {});
+                                    renderExposureDetails(service, details[service] || {});
         }
     });
 
@@ -226,6 +240,8 @@ const updateExposureSummaryCards = (summaryData, findingsData) => {
     document.getElementById('exp-total-sgs').textContent = sumValues('Security Groups Open'); 
     document.getElementById('exp-total-s3').textContent = sumValues('S3 Public Buckets'); 
     const criticalHighFindings = findingsData.filter(f => f.Severity?.Label === 'CRITICAL' || f.Severity?.Label === 'HIGH').length; 
+    const lambdaCredentials = window.exposureApiData.results.lambda_credentials || [];
+    const criticalCredentials = lambdaCredentials.filter(c => c.severity === 'CRITICAL').length;
     document.getElementById('exp-critical-findings').textContent = criticalHighFindings; 
 };
 
@@ -1036,4 +1052,181 @@ const generateS3SecurityAnalysis = (bucketName) => {
     }
     
     return findings;
+};
+
+const renderLambdaCredentialsTable = (credentials) => {
+    if (!credentials || credentials.length === 0) {
+        return `<div class="bg-white p-6 rounded-xl border border-gray-100">
+            <div class="text-center py-8">
+                <svg class="mx-auto h-12 w-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-green-800">No Credential Issues Found</h3>
+                <p class="mt-1 text-sm text-green-600">No hardcoded credentials or suspicious environment variables detected in Lambda functions.</p>
+            </div>
+        </div>`;
+    }
+
+    // Agrupar por severidad
+    const critical = credentials.filter(c => c.severity === 'CRITICAL');
+    const high = credentials.filter(c => c.severity === 'HIGH');
+    const info = credentials.filter(c => c.severity === 'INFO');
+
+    const getSeverityBadge = (severity) => {
+        const colors = {
+            'CRITICAL': 'bg-red-100 text-red-800 border-red-200',
+            'HIGH': 'bg-orange-100 text-orange-800 border-orange-200', 
+            'INFO': 'bg-blue-100 text-blue-800 border-blue-200'
+        };
+        return `<span class="px-3 py-1 text-xs font-bold rounded-full border ${colors[severity] || 'bg-gray-100 text-gray-800'}">${severity}</span>`;
+    };
+
+    let tableHtml = `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <!-- Resumen de Severidades -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-red-700">${critical.length}</div>
+                    <div class="text-sm text-red-600">Critical Issues</div>
+                </div>
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-orange-700">${high.length}</div>
+                    <div class="text-sm text-orange-600">High Severity</div>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-700">${info.length}</div>
+                    <div class="text-sm text-blue-600">Info/Analysis</div>
+                </div>
+            </div>
+
+            <!-- Tabla de Hallazgos -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Function Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Runtime</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Finding Type</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+    `;
+
+    // Ordenar por severidad (Critical primero)
+    const sortedCredentials = [...credentials].sort((a, b) => {
+        const severityOrder = { 'CRITICAL': 0, 'HIGH': 1, 'INFO': 2 };
+        return severityOrder[a.severity] - severityOrder[b.severity];
+    });
+
+    sortedCredentials.forEach((cred, index) => {
+        const rowClass = cred.severity === 'CRITICAL' ? 'bg-red-50' : 
+                        cred.severity === 'HIGH' ? 'bg-orange-50' : 'bg-white';
+        
+        tableHtml += `
+            <tr class="${rowClass} hover:bg-gray-50">
+                <td class="px-4 py-4 whitespace-nowrap text-sm">${getSeverityBadge(cred.severity)}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${cred.region}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 font-mono">${cred.function_name}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${cred.runtime}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${cred.type}</td>
+                <td class="px-4 py-4 text-sm text-gray-800 max-w-xs">
+                    <div class="truncate" title="${cred.finding}">${cred.finding}</div>
+                    ${cred.env_var_name ? `<div class="text-xs text-gray-500 mt-1">Env var: <code>${cred.env_var_name}</code></div>` : ''}
+                    ${cred.sample_value ? `<div class="text-xs text-red-600 mt-1 font-mono">Sample: ${cred.sample_value}</div>` : ''}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm">
+                    <button onclick="openLambdaCredentialDetails(${index})" 
+                            class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">
+                        View Details
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    tableHtml += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    return tableHtml;
+};
+
+window.openLambdaCredentialDetails = (credentialIndex) => {
+    const modal = document.getElementById('details-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+
+    const credentials = window.exposureApiData.results.lambda_credentials;
+    const cred = credentials[credentialIndex];
+
+    if (!modal || !cred) return;
+
+    modalTitle.textContent = `Lambda Credential Finding: ${cred.function_name}`;
+    
+    const severityColor = cred.severity === 'CRITICAL' ? 'red' : 
+                         cred.severity === 'HIGH' ? 'orange' : 'blue';
+
+    modalContent.innerHTML = `
+        <div class="space-y-4 text-left text-sm">
+            <div class="bg-${severityColor}-50 border border-${severityColor}-200 rounded-lg p-4">
+                <div class="flex items-center">
+                    <span class="px-3 py-1 text-xs font-bold rounded-full bg-${severityColor}-100 text-${severityColor}-800">${cred.severity}</span>
+                    <span class="ml-3 font-semibold text-${severityColor}-800">${cred.type}</span>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <h4 class="font-semibold text-gray-800">Function Information</h4>
+                    <ul class="list-none space-y-1 mt-2">
+                        <li><strong>Name:</strong> <code class="bg-gray-100 px-2 py-1 rounded text-sm">${cred.function_name}</code></li>
+                        <li><strong>Region:</strong> ${cred.region}</li>
+                        <li><strong>Runtime:</strong> ${cred.runtime}</li>
+                        <li><strong>ARN:</strong> <code class="bg-gray-100 px-2 py-1 rounded text-xs break-all">${cred.function_arn}</code></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-semibold text-gray-800">Finding Details</h4>
+                    <div class="bg-gray-50 p-3 rounded-md">
+                        <p class="text-gray-800">${cred.finding}</p>
+                        ${cred.env_var_name ? `
+                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                <p><strong>Environment Variable:</strong> <code class="bg-yellow-100 px-2 py-1 rounded">${cred.env_var_name}</code></p>
+                                ${cred.env_var_value ? `<p><strong>Value Preview:</strong> <code class="bg-red-100 px-2 py-1 rounded text-red-800">${cred.env_var_value}</code></p>` : ''}
+                                ${cred.detected_pattern ? `<p><strong>Pattern Detected:</strong> ${cred.detected_pattern}</p>` : ''}
+                            </div>
+                        ` : ''}
+                        ${cred.code_size ? `
+                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                <p><strong>Code Size:</strong> ${cred.code_size} bytes</p>
+                                <p class="text-xs text-gray-600">Function code is accessible for deeper analysis</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 class="font-semibold text-yellow-800 mb-2">Recommended Actions</h4>
+                    <ul class="list-disc list-inside text-yellow-700 text-sm space-y-1">
+                        <li>Remove hardcoded credentials from environment variables</li>
+                        <li>Use AWS Secrets Manager or Systems Manager Parameter Store</li>
+                        <li>Implement least privilege IAM roles for Lambda execution</li>
+                        <li>Enable AWS CloudTrail logging for function access monitoring</li>
+                        <li>Consider rotating any exposed credentials immediately</li>
+                        ${cred.type === 'Code Analysis Opportunity' ? '<li>Download and analyze function code for additional hardcoded secrets</li>' : ''}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
 };

@@ -102,6 +102,7 @@ def run_exposure_audit():
     if error: return jsonify({"error": error}), 401
     try:
         exposure_results = exposure.collect_exposure_data(session)
+        exposure_results["lambda_credentials"] = exposure.scan_lambda_credentials(session)
         sts = session.client("sts")
         return jsonify({ "metadata": {"accountId": sts.get_caller_identity()["Account"], "executionDate": datetime.now(pytz.timezone("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S %Z")}, "results": exposure_results })
     except Exception as e:

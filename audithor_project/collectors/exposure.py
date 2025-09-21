@@ -382,3 +382,126 @@ def collect_exposure_data(session):
         "details": dict(result_details),
         "network_ports": network_ports_results
     }
+
+def scan_lambda_credentials(session):
+    """
+    Escanea funciones Lambda buscando credenciales hardcodeadas en variables de entorno,
+    código fuente y configuración.
+    """
+    regions = get_all_aws_regions(session)
+    credential_findings = []
+    
+    # Patrones para detectar credenciales
+    sensitive_patterns = [
+        r'(?i)(password|passwd|pwd|pass)\s*[=:]\s*["\']?([^"\'\s]{8,})["\']?',
+        r'(?i)(api[_-]?key|apikey)\s*[=:]\s*["\']?([a-zA-Z0-9]{20,})["\']?',
+        r'(?i)(secret[_-]?key|secretkey)\s*[=:]\s*["\']?([a-zA-Z0-9+/]{20,})["\']?',
+        r'(?i)(access[_-]?key|accesskey)\s*[=:]\s*["\']?(AKIA[a-zA-Z0-9]{16})["\']?',
+        r'(?i)(token)\s*[=:]\s*["\']?([a-zA-Z0-9]{20,})["\']?',
+        r'(?i)(database[_-]?url|db[_-]?url)\s*[=:]\s*["\']?([^"\'\s]+)["\']?',
+        r'(?i)(connection[_-]?string)\s*[=:]\s*["\']?([^"\'\s]+)["\']?'
+    ]
+    
+    sensitive_env_names = [
+        'PASSWORD', 'PASSWD', 'PWD', 'API_KEY', 'APIKEY', 'SECRET_KEY', 'SECRETKEY',
+        'ACCESS_KEY', 'ACCESSKEY', 'TOKEN', 'AUTH_TOKEN', 'JWT_SECRET', 'DB_PASSWORD',
+        'DATABASE_PASSWORD', 'MYSQL_PASSWORD', 'POSTGRES_PASSWORD', 'REDIS_PASSWORD',
+        'DATABASE_URL', 'DB_URL', 'CONNECTION_STRING', 'PRIVATE_KEY', 'RSA_PRIVATE_KEY'
+    ]
+    
+    for region in regions:
+        try:
+            lambda_client = session.client('lambda', region_name=region)
+            
+            # Obtener todas las funciones Lambda
+            paginator = lambda_client.get_paginator('list_functions')
+            for page in paginator.paginate():
+                for function in page['Functions']:
+                    function_name = function['FunctionName']
+                    function_arn = function['FunctionArn']
+                    
+                    try:
+                        # Obtener configuración detallada
+                        config = lambda_client.get_function(FunctionName=function_name)
+                        env_vars = config['Configuration'].get('Environment', {}).get('Variables', {})
+                        
+                        # Escanear variables de entorno
+                        for env_name, env_value in env_vars.items():
+                            # Verificar nombres sospechosos
+                            if env_name.upper() in sensitive_env_names:
+                                credential_findings.append({
+                                    "type": "Suspicious Environment Variable Name",
+                                    "severity": "HIGH",
+                                    "region": region,
+                                    "function_name": function_name,
+                                    "function_arn": function_arn,
+                                    "finding": f"Environment variable '{env_name}' has a sensitive name",
+                                    "env_var_name": env_name,
+                                    "env_var_value": env_value[:20] + "..." if len(env_value) > 20 else env_value,
+                                    "runtime": config['Configuration'].get('Runtime', 'Unknown')
+                                })
+                            
+                            # Verificar patrones en valores
+                            for pattern in sensitive_patterns:
+                                import re
+                                matches = re.findall(pattern, env_value)
+                                if matches:
+                                    for match in matches:
+                                        if isinstance(match, tuple):
+                                            key_name, potential_secret = match
+                                        else:
+                                            key_name, potential_secret = "unknown", match
+                                        
+                                        credential_findings.append({
+                                            "type": "Potential Hardcoded Credential",
+                                            "severity": "CRITICAL",
+                                            "region": region,
+                                            "function_name": function_name,
+                                            "function_arn": function_arn,
+                                            "finding": f"Potential {key_name} found in environment variable '{env_name}'",
+                                            "env_var_name": env_name,
+                                            "detected_pattern": key_name,
+                                            "sample_value": potential_secret[:10] + "..." if len(potential_secret) > 10 else potential_secret,
+                                            "runtime": config['Configuration'].get('Runtime', 'Unknown')
+                                        })
+                        
+                        # Escanear código fuente (si es posible descargar)
+                        try:
+                            if config['Configuration'].get('PackageType') == 'Zip':
+                                code_response = lambda_client.get_function(
+                                    FunctionName=function_name,
+                                    Qualifier='$LATEST'
+                                )
+                                
+                                # Si el código es pequeño, intentar descargarlo y escanearlo
+                                code_size = config['Configuration'].get('CodeSize', 0)
+                                if code_size < 50 * 1024 * 1024:  # Menos de 50MB
+                                    download_url = code_response['Code'].get('Location')
+                                    if download_url:
+                                        # Aquí podrías implementar descarga y análisis del código
+                                        # Por ahora, solo registramos que existe código analizable
+                                        credential_findings.append({
+                                            "type": "Code Analysis Opportunity",
+                                            "severity": "INFO",
+                                            "region": region,
+                                            "function_name": function_name,
+                                            "function_arn": function_arn,
+                                            "finding": f"Function code is downloadable and could contain hardcoded secrets (Size: {code_size} bytes)",
+                                            "code_size": code_size,
+                                            "runtime": config['Configuration'].get('Runtime', 'Unknown')
+                                        })
+                        except:
+                            pass  # No se puede acceder al código
+                            
+                    except Exception as e:
+                        print(f"Error analyzing Lambda function {function_name} in {region}: {e}")
+                        continue
+                        
+        except ClientError as e:
+            if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 
+                                              'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
+                continue
+        except Exception:
+            continue
+    
+    return credential_findings
