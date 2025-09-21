@@ -1001,7 +1001,7 @@ export const buildAuditorNotesView = () => {
         return acc;
     }, {});
 
-    let html = '<div class="space-y-6">';
+    let html = '<div class="space-y-6 max-w-full overflow-x-hidden">';
 
     for (const view in groupedNotes) {
         const notesForView = groupedNotes[view].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -1010,9 +1010,9 @@ export const buildAuditorNotesView = () => {
         const viewTitle = viewLink ? viewLink.querySelector('span div:last-child').textContent : view.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
         html += `
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 max-w-full overflow-x-hidden">
                 <h3 class="font-bold text-lg text-[#204071] mb-4 border-b pb-2">${viewTitle}</h3>
-                <div class="space-y-4">
+                <div class="space-y-4 max-w-full">
         `;
 
         notesForView.forEach(note => {
@@ -1023,8 +1023,8 @@ export const buildAuditorNotesView = () => {
             let arnHtml = '';
             if (note.arn) {
                 arnHtml = `
-                    <div class="mt-2 bg-gray-100 p-2 rounded-md">
-                        <code class="text-xs text-gray-700 break-all">
+                    <div class="mt-2 bg-gray-100 p-2 rounded-md max-w-full overflow-hidden">
+                        <code class="text-xs text-gray-700 break-all block">
                             <span class="font-semibold">Resource:</span> ${note.arn}
                         </code>
                     </div>
@@ -1034,27 +1034,27 @@ export const buildAuditorNotesView = () => {
             let controlHtml = '';
             if (note.controlId) {
                 controlHtml = `
-                    <div class="mt-2 bg-yellow-50 p-2 rounded-md border-l-2 border-yellow-300">
-                        <code class="text-xs text-yellow-900 break-all">
+                    <div class="mt-2 bg-yellow-50 p-2 rounded-md border-l-2 border-yellow-300 max-w-full overflow-hidden">
+                        <code class="text-xs text-yellow-900 break-all block">
                             <span class="font-semibold">Control:</span> ${note.controlId}
                         </code>
                     </div>
                 `;
             }
 
-            // Esta es la plantilla CORRECTA de la nota, ahora clicleable
             html += `
-                <div class="p-4 bg-blue-50/50 border-l-4 border-blue-300 rounded-r-lg shadow-sm cursor-pointer hover:shadow-md hover:border-blue-400 transition-shadow" 
-                     onclick="window.showNoteDetails(${note.id})">
+                <div class="p-4 bg-blue-50/50 border-l-4 border-blue-300 rounded-r-lg shadow-sm cursor-pointer hover:shadow-md hover:border-blue-400 transition-shadow max-w-full overflow-hidden" 
+                    onclick="window.showNoteDetails(${note.id})" style="word-break: break-word;">
                     <div class="flex justify-between items-start">
-                        <h4 class="text-md font-bold text-gray-800">${note.title || 'Untitled Note'}</h4>
+                        <h4 class="text-md font-bold text-gray-800 break-words max-w-[70%]">${note.title || 'Untitled Note'}</h4>
                         <p class="text-xs text-gray-500 flex-shrink-0 ml-4">${date}</p>
                     </div>
-                    <p class="text-gray-700 text-sm mt-2 truncate">${contentPreview}</p>
+                    <p class="text-gray-700 text-sm mt-2 break-words overflow-hidden max-w-full" style="word-break: break-word;">${contentPreview}</p>
                     ${arnHtml}
                     ${controlHtml}
                 </div>
             `;
+
         });
 
         html += '</div></div>';
