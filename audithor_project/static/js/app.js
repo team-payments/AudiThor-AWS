@@ -1172,6 +1172,7 @@ const captureElementOnClick = (e) => {
     openNotesModalWithEvidence(evidence);
 };
 
+
 const deactivateElementSelector = () => {
     selectorMode = false;
     document.body.style.cursor = '';
@@ -1181,14 +1182,18 @@ const deactivateElementSelector = () => {
     const overlay = document.getElementById('selector-overlay');
     if (overlay) overlay.remove();
     
+    // IMPORTANTE: Limpiar todos los estilos pendientes ANTES de remover listeners
+    originalStyles.forEach((originalStyle, element) => {
+        element.style.outline = originalStyle.outline;
+        element.style.backgroundColor = originalStyle.backgroundColor;
+    });
+    originalStyles.clear();
+    
     // Remover event listeners
     document.removeEventListener('mouseover', highlightElement, true);
     document.removeEventListener('mouseout', removeHighlight, true);
     document.removeEventListener('click', captureElementOnClick, true);
     document.removeEventListener('keydown', handleSelectorKeydown);
-    
-    // Limpiar estilos pendientes
-    originalStyles.clear();
 };
 
 const handleSelectorKeydown = (e) => {
