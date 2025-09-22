@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Findings Report</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 15mm;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.4;
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+            color: #333;
+            font-size: 11px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #204071;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 25px 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #204071;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        
+        h1 {
+            color: #204071;
+            font-size: 2.2em;
+            margin: 15px 0 10px 0;
+            font-weight: 700;
+        }
+        
+        h2 {
+            color: #eb3496;
+            font-size: 1.6em;
+            margin: 25px 0 15px 0;
+            font-weight: 600;
+            border-bottom: 2px solid #eb3496;
+            padding-bottom: 5px;
+            text-transform: uppercase;
+        }
+        
+        .meta-info {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #eb3496;
+            font-size: 12px;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #eb3496;
+            text-align: center;
+        }
+        
+        .summary-card h4 {
+            color: #204071;
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .summary-card .number {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #eb3496;
+            margin: 0;
+        }
+        
+        .findings-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+            font-size: 10px;
+        }
+        
+        .findings-table th {
+            background: linear-gradient(135deg, #204071 0%, #2c5282 100%);
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+        
+        .findings-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            vertical-align: top;
+            background: white;
+        }
+        
+        .findings-table td:last-child {
+            border-right: none;
+        }
+        
+        .findings-table tr:nth-child(even) td {
+            background: #f8f9fa;
+        }
+        
+        .finding-name {
+            font-weight: bold;
+            color: #204071;
+            font-size: 11px;
+            margin-bottom: 3px;
+        }
+        
+        .finding-rule {
+            font-size: 9px;
+            color: #666;
+            font-family: 'Courier New', monospace;
+            background: #f1f3f4;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+        
+        .resource-item {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 2px 4px;
+            margin: 1px 0;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            display: inline-block;
+            margin-right: 3px;
+            font-size: 8px;
+        }
+        
+        .severity-critical {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 9px;
+            font-weight: 700;
+            border: 1px solid #fca5a5;
+        }
+        
+        .severity-high {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 9px;
+            font-weight: 700;
+            border: 1px solid #fbbf24;
+        }
+        
+        .severity-medium {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 9px;
+            font-weight: 700;
+            border: 1px solid #f59e0b;
+        }
+        
+        .severity-low {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 9px;
+            font-weight: 700;
+            border: 1px solid #60a5fa;
+        }
+        
+        .category-badge {
+            background: #e0f2fe;
+            color: #01579b;
+            padding: 3px 6px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 600;
+            border: 1px solid #4fc3f7;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 3px solid #e2e8f0;
+            text-align: center;
+            color: #666;
+            font-size: 10px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        p {
+            font-size: 11px;
+            line-height: 1.5;
+            margin: 15px 0;
+            text-align: justify;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">{{COMPANY_NAME}}</div>
+        <h1>Security Findings Report</h1>
+        
+        <div class="meta-info">
+            <p><strong>Client:</strong> {{CLIENT_NAME}} | <strong>Report Date:</strong> {{REPORT_DATE}} | <strong>AWS Account:</strong> {{AWS_ACCOUNT_ID}}</p>
+        </div>
+    </div>
+
+    <h2>Executive Summary</h2>
+    
+    <div class="summary-cards">
+        <div class="summary-card">
+            <h4>Total Findings</h4>
+            <p class="number">{{TOTAL_FINDINGS}}</p>
+        </div>
+        <div class="summary-card">
+            <h4>Critical</h4>
+            <p class="number">{{CRITICAL_COUNT}}</p>
+        </div>
+        <div class="summary-card">
+            <h4>High</h4>
+            <p class="number">{{HIGH_COUNT}}</p>
+        </div>
+        <div class="summary-card">
+            <h4>Medium</h4>
+            <p class="number">{{MEDIUM_COUNT}}</p>
+        </div>
+    </div>
+
+    <p>This comprehensive security assessment identified <strong>{{TOTAL_FINDINGS}}</strong> findings across your AWS infrastructure, covering identity and access management, data protection, network security, and compliance requirements.</p>
+
+    <div class="page-break"></div>
+    <h2>Detailed Findings</h2>
+
+    <table class="findings-table">
+        <thead>
+            <tr>
+                <th style="width: 20%;">Finding Details</th>
+                <th style="width: 8%;">Severity</th>
+                <th style="width: 12%;">Category</th>
+                <th style="width: 35%;">Description</th>
+                <th style="width: 25%;">Affected Resources</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{FINDINGS_ROWS}}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p><strong>{{COMPANY_NAME}}</strong> | Security Assessment Report | Generated on {{REPORT_DATE}} | Confidential Document</p>
+    </div>
+</body>
+</html>

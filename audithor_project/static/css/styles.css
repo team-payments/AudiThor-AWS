@@ -123,3 +123,6 @@ body {
 .log-error { 
     color: #dc2626; 
 }
+.page-break {
+    page-break-before: always;
+}

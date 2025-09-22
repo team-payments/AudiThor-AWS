@@ -34,6 +34,21 @@ export const buildHealthyStatusView = () => {
             </nav>
         </div>
 
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-lg text-[#204071]">Actions</h3>
+                    <p class="text-sm text-gray-500">Generate reports from current findings</p>
+                </div>
+                <button id="generate-pdf-report-btn" class="bg-[#204071] text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-[#1a365d] transition flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span>Download PDF Report</span>
+                </button>
+            </div>
+        </div>
+
         <div id="healthy-status-tab-content-container">
             <div id="hs-findings-content" class="healthy-status-tab-content">
                 <div class="bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm mb-6">
@@ -179,6 +194,10 @@ export const buildHealthyStatusView = () => {
     }
     
     setupFilterEventListeners();
+    const pdfButton = document.getElementById('generate-pdf-report-btn');
+    if (pdfButton) {
+        pdfButton.addEventListener('click', showPDFTemplateModal);
+    }
     buildGeminiReportView();
     buildScopedInventoryView();
 };
@@ -1216,4 +1235,320 @@ const setupScopedInventoryEvents = (items) => {
             deleteResource(index, items);
         });
     });
+};
+
+// Nueva función independiente para PDF
+
+// Modal independiente para PDF
+export const showPDFTemplateModal = () => {
+    if (!window.lastHealthyStatusFindings || window.lastHealthyStatusFindings.length === 0) {
+        alert('No findings available. Please run an analysis first.');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'pdf-template-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-[#204071] mb-4">Generate PDF Report</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+                <input type="text" id="pdf-company-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Your Company Name">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Client Name</label>
+                <input type="text" id="pdf-client-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Client Name">
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Template</label>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="radio" name="pdf-template-source" value="default" checked class="mr-2">
+                        Use Default Template
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="pdf-template-source" value="upload" class="mr-2">
+                        Upload HTML Template
+                    </label>
+                    <input type="file" id="pdf-template-file" accept=".html" class="hidden">
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="closePDFModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button onclick="processPDFGeneration()" class="flex-1 px-4 py-2 bg-[#204071] text-white rounded-lg hover:bg-[#1a365d]">Generate PDF</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    const uploadRadio = modal.querySelector('input[value="upload"]');
+    const fileInput = modal.querySelector('#pdf-template-file');
+
+    uploadRadio.addEventListener('change', () => {
+        if (uploadRadio.checked) {
+            fileInput.classList.remove('hidden');
+        }
+    });
+
+    modal.querySelector('input[value="default"]').addEventListener('change', () => {
+        fileInput.classList.add('hidden');
+    });
+};
+
+// Cerrar modal
+window.closePDFModal = () => {
+    const modal = document.getElementById('pdf-template-modal');
+    if (modal) modal.remove();
+};
+
+
+// Función para cargar el template desde archivo
+const getDefaultTemplate = async () => {
+    try {
+        const response = await fetch('/static/js/templates/pdf-report-template.html');
+        if (!response.ok) {
+            throw new Error(`Failed to load template: ${response.status}`);
+        }
+        return await response.text();
+    } catch (error) {
+        console.error('Error loading PDF template:', error);
+        // Fallback template básico en caso de error
+        return `<!DOCTYPE html>
+<html>
+<head><title>Security Report</title></head>
+<body>
+    <h1>{{COMPANY_NAME}} - Security Report</h1>
+    <p>Client: {{CLIENT_NAME}}</p>
+    <p>Date: {{REPORT_DATE}}</p>
+    <p>Total Findings: {{TOTAL_FINDINGS}}</p>
+    <div>{{FINDINGS_ROWS}}</div>
+</body>
+</html>`;
+    }
+};
+
+// Función para procesar el template con los datos
+// Función para procesar el template con los datos (SIN CAMBIOS)
+const processTemplate = (template, data) => {
+    const { companyName, clientName, findings } = data;
+    
+    // Mapear severidades
+    const severityMap = {
+        'Crítico': 'Critical',
+        'Alto': 'High', 
+        'Medio': 'Medium',
+        'Bajo': 'Low',
+        'Informativo': 'Info'
+    };
+    
+    // Contar severidades
+    const severityCounts = findings.reduce((acc, finding) => {
+        const severity = severityMap[finding.severity] || finding.severity;
+        acc[severity.toLowerCase()] = (acc[severity.toLowerCase()] || 0) + 1;
+        return acc;
+    }, {});
+    
+    // Generar filas de findings con recursos afectados separados
+    const findingsRows = findings.map(finding => {
+        const severity = severityMap[finding.severity] || finding.severity;
+        const severityClass = severity.toLowerCase().replace('crítico', 'critical');
+        
+        // Procesar recursos afectados
+        const affectedResources = finding.affected_resources || [];
+        const resourcesHtml = affectedResources.map(resource => {
+            if (typeof resource === 'object' && resource.resource && resource.region) {
+                return `<div class="resource-item">${resource.resource} (${resource.region})</div>`;
+            } else if (typeof resource === 'string') {
+                return `<div class="resource-item">${resource} (Global)</div>`;
+            } else {
+                return `<div class="resource-item">Unknown Resource</div>`;
+            }
+        }).join('');
+        
+        return `
+            <tr>
+                <td>
+                    <div class="finding-name">${finding.name || 'Unknown Finding'}</div>
+                    <div class="finding-rule">${finding.rule_id || 'N/A'}</div>
+                </td>
+                <td><span class="severity-${severityClass}">${severity}</span></td>
+                <td><span class="category-badge">${finding.section || 'General'}</span></td>
+                <td>
+                    <div class="description-text">
+                        ${finding.description || 'No description available'}
+                    </div>
+                </td>
+                <td>
+                    <div class="resource-count">Resources (${affectedResources.length}):</div>
+                    <div style="margin-top: 3px;">
+                        ${resourcesHtml || '<div class="resource-item">No specific resources</div>'}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Reemplazar placeholders
+    return template
+        .replace(/{{COMPANY_NAME}}/g, companyName)
+        .replace(/{{CLIENT_NAME}}/g, clientName)
+        .replace(/{{REPORT_DATE}}/g, new Date().toLocaleDateString())
+        .replace(/{{AWS_ACCOUNT_ID}}/g, 'Available upon request')
+        .replace(/{{TOTAL_FINDINGS}}/g, findings.length.toString())
+        .replace(/{{CRITICAL_COUNT}}/g, (severityCounts.critical || 0).toString())
+        .replace(/{{HIGH_COUNT}}/g, (severityCounts.high || 0).toString())
+        .replace(/{{MEDIUM_COUNT}}/g, (severityCounts.medium || 0).toString())
+        .replace(/{{FINDINGS_ROWS}}/g, findingsRows);
+};
+
+// Función para generar y descargar PDF
+const generateAndDownloadPDF = async (htmlContent, filename) => {
+    try {
+        // Crear una ventana nueva para el contenido
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Esperar a que cargue el contenido
+        await new Promise(resolve => {
+            printWindow.onload = resolve;
+            setTimeout(resolve, 1000); // fallback
+        });
+        
+        // Abrir diálogo de impresión (usuario puede "Guardar como PDF")
+        printWindow.print();
+        
+        // Cerrar ventana después de un momento
+        setTimeout(() => {
+            printWindow.close();
+        }, 1000);
+        
+        log('PDF generation window opened. Use "Save as PDF" in the print dialog.', 'success');
+        
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        throw new Error(`Failed to generate PDF: ${error.message}`);
+    }
+};
+
+
+window.processPDFGeneration = async () => {
+    const companyName = document.getElementById('pdf-company-name').value || 'Your Company';
+    const clientName = document.getElementById('pdf-client-name').value || 'Client Name';
+    
+    // Mostrar indicador de carga
+    const generateButton = document.querySelector('button[onclick="processPDFGeneration()"]');
+    const originalText = generateButton ? generateButton.textContent : '';
+    if (generateButton) {
+        generateButton.textContent = 'Generating...';
+        generateButton.disabled = true;
+    }
+    
+    try {
+        // 1. Obtener template (default o uploaded)
+        const templateSource = document.querySelector('input[name="pdf-template-source"]:checked').value;
+        let htmlTemplate = '';
+        
+        if (templateSource === 'default') {
+            // Cargar template desde archivo externo
+            try {
+                const response = await fetch('/static/js/templates/pdf-report-template.html');
+                if (!response.ok) {
+                    throw new Error(`Failed to load template: ${response.status}`);
+                }
+                htmlTemplate = await response.text();
+                log('Default PDF template loaded successfully.', 'success');
+            } catch (fetchError) {
+                console.warn('Could not load external template, using fallback:', fetchError);
+                // Fallback template básico
+                htmlTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Security Findings Report</title>
+    <style>
+        @page { size: A4 landscape; margin: 15mm; }
+        body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; }
+        h1 { color: #204071; text-align: center; }
+        h2 { color: #eb3496; border-bottom: 2px solid #eb3496; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: #204071; color: white; padding: 10px; text-align: left; }
+        td { padding: 8px; border: 1px solid #ccc; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .severity-critical { background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 15px; }
+        .severity-high { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 15px; }
+        .severity-medium { background: #fef3c7; color: #d97706; padding: 4px 8px; border-radius: 15px; }
+        .severity-low { background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 15px; }
+    </style>
+</head>
+<body>
+    <h1>{{COMPANY_NAME}} - Security Findings Report</h1>
+    <p><strong>Client:</strong> {{CLIENT_NAME}} | <strong>Date:</strong> {{REPORT_DATE}}</p>
+    <h2>Summary</h2>
+    <p>Total Findings: <strong>{{TOTAL_FINDINGS}}</strong> | Critical: {{CRITICAL_COUNT}} | High: {{HIGH_COUNT}} | Medium: {{MEDIUM_COUNT}}</p>
+    <h2>Detailed Findings</h2>
+    <table>
+        <thead>
+            <tr><th>Finding</th><th>Severity</th><th>Category</th><th>Description</th><th>Resources</th></tr>
+        </thead>
+        <tbody>{{FINDINGS_ROWS}}</tbody>
+    </table>
+    <div style="margin-top: 40px; text-align: center; color: #666; border-top: 2px solid #ccc; padding-top: 20px;">
+        <p><strong>{{COMPANY_NAME}}</strong> | Security Assessment Report | {{REPORT_DATE}}</p>
+    </div>
+</body>
+</html>`;
+                log('Using fallback PDF template.', 'warning');
+            }
+            
+        } else if (templateSource === 'upload') {
+            const fileInput = document.getElementById('pdf-template-file');
+            if (fileInput.files[0]) {
+                htmlTemplate = await fileInput.files[0].text();
+                log('Custom PDF template loaded from file.', 'success');
+            } else {
+                alert('Please select a template file');
+                return;
+            }
+        }
+        
+        // 2. Validar que tenemos findings
+        if (!window.lastHealthyStatusFindings || window.lastHealthyStatusFindings.length === 0) {
+            alert('No findings available to generate report. Please run an analysis first.');
+            return;
+        }
+        
+        // 3. Procesar placeholders con datos reales
+        const processedHTML = processTemplate(htmlTemplate, {
+            companyName,
+            clientName,
+            findings: window.lastHealthyStatusFindings
+        });
+        
+        // 4. Generar y descargar PDF
+        await generateAndDownloadPDF(processedHTML, `${companyName.replace(/[^a-zA-Z0-9]/g, '-')}-Security-Report.pdf`);
+        
+        // 5. Cerrar modal
+        closePDFModal();
+        
+        log('PDF report generated successfully.', 'success');
+        
+    } catch (error) {
+        console.error('PDF Generation Error:', error);
+        alert(`Error generating PDF: ${error.message}`);
+        log(`PDF generation failed: ${error.message}`, 'error');
+        
+    } finally {
+        // Restaurar botón
+        if (generateButton) {
+            generateButton.textContent = originalText || 'Generate PDF';
+            generateButton.disabled = false;
+        }
+    }
 };
