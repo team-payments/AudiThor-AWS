@@ -18,6 +18,7 @@ export const buildNetworkPoliciesView = () => {
     const { vpcs, acls, security_groups, subnets, all_regions } = window.networkPoliciesApiData.results;
     const { ec2_instances, lambda_functions } = window.computeApiData.results;
     const { rds_instances, aurora_clusters } = window.databasesApiData.results;
+    const nat_gateways = window.networkPoliciesApiData.results.nat_gateways || [];
 
     const allResources = {
         ec2: ec2_instances, lambda: lambda_functions,
@@ -88,7 +89,7 @@ export const buildNetworkPoliciesView = () => {
 
     summaryCardsContainer.innerHTML = createNetworkPoliciesSummaryCardsHtml();
     updateNetworkPoliciesSummaryCards(vpcs, acls, security_groups);
-    diagramContainer.innerHTML = renderVpcDiagram(vpcs, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters);
+    diagramContainer.innerHTML = renderVpcDiagram(vpcs, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters, nat_gateways);
     
     vpcsContainer.innerHTML = renderVPCsTable(vpcs, all_regions, 'all');
     aclsContainer.innerHTML = renderACLsTable(acls, all_regions, 'all');
@@ -118,7 +119,7 @@ const applyVpcDiagramFiltersAndRender = () => {
             return hasEc2 || hasLambda || hasRds || hasAurora;
         });
     }
-    diagramContainer.innerHTML = renderVpcDiagram(vpcsToRender, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters);
+    diagramContainer.innerHTML = renderVpcDiagram(vpcsToRender, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters, nat_gateways);
 };
 
 // Inicializar el diagrama con el filtro predeterminado
@@ -361,11 +362,7 @@ const renderSGsTable = (sgs, allRegions, selectedRegion = 'all', allResources, h
 };
 
 
-// 13_network_policies.js
-
-// 13_network_policies.js
-
-const renderVpcDiagram = (vpcs, subnets, instances, lambdas, rdsInstances, auroraClusters) => {
+const renderVpcDiagram = (vpcs, subnets, instances, lambdas, rdsInstances, auroraClusters, natGateways) => {
     if (!vpcs || vpcs.length === 0) return '<p class="text-center text-gray-500">No VPCs were found to display in the diagram.</p>';
     
     let diagramHtml = '<div class="space-y-8">';
@@ -426,9 +423,22 @@ const renderVpcDiagram = (vpcs, subnets, instances, lambdas, rdsInstances, auror
                 });
             }
 
-            if (subnetInstances.length === 0 && subnetLambdas.length === 0 && subnetRds.length === 0 && subnetAurora.length === 0) {
+            const subnetNatGateways = natGateways.filter(nat => nat.SubnetId === subnet.SubnetId);
+            if (subnetNatGateways.length > 0) {
+                subnetNatGateways.forEach(nat => {
+                    const natName = nat.Tags['Name'] || nat.NatGatewayId;
+                    diagramHtml += `<div class="bg-orange-100 border border-orange-300 p-2 rounded-md text-xs">
+                        <p class="font-semibold text-gray-800 truncate" title="${natName}">🌐 ${natName}</p>
+                        <div class="text-gray-600 text-xs">NAT Gateway</div>
+                    </div>`;
+                });
+            }
+
+
+            if (subnetInstances.length === 0 && subnetLambdas.length === 0 && subnetRds.length === 0 && subnetAurora.length === 0 && subnetNatGateways.length === 0) {
                 diagramHtml += '<p class="text-center text-xs text-gray-400 py-4">No resources</p>';
             }
+
 
             diagramHtml += `</div></div>`;
         });

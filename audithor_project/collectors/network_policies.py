@@ -28,7 +28,7 @@ def collect_network_policies_data(session):
         'vpc-12345678'
     """
     regions = get_all_aws_regions(session)
-    result_vpcs, result_acls, result_sgs, result_subnets = [], [], [], []
+    result_vpcs, result_acls, result_sgs, result_subnets, result_nat_gateways = [], [], [], [], []
 
     for region in regions:
         try:
@@ -54,6 +54,20 @@ def collect_network_policies_data(session):
                 tags = {tag['Key']: tag['Value'] for tag in subnet.get('Tags', [])}
                 result_subnets.append({"Region": region, "SubnetId": subnet.get("SubnetId"), "VpcId": subnet.get("VpcId"), "CidrBlock": subnet.get("CidrBlock"), "AvailabilityZone": subnet.get("AvailabilityZone"), "Tags": tags})
 
+            # Collect NAT Gateways
+            nat_paginator = ec2_client.get_paginator('describe_nat_gateways')
+            for page in nat_paginator.paginate():
+                for nat_gw in page.get("NatGateways", []):
+                    if nat_gw.get("State") == "available":
+                        tags = {tag['Key']: tag['Value'] for tag in nat_gw.get('Tags', [])}
+                        result_nat_gateways.append({
+                            "Region": region,
+                            "NatGatewayId": nat_gw.get("NatGatewayId"),
+                            "VpcId": nat_gw.get("VpcId"),
+                            "SubnetId": nat_gw.get("SubnetId"),
+                            "ConnectivityType": nat_gw.get("ConnectivityType", "public"),
+                            "Tags": tags
+                        })
         except ClientError as e:
             if e.response['Error']['Code'] in ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException', 'OptInRequired']:
                 continue
@@ -65,7 +79,8 @@ def collect_network_policies_data(session):
         "acls": result_acls,
         "security_groups": result_sgs,
         "subnets": result_subnets,
-        "all_regions": regions
+        "all_regions": regions,
+        "nat_gateways": result_nat_gateways
     }
 
 
