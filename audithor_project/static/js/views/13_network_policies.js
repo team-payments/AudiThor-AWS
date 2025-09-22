@@ -116,7 +116,8 @@ const applyVpcDiagramFiltersAndRender = () => {
             const hasLambda = allResources.lambda.some(l => l.VpcConfig?.VpcId === vpc.VpcId);
             const hasRds = allResources.rds.some(r => r.VpcId === vpc.VpcId);
             const hasAurora = allResources.aurora.some(a => a.VpcId === vpc.VpcId);
-            return hasEc2 || hasLambda || hasRds || hasAurora;
+            const hasNatGw = nat_gateways.some(ng => ng.VpcId === vpc.VpcId); // <-- AÑADIR ESTA LÍNEA
+            return hasEc2 || hasLambda || hasRds || hasAurora || hasNatGw ;
         });
     }
     diagramContainer.innerHTML = renderVpcDiagram(vpcsToRender, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters, nat_gateways);

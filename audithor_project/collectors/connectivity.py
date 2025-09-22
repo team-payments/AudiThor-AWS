@@ -38,7 +38,8 @@ def collect_connectivity_data(session):
         "peering_connections": [],
         "tgw_attachments": [],
         "vpn_connections": [],
-        "vpc_endpoints": []
+        "vpc_endpoints": [],
+        "nat_gateways": []
     }
 
     for region in regions:
@@ -93,6 +94,22 @@ def collect_connectivity_data(session):
                         "ServiceName": endpoint.get("ServiceName"),
                         "EndpointType": endpoint.get("VpcEndpointType"),
                         "State": endpoint.get("State")
+                    })
+
+            # --- 5. NAT Gateways ---                     
+            nat_paginator = ec2_client.get_paginator('describe_nat_gateways')
+            for page in nat_paginator.paginate():
+                for nat_gateway in page.get("NatGateways", []):
+                    result["nat_gateways"].append({
+                        "Region": region,
+                        "NatGatewayId": nat_gateway["NatGatewayId"],
+                        "VpcId": nat_gateway["VpcId"],
+                        "SubnetId": nat_gateway["SubnetId"],
+                        "State": nat_gateway["State"],
+                        "ConnectivityType": nat_gateway.get("ConnectivityType", "public"),
+                        "NatGatewayAddresses": nat_gateway.get("NatGatewayAddresses", []),
+                        "CreateTime": str(nat_gateway.get("CreateTime", "")),
+                        "Tags": nat_gateway.get("Tags", [])
                     })
 
         except ClientError as e:

@@ -32,6 +32,12 @@ const serviceDescriptions = {
         description: "VPC Endpoints enable private connectivity to AWS services without using internet gateways, NAT devices, or VPN connections.",
         useCases: "Secure access to S3, DynamoDB, and other AWS services, compliance requirements for private connectivity, reducing data transfer costs.",
         auditConsiderations: "Review endpoint policies, ensure proper DNS resolution, verify that traffic doesn't traverse the public internet for sensitive operations."
+    },
+    natgateways: {
+        title: "NAT Gateways",
+        description: "NAT Gateways provide Network Address Translation (NAT) services to enable resources in private subnets to access the internet while preventing inbound connections from the internet.",
+        useCases: "Outbound internet access for private instances, software updates and patches, API calls to external services, downloading packages and dependencies.",
+        auditConsiderations: "Verify that NAT Gateways are placed in public subnets with proper route table configurations. Review associated costs and consider NAT instances for cost optimization. Ensure high availability by deploying across multiple AZs."
     }
 };
 
@@ -41,7 +47,7 @@ export const buildConnectivityView = () => {
     const container = document.getElementById('connectivity-view');
     if (!container || !window.connectivityApiData) return;
 
-    const { peering_connections, tgw_attachments, vpn_connections, vpc_endpoints } = window.connectivityApiData.results;
+    const { peering_connections, tgw_attachments, vpn_connections, vpc_endpoints, nat_gateways = [] } = window.connectivityApiData.results;
 
     container.innerHTML = `
         <header class="flex justify-between items-center mb-6">
@@ -62,6 +68,7 @@ export const buildConnectivityView = () => {
                 <a href="#" data-tab="conn-tgw-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Transit Gateway (${tgw_attachments.length})</a>
                 <a href="#" data-tab="conn-vpn-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">VPN Connections (${vpn_connections.length})</a>
                 <a href="#" data-tab="conn-endpoints-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">VPC Endpoints (${vpc_endpoints.length})</a>
+                <a href="#" data-tab="conn-natgateways-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">NAT Gateways (${nat_gateways.length})</a>
             </nav>
         </div>
         <div id="connectivity-tab-content-container">
@@ -80,6 +87,10 @@ export const buildConnectivityView = () => {
             <div id="conn-endpoints-content" class="connectivity-tab-content hidden">
                 ${renderServiceDescription(serviceDescriptions.endpoints)}
                 ${renderVpcEndpointsTable(vpc_endpoints)}
+            </div>
+            <div id="conn-natgateways-content" class="connectivity-tab-content hidden">
+                ${renderServiceDescription(serviceDescriptions.natgateways)}
+                ${renderNatGatewaysTable(nat_gateways)}
             </div>
         </div>
     `;
@@ -243,6 +254,65 @@ const renderVpcEndpointsTable = (endpoints) => {
                     <td class="px-4 py-4 text-sm text-gray-600 break-all font-mono">${e.ServiceName}</td>
                 </tr>`;
     });
+    table += '</tbody></table></div>';
+    return table;
+};
+
+const renderNatGatewaysTable = (natGateways) => {
+    if (!natGateways || natGateways.length === 0) {
+        return `
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No NAT Gateways found</h3>
+                    <p class="mt-1 text-sm text-gray-500">This account does not have any NAT Gateways configured for outbound internet connectivity.</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    let table = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">NAT Gateway ID</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subnet</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public IP</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Private IP</th>' +
+                '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+    
+    natGateways.forEach(nat => {
+        let stateClass = 'bg-gray-100 text-gray-800';
+        if (nat.State === 'available') {
+            stateClass = 'bg-green-100 text-green-800';
+        } else if (nat.State === 'pending' || nat.State === 'deleting') {
+            stateClass = 'bg-yellow-100 text-yellow-800';
+        } else if (nat.State === 'failed' || nat.State === 'deleted') {
+            stateClass = 'bg-red-100 text-red-800';
+        }
+
+        const publicIp = nat.NatGatewayAddresses?.find(addr => addr.PublicIp)?.PublicIp || '-';
+        const privateIp = nat.NatGatewayAddresses?.find(addr => addr.PrivateIp)?.PrivateIp || '-';
+
+        table += `<tr class="hover:bg-gray-50">
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${nat.Region}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 font-mono">${nat.NatGatewayId}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${nat.VpcId}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${nat.SubnetId}</td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${stateClass}">
+                            ${nat.State}
+                        </span>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">${nat.ConnectivityType || 'public'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${publicIp}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${privateIp}</td>
+                </tr>`;
+    });
+    
     table += '</tbody></table></div>';
     return table;
 };
