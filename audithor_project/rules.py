@@ -1313,6 +1313,52 @@ def check_unused_iam_users(audit_data):
 
     return failing_resources
 
+def check_lambda_hardcoded_credentials(audit_data):
+    """
+    Verifica si existen funciones Lambda con credenciales hardcodeadas en variables de entorno
+    o patrones sospechosos que indiquen almacenamiento inseguro de secretos.
+    """
+    failing_resources = []
+    
+    # Obtener los hallazgos de credential harvesting del módulo exposure
+    lambda_credentials = []
+    
+    if "exposure" in audit_data:
+        exposure_data = audit_data["exposure"]
+        if isinstance(exposure_data, dict) and "lambda_credentials" in exposure_data:
+            lambda_credentials = exposure_data["lambda_credentials"]
+    
+    # Filtrar hallazgos relevantes para credenciales hardcodeadas
+    for credential_finding in lambda_credentials:
+        severity = credential_finding.get("severity", "")
+        finding_type = credential_finding.get("type", "")
+        
+        # Incluir tipos específicos que indican credenciales hardcodeadas o sospechosas
+        is_credential_related = any([
+            "Suspicious Environment Variable Name" in finding_type,
+            "Potential Hardcoded Credential" in finding_type,
+            "Hardcoded" in finding_type.lower(),
+            "credential" in finding_type.lower()
+        ])
+        
+        # Solo incluir hallazgos de severidad alta/crítica relacionados con credenciales
+        if severity in ["CRITICAL", "HIGH"] and is_credential_related:
+            function_name = credential_finding.get("function_name", "Unknown Function")
+            region = credential_finding.get("region", "Unknown Region")
+            env_var_name = credential_finding.get("env_var_name", "")
+            
+            # Crear descripción detallada del hallazgo
+            if env_var_name:
+                resource_description = f"{function_name} (Variable: {env_var_name})"
+            else:
+                resource_description = function_name
+            
+            failing_resources.append({
+                "resource": resource_description,
+                "region": region
+            })
+    
+    return failing_resources
 
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
@@ -1887,5 +1933,15 @@ RULES_TO_CHECK = [
         "remediation": "Navigate to Secrets Manager, select the secret, and modify the rotation configuration to use an interval of 90 days or less for enhanced security.",
         "pci_requirement": "PCI DSS 8.6.3",
         "check_function": check_secrets_long_rotation_interval
+    },
+    {
+        "rule_id": "LAMBDA_SEC_001",
+        "section": "Credential Management",
+        "name": "Lambda function with hardcoded credentials",
+        "severity": SEVERITY["CRITICAL"],
+        "description": "One or more Lambda functions contain hardcoded credentials, API keys, passwords, or other sensitive information in environment variables. This represents a critical security vulnerability as these credentials are stored in plaintext and can be accessed by anyone with permissions to view the Lambda function configuration. Hardcoded credentials in Lambda functions violate the principle of least privilege and create significant security risks including credential theft, unauthorized access to external services, and potential data breaches.",
+        "remediation": "Immediately remove all hardcoded credentials from Lambda environment variables and replace them with secure alternatives: 1) Use AWS Secrets Manager to store sensitive credentials and retrieve them programmatically in your function code. 2) Use AWS Systems Manager Parameter Store for configuration values and secrets. 3) Use IAM roles and policies to grant the Lambda function only the permissions it needs to access other AWS services. 4) For database connections, use IAM database authentication when possible. 5) Implement credential rotation policies and monitor access to sensitive resources. 6) Review your CI/CD pipeline to ensure secrets are not accidentally committed to source code.",
+        "pci_requirement": "PCI DSS 8.3.2",
+        "check_function": check_lambda_hardcoded_credentials
     }
 ]
