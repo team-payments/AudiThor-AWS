@@ -872,7 +872,8 @@ export const buildScopedInventoryView = () => {
                         region: ec2Instance.Region,
                         identifier: ec2Instance.InstanceId,
                         details: `Public IP: ${ec2Instance.PublicIpAddress || '-'}`,
-                        comment: comment
+                        comment: comment,
+                        arn: arn
                     });
                 }
                 break;
@@ -884,7 +885,8 @@ export const buildScopedInventoryView = () => {
                         region: lambdaFunc.Region,
                         identifier: lambdaFunc.FunctionName,
                         details: `Runtime: ${lambdaFunc.Runtime}`,
-                        comment: comment
+                        comment: comment,
+                        arn: arn
                     });
                 }
                 break;
@@ -896,7 +898,8 @@ export const buildScopedInventoryView = () => {
                         region: rdsInstance.Region,
                         identifier: rdsInstance.DBInstanceIdentifier,
                         details: `Public Access: ${rdsInstance.PubliclyAccessible ? '<span class="text-red-600 font-bold">YES</span>' : 'NO'}`,
-                        comment: comment
+                        comment: comment,
+                        arn: arn
                     });
                 }
                 break;
@@ -909,7 +912,8 @@ export const buildScopedInventoryView = () => {
                         region: secret.Region,
                         identifier: secret.Name,
                         details: `Rotation: ${secret.RotationEnabled ? 'Enabled' : 'Disabled'}`,
-                        comment: comment
+                        comment: comment,
+                        arn: arn
                     });
                 }
                 break;
@@ -921,7 +925,8 @@ export const buildScopedInventoryView = () => {
                         region: kmsKey.Region,
                         identifier: kmsKey.Aliases || kmsKey.KeyId,
                         details: `Manager: ${kmsKey.KeyManager}`,
-                        comment: comment
+                        comment: comment,
+                        arn: arn
                     });
                 }
                 break;
@@ -934,7 +939,8 @@ export const buildScopedInventoryView = () => {
                         region: certificate.Region,
                         identifier: certificate.DomainName,
                         details: `Status: ${certificate.Status}`,
-                        comment: comment
+                        comment: comment,
+                        arn: arn
                     });
                 }
                 break;
@@ -944,16 +950,46 @@ export const buildScopedInventoryView = () => {
 
     // Renderizar la tabla unificada
     container.innerHTML = renderUnifiedScopedInventoryTable(unifiedScopedItems);
+    setupScopedInventoryEvents(unifiedScopedItems);
 };
 
 const renderUnifiedScopedInventoryTable = (items) => {
-    let tableRows = items.map(item => `
-        <tr class="hover:bg-gray-50">
+    let tableRows = items.map((item, index) => `
+        <tr class="hover:bg-gray-50" data-item-index="${index}" data-arn="${item.arn}">
             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${item.region}</td>
             <td class="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">${item.type}</td>
             <td class="px-4 py-4 text-sm font-medium text-gray-800 break-all">${item.identifier}</td>
             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${item.details}</td>
-            <td class="px-4 py-4 text-sm text-gray-600">${item.comment}</td>
+            <td class="px-4 py-4 text-sm text-gray-600">
+                <span class="comment-display" data-index="${index}">${item.comment}</span>
+                <input type="text" class="comment-input hidden w-full px-2 py-1 text-sm border border-gray-300 rounded" 
+                    data-index="${index}" value="${item.comment}" />
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm">
+                <div class="flex space-x-2">
+                    <button class="edit-btn text-blue-600 hover:text-blue-800" data-index="${index}" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>
+                        </svg>
+                    </button>
+                    <button class="save-btn hidden text-green-600" data-index="${index}" title="Save">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
+                        </svg>
+                    </button>
+                    <button class="cancel-btn hidden text-gray-600" data-index="${index}" title="Cancel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
+                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+                        </svg>
+                    </button>
+                    <button class="delete-btn text-red-600 hover:text-red-800" data-index="${index}" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                        </svg>
+                    </button>
+                </div>
+            </td>
         </tr>
     `).join('');
 
@@ -969,6 +1005,7 @@ const renderUnifiedScopedInventoryTable = (items) => {
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource Identifier</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason for Scoping</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">${tableRows}</tbody>
@@ -1065,3 +1102,118 @@ export const buildAuditorNotesView = () => {
 };
 
 window.removeFilter = removeFilter;
+
+// Función para entrar en modo edición
+const enterEditMode = (index) => {
+    const commentDisplay = document.querySelector(`[data-index="${index}"].comment-display`);
+    const commentInput = document.querySelector(`[data-index="${index}"].comment-input`);
+    const editBtn = document.querySelector(`[data-index="${index}"].edit-btn`);
+    const saveBtn = document.querySelector(`[data-index="${index}"].save-btn`);
+    const cancelBtn = document.querySelector(`[data-index="${index}"].cancel-btn`);
+    
+    commentDisplay.classList.add('hidden');
+    commentInput.classList.remove('hidden');
+    editBtn.classList.add('hidden');
+    saveBtn.classList.remove('hidden');
+    cancelBtn.classList.remove('hidden');
+    
+    commentInput.focus();
+};
+
+// Función para guardar comentario
+const saveComment = (index, items) => {
+    const commentInput = document.querySelector(`[data-index="${index}"].comment-input`);
+    const newComment = commentInput.value.trim();
+    const arn = items[index].arn;
+    
+    updateScopedResourceComment(arn, newComment);
+    refreshScopedInventory();
+};
+
+// Función para cancelar edición
+const cancelEdit = (index, items) => {
+    const originalComment = items[index].comment;
+    const commentInput = document.querySelector(`[data-index="${index}"].comment-input`);
+    commentInput.value = originalComment;
+    exitEditMode(index);
+};
+
+// Función para salir del modo edición
+const exitEditMode = (index) => {
+    const commentDisplay = document.querySelector(`[data-index="${index}"].comment-display`);
+    const commentInput = document.querySelector(`[data-index="${index}"].comment-input`);
+    const editBtn = document.querySelector(`[data-index="${index}"].edit-btn`);
+    const saveBtn = document.querySelector(`[data-index="${index}"].save-btn`);
+    const cancelBtn = document.querySelector(`[data-index="${index}"].cancel-btn`);
+    
+    commentDisplay.classList.remove('hidden');
+    commentInput.classList.add('hidden');
+    editBtn.classList.remove('hidden');
+    saveBtn.classList.add('hidden');
+    cancelBtn.classList.add('hidden');
+};
+
+// Función para eliminar recurso
+const deleteResource = (index, items) => {
+    const arn = items[index].arn;
+    const resourceName = items[index].identifier;
+    
+    if (confirm(`¿Seguro que quieres quitar "${resourceName}" del scope?`)) {
+        removeScopedResource(arn);
+        refreshScopedInventory();
+    }
+};
+
+// Función para actualizar comentario
+const updateScopedResourceComment = (arn, newComment) => {
+    if (window.scopedResources[arn]) {
+        window.scopedResources[arn].comment = newComment;
+    }
+};
+
+// Función para eliminar recurso
+const removeScopedResource = (arn) => {
+    delete window.scopedResources[arn];
+};
+
+// Función para refrescar vista
+const refreshScopedInventory = () => {
+    buildScopedInventoryView();
+};
+
+const setupScopedInventoryEvents = (items) => {
+    const container = document.getElementById('hs-inventory-content');
+    if (!container) return;
+
+    // Edit buttons
+    container.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = e.currentTarget.getAttribute('data-index');
+            enterEditMode(index);
+        });
+    });
+
+    // Save buttons  
+    container.querySelectorAll('.save-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = e.currentTarget.getAttribute('data-index');
+            saveComment(index, items);
+        });
+    });
+
+    // Cancel buttons
+    container.querySelectorAll('.cancel-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = e.currentTarget.getAttribute('data-index');
+            cancelEdit(index, items);
+        });
+    });
+
+    // Delete buttons
+    container.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = e.currentTarget.getAttribute('data-index');
+            deleteResource(index, items);
+        });
+    });
+};
