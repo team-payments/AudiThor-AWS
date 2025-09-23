@@ -2083,7 +2083,27 @@ const processTemplate = (template, data) => {
         }
     }
 
-    const regions = window.regionsIncluded || new Set();
+    const regionsFromFindings = new Set();
+
+    // Solo extraer regiones que coinciden con el filtro aplicado
+    findings.forEach(finding => {
+        (finding.affected_resources || []).forEach(res => {
+            if (typeof res === 'object' && res !== null && res.region) {
+                // Si hay un filtro de región activo, solo incluir esa región
+                const currentRegionFilter = document.getElementById('report-region-filter')?.value;
+                if (currentRegionFilter && currentRegionFilter !== 'all') {
+                    // Solo agregar la región filtrada
+                    if (res.region === currentRegionFilter || res.region === 'Global') {
+                        regionsFromFindings.add(res.region);
+                    }
+                } else {
+                    // Sin filtro, agregar todas las regiones
+                    regionsFromFindings.add(res.region);
+                }
+            }
+        });
+    });
+
 
     // Mapear severidades
     const severityMap = {
@@ -2099,13 +2119,6 @@ const processTemplate = (template, data) => {
     const highCount = findings.filter(f => f.severity === 'Alto').length;
     const mediumCount = findings.filter(f => f.severity === 'Medio').length;
     const lowCount = findings.filter(f => f.severity === 'Bajo').length;
-
-    // Obtener las regiones de los hallazgos ya filtrados
-    findings.forEach(finding => {
-        (finding.affected_resources || []).forEach(res => {
-            if (res.region) regions.add(res.region);
-        });
-    });
 
     // CORRECCIÓN: Generar lista de assets en scope usando window.scopedResources
     const scopedResources = window.scopedResources || {};
@@ -2368,7 +2381,7 @@ const processTemplate = (template, data) => {
         .replace(/{{HIGH_COUNT}}/g, highCount)
         .replace(/{{MEDIUM_COUNT}}/g, mediumCount)
         .replace(/{{LOW_COUNT}}/g, lowCount)
-        .replace(/{{REGIONS_INCLUDED}}/g, (window.regionsIncluded && window.regionsIncluded.length > 0) ? window.regionsIncluded.join(', ') : 'All available regions')
+        .replace(/{{REGIONS_INCLUDED}}/g, regionsFromFindings.size > 0 ? Array.from(regionsFromFindings).sort().join(', ') : 'No regions in filtered results')
         .replace(/{{VPCS_INCLUDED}}/g, 'All VPCs in scope')
         .replace(/{{SCOPED_ASSETS_LIST}}/g, scopedAssetsList)
         .replace(/{{SCOPED_ASSETS_COUNT}}/g, unifiedScopedItems.length.toString())
@@ -2496,7 +2509,7 @@ window.processPDFGeneration = async () => {
             return;
         }
         
-        const awsAccountId = window.lastHealthyStatusFindings[0]?.aws_account_id || 'N/A';
+        let awsAccountId = findings[0]?.aws_account_id || 'N/A';
 
         // 3. Procesar placeholders con datos reales
         const processedHTML = processTemplate(htmlTemplate, {
