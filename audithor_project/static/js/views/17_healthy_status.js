@@ -28,27 +28,12 @@ export const buildHealthyStatusView = () => {
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex space-x-6" id="healthy-status-tabs">
                 <a href="#" data-tab="hs-findings-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Findings</a>
-                <a href="#" data-tab="hs-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Generate Report</a>
+                <a href="#" data-tab="hs-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Executive Summary AI</a>
+                <a href="#" data-tab="hs-findings-report-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Generate Findings Report</a>
                 <a href="#" data-tab="hs-inventory-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Scoped Inventory</a>
                 <a href="#" data-tab="hs-notes-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Auditor's Notes</a>
             </nav>
         </div>
-
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="font-bold text-lg text-[#204071]">Actions</h3>
-                    <p class="text-sm text-gray-500">Generate reports from current findings</p>
-                </div>
-                <button id="generate-pdf-report-btn" class="bg-[#204071] text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-[#1a365d] transition flex items-center space-x-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <span>Download PDF Report</span>
-                </button>
-            </div>
-        </div>
-
         <div id="healthy-status-tab-content-container">
             <div id="hs-findings-content" class="healthy-status-tab-content">
                 <div class="bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm mb-6">
@@ -158,6 +143,7 @@ export const buildHealthyStatusView = () => {
             </div>
 
             <div id="hs-report-content" class="healthy-status-tab-content hidden"></div>
+            <div id="hs-findings-report-content" class="healthy-status-tab-content hidden"></div>
             <div id="hs-inventory-content" class="healthy-status-tab-content hidden"></div>
             <div id="hs-notes-content" class="healthy-status-tab-content hidden"></div>
         </div>
@@ -194,12 +180,9 @@ export const buildHealthyStatusView = () => {
     }
     
     setupFilterEventListeners();
-    const pdfButton = document.getElementById('generate-pdf-report-btn');
-    if (pdfButton) {
-        pdfButton.addEventListener('click', showPDFTemplateModal);
-    }
     buildGeminiReportView();
     buildScopedInventoryView();
+    buildFindingsReportView();
 };
 
 // --- FILTER SETUP ---
@@ -420,6 +403,382 @@ const removeFilter = (filterType) => {
     }
 };
 
+const setupFindingsReportEvents = () => {
+    // Eventos para los botones
+    document.getElementById('select-all-findings')?.addEventListener('click', selectAllFindings);
+    document.getElementById('deselect-all-findings')?.addEventListener('click', deselectAllFindings);
+    document.getElementById('generate-custom-pdf')?.addEventListener('click', generateCustomPDF);
+    
+    // Poblar la lista inicial
+    populateFindingsReportData();
+};
+
+const populateFindingsReportData = () => {
+    const regionFilter = document.getElementById('report-region-filter');
+    const findingsList = document.getElementById('findings-selection-list');
+    
+    if (!regionFilter || !findingsList) return;
+    
+    const findings = window.lastHealthyStatusFindings || [];
+    
+    // Si no hay findings, mostrar mensaje
+    if (findings.length === 0) {
+        findingsList.innerHTML = '<p class="text-gray-500 text-center py-8">No findings available yet. Please run an analysis from another section first.</p>';
+        regionFilter.innerHTML = '<option value="all">All Regions</option>';
+        return;
+    }
+    
+    // Poblar filtro de regiones
+    const regions = new Set();
+    findings.forEach(finding => {
+        (finding.affected_resources || []).forEach(res => {
+            const region = res.region || 'Global';
+            regions.add(region);
+        });
+    });
+    
+    regionFilter.innerHTML = '<option value="all">All Regions</option>';
+    Array.from(regions).sort().forEach(region => {
+        const option = document.createElement('option');
+        option.value = region;
+        option.textContent = region;
+        regionFilter.appendChild(option);
+    });
+    
+    // Escuchar cambios en el filtro
+    regionFilter.removeEventListener('change', filterAndRenderFindings); // Evitar listeners duplicados
+    regionFilter.addEventListener('change', filterAndRenderFindings);
+    
+    // Renderizar findings iniciales
+    filterAndRenderFindings();
+};
+
+const filterAndRenderFindings = () => {
+    const regionFilter = document.getElementById('report-region-filter');
+    const selectedRegion = regionFilter?.value || 'all';
+    const findings = window.lastHealthyStatusFindings || [];
+    
+    let filteredFindings = findings;
+    
+    if (selectedRegion !== 'all') {
+        filteredFindings = findings.filter(finding => {
+            return (finding.affected_resources || []).some(res => {
+                const region = res.region || 'Global';
+                return region === selectedRegion || region === 'Global';
+            });
+        });
+    }
+    
+    renderFindingsSelectionList(filteredFindings);
+};
+
+const renderFindingsSelectionList = (findings) => {
+    const container = document.getElementById('findings-selection-list');
+    if (!container) return;
+    
+    if (findings.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-4">No findings available for the selected region.</p>';
+        return;
+    }
+    
+    const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 };
+    const sortedFindings = [...findings].sort((a, b) => 
+        (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99)
+    );
+    
+    container.innerHTML = sortedFindings.map((finding, index) => {
+        const severityClass = getSeverityClass(finding.severity);
+        const resourceCount = (finding.affected_resources || []).length;
+        
+        return `
+            <div class="finding-item border border-gray-200 rounded-lg p-4 hover:bg-gray-50" data-finding-index="${index}">
+                <div class="flex items-start space-x-3">
+                    <input type="checkbox" id="finding-${index}" class="finding-checkbox mt-1" checked>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <h5 class="font-semibold text-gray-900 truncate">${finding.name || 'Unknown Finding'}</h5>
+                            <span class="px-2 py-1 text-xs font-medium rounded-full ${severityClass}">${getSeverityLabel(finding.severity)}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">${finding.description || 'No description'}</p>
+                        <div class="text-xs text-gray-500">
+                            Section: ${finding.section || 'N/A'} | Resources: ${resourceCount}
+                        </div>
+                    </div>
+                    <button class="edit-finding-btn text-blue-600 hover:text-blue-800 p-1" data-finding-index="${index}" title="Edit Finding">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Agregar event listeners para los botones de editar
+    container.querySelectorAll('.edit-finding-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const findingIndex = e.currentTarget.getAttribute('data-finding-index');
+            openEditFindingModal(parseInt(findingIndex), sortedFindings);
+        });
+    });
+};
+
+const getSeverityClass = (severity) => {
+    const classes = {
+        'Crítico': 'bg-red-100 text-red-800',
+        'Alto': 'bg-red-100 text-red-700',
+        'Medio': 'bg-yellow-100 text-yellow-800',
+        'Bajo': 'bg-blue-100 text-blue-800',
+        'Informativo': 'bg-gray-100 text-gray-700'
+    };
+    return classes[severity] || 'bg-gray-100 text-gray-700';
+};
+
+const getSeverityLabel = (severity) => {
+    const labels = {
+        'Crítico': 'Critical',
+        'Alto': 'High',
+        'Medio': 'Medium',
+        'Bajo': 'Low',
+        'Informativo': 'Info'
+    };
+    return labels[severity] || severity;
+};
+
+const selectAllFindings = () => {
+    document.querySelectorAll('.finding-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+};
+
+const deselectAllFindings = () => {
+    document.querySelectorAll('.finding-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+};
+
+const getSelectedFindings = () => {
+    const selectedFindings = [];
+    document.querySelectorAll('.finding-checkbox:checked').forEach(checkbox => {
+        const findingItem = checkbox.closest('.finding-item');
+        const findingIndex = findingItem.getAttribute('data-finding-index');
+        const findings = window.lastHealthyStatusFindings || [];
+        if (findings[findingIndex]) {
+            selectedFindings.push(findings[findingIndex]);
+        }
+    });
+    return selectedFindings;
+};
+
+const generateCustomPDF = () => {
+    const auditingCompany = document.getElementById('auditing-company')?.value.trim();
+    const auditedCompany = document.getElementById('audited-company')?.value.trim();
+    const selectedFindings = getSelectedFindings();
+    
+    if (!auditingCompany || !auditedCompany) {
+        alert('Please fill in both company names.');
+        return;
+    }
+    
+    if (selectedFindings.length === 0) {
+        alert('Please select at least one finding to include in the report.');
+        return;
+    }
+    
+    // Llamar a la función de generación de PDF con los findings seleccionados
+    generateCustomPDFReport({
+        auditingCompany,
+        auditedCompany,
+        findings: selectedFindings
+    });
+};
+
+const openEditFindingModal = (findingIndex, findings) => {
+    const finding = findings[findingIndex];
+    if (!finding) return;
+    
+    const modal = document.createElement('div');
+    modal.id = 'edit-finding-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    
+    // Preparar recursos afectados para mostrar
+    const affectedResources = finding.affected_resources || [];
+    const resourcesHtml = affectedResources.map((resource, resourceIndex) => {
+        let resourceName, regionName;
+        
+        if (typeof resource === 'object' && resource.resource && resource.region) {
+            resourceName = resource.resource;
+            regionName = resource.region;
+        } else if (typeof resource === 'string') {
+            resourceName = resource;
+            regionName = 'Global';
+        } else {
+            resourceName = 'Unknown Resource';
+            regionName = 'Global';
+        }
+        
+        return `
+            <div class="resource-item flex items-center justify-between p-2 bg-gray-50 rounded border" data-resource-index="${resourceIndex}">
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 truncate">${resourceName}</div>
+                    <div class="text-xs text-gray-500">${regionName}</div>
+                </div>
+                <button class="remove-resource-btn ml-2 text-red-600 hover:text-red-800 p-1" data-resource-index="${resourceIndex}" title="Remove Resource">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-[#204071] mb-4">Edit Finding</h3>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Columna izquierda: Información básica -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Finding Name</label>
+                        <input type="text" id="edit-finding-name" class="w-full p-2 border border-gray-300 rounded-lg" 
+                               value="${finding.name || ''}">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="edit-finding-description" rows="4" 
+                                  class="w-full p-2 border border-gray-300 rounded-lg">${finding.description || ''}</textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Remediation</label>
+                        <textarea id="edit-finding-remediation" rows="3" 
+                                  class="w-full p-2 border border-gray-300 rounded-lg">${finding.remediation || ''}</textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Severity</label>
+                        <select id="edit-finding-severity" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option value="Crítico" ${finding.severity === 'Crítico' ? 'selected' : ''}>Critical</option>
+                            <option value="Alto" ${finding.severity === 'Alto' ? 'selected' : ''}>High</option>
+                            <option value="Medio" ${finding.severity === 'Medio' ? 'selected' : ''}>Medium</option>
+                            <option value="Bajo" ${finding.severity === 'Bajo' ? 'selected' : ''}>Low</option>
+                            <option value="Informativo" ${finding.severity === 'Informativo' ? 'selected' : ''}>Info</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Columna derecha: Recursos afectados -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Affected Resources (${affectedResources.length})
+                        </label>
+                        <div id="affected-resources-list" class="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                            ${resourcesHtml || '<p class="text-gray-500 text-sm">No resources available</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <p class="text-sm text-blue-800">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Click the X button to remove resources that don't apply to this finding.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button onclick="closeEditFindingModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button onclick="saveFindingChanges(${findingIndex})" class="flex-1 px-4 py-2 bg-[#204071] text-white rounded-lg hover:bg-[#1a365d]">Save Changes</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Agregar event listeners para los botones de eliminar recursos
+    modal.querySelectorAll('.remove-resource-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const resourceIndex = parseInt(e.currentTarget.getAttribute('data-resource-index'));
+            removeResourceFromFinding(findingIndex, resourceIndex);
+        });
+    });
+};
+
+window.closeEditFindingModal = () => {
+    const modal = document.getElementById('edit-finding-modal');
+    if (modal) modal.remove();
+};
+
+window.saveFindingChanges = (findingIndex) => {
+    const name = document.getElementById('edit-finding-name')?.value.trim();
+    const description = document.getElementById('edit-finding-description')?.value.trim();
+    const remediation = document.getElementById('edit-finding-remediation')?.value.trim();
+    const severity = document.getElementById('edit-finding-severity')?.value;
+    
+    // Actualizar el finding en el array global
+    if (window.lastHealthyStatusFindings[findingIndex]) {
+        window.lastHealthyStatusFindings[findingIndex] = {
+            ...window.lastHealthyStatusFindings[findingIndex],
+            name,
+            description,
+            remediation,
+            severity
+        };
+    }
+    
+    // Refrescar la vista
+    filterAndRenderFindings();
+    closeEditFindingModal();
+};
+
+const generateCustomPDFReport = async (reportData) => {
+    const { auditingCompany, auditedCompany, findings } = reportData;
+    
+    const generateButton = document.getElementById('generate-custom-pdf');
+    const originalText = generateButton?.textContent || '';
+    
+    if (generateButton) {
+        generateButton.textContent = 'Generating...';
+        generateButton.disabled = true;
+    }
+    
+    try {
+        // Cargar template desde la ruta correcta
+        const response = await fetch('/static/js/templates/pdf-report-template.html');
+        if (!response.ok) {
+            throw new Error(`Failed to load template: ${response.status}`);
+        }
+        const template = await response.text();
+        
+        const processedHTML = processTemplate(template, {
+            companyName: auditingCompany,
+            clientName: auditedCompany,
+            findings: findings
+        });
+        
+        await generateAndDownloadPDF(processedHTML, `${auditingCompany.replace(/[^a-zA-Z0-9]/g, '-')}-Custom-Security-Report.pdf`);
+        
+        log('Custom PDF report generated successfully.', 'success');
+        
+    } catch (error) {
+        console.error('Custom PDF Generation Error:', error);
+        alert(`Error generating custom PDF: ${error.message}`);
+        log(`Custom PDF generation failed: ${error.message}`, 'error');
+        
+    } finally {
+        // Restaurar botón
+        if (generateButton) {
+            generateButton.textContent = originalText || 'Generate PDF Report';
+            generateButton.disabled = false;
+        }
+    }
+};
+
 
 // --- IMPACT CLASSIFICATION ---
 const classifyFindingImpact = (finding) => {
@@ -527,6 +886,68 @@ Below are the findings in JSON format:`;
     if (genButton) {
         genButton.addEventListener('click', generateGeminiReport);
     }
+};
+
+export const buildFindingsReportView = () => {
+    const container = document.getElementById('hs-findings-report-content');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 class="font-bold text-lg mb-4 text-[#204071]">Generate Custom Findings Report</h3>
+            
+            <!-- Formulario de configuración -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Auditing Company</label>
+                    <input type="text" id="auditing-company" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Your Company Name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Audited Company</label>
+                    <input type="text" id="audited-company" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Client Company Name">
+                </div>
+            </div>
+            
+            <!-- Filtro por región -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Region</label>
+                <select id="report-region-filter" class="w-full p-2 border border-gray-300 rounded-lg">
+                    <option value="all">All Regions</option>
+                </select>
+            </div>
+            
+            <!-- Lista de findings para seleccionar -->
+            <div class="mb-6">
+                <h4 class="font-semibold text-gray-800 mb-3">Select Findings to Include</h4>
+                <div id="findings-selection-list" class="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                    <!-- Aquí se llenarán los findings -->
+                </div>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="flex space-x-3">
+                <button id="select-all-findings" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Select All</button>
+                <button id="deselect-all-findings" class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">Deselect All</button>
+                <button id="generate-custom-pdf" class="px-4 py-2 bg-[#204071] text-white rounded-lg hover:bg-[#1a365d]">Generate PDF Report</button>
+            </div>
+        </div>
+    `;
+    
+    setupFindingsReportEvents();
+    
+    // Refrescar datos cada vez que se muestre esta pestaña
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && 
+                mutation.attributeName === 'class' && 
+                !container.classList.contains('hidden')) {
+                // La pestaña se hizo visible, refrescar datos
+                populateFindingsReportData();
+            }
+        });
+    });
+    
+    observer.observe(container, { attributes: true });
 };
 
 // --- INTERNAL MODULE FUNCTIONS ---
@@ -1334,7 +1755,6 @@ const getDefaultTemplate = async () => {
 };
 
 // Función para procesar el template con los datos
-// Función para procesar el template con los datos (SIN CAMBIOS)
 const processTemplate = (template, data) => {
     const { companyName, clientName, findings } = data;
     
@@ -1347,19 +1767,49 @@ const processTemplate = (template, data) => {
         'Informativo': 'Info'
     };
     
-    // Contar severidades
-    const severityCounts = findings.reduce((acc, finding) => {
-        const severity = severityMap[finding.severity] || finding.severity;
-        acc[severity.toLowerCase()] = (acc[severity.toLowerCase()] || 0) + 1;
-        return acc;
-    }, {});
+    // Obtener datos de scope
+    const scopedResources = window.scopedResources || {};
+    const regions = new Set();
+    const vpcs = new Set();
     
-    // Generar filas de findings con recursos afectados separados
+    findings.forEach(finding => {
+        (finding.affected_resources || []).forEach(res => {
+            if (res.region) regions.add(res.region);
+        });
+    });
+    
+    // Generar lista de assets en scope
+    const scopedAssetsList = Object.keys(scopedResources).length > 0 
+        ? `<ul>${Object.keys(scopedResources).map(arn => {
+            const comment = scopedResources[arn].comment;
+            return `<li><strong>ARN:</strong> ${arn}<br><em>${comment}</em></li>`;
+          }).join('')}</ul>`
+        : '<p>No specific assets were marked as in-scope during this assessment.</p>';
+    
+    // Generar sección de notas del auditor
+    const auditorNotes = window.auditorNotes || [];
+    const auditorNotesSection = auditorNotes.length > 0 
+        ? `<div class="notes-section">
+            <h2>Auditor Notes</h2>
+            ${auditorNotes.map(note => `
+                <div class="note-item">
+                    <div class="note-title">${note.title || 'Untitled Note'}</div>
+                    <div class="note-meta">
+                        ${note.timestamp ? new Date(note.timestamp).toLocaleString() : ''}
+                        ${note.arn ? `| Resource: ${note.arn}` : ''}
+                        ${note.controlId ? `| Control: ${note.controlId}` : ''}
+                    </div>
+                    <div class="note-content">${note.content || ''}</div>
+                </div>
+            `).join('')}
+           </div>`
+        : '';
+    
+    // Generar filas de findings
     const findingsRows = findings.map(finding => {
         const severity = severityMap[finding.severity] || finding.severity;
         const severityClass = severity.toLowerCase().replace('crítico', 'critical');
         
-        // Procesar recursos afectados
         const affectedResources = finding.affected_resources || [];
         const resourcesHtml = affectedResources.map(resource => {
             if (typeof resource === 'object' && resource.resource && resource.region) {
@@ -1385,7 +1835,6 @@ const processTemplate = (template, data) => {
                     </div>
                 </td>
                 <td>
-                    <div class="resource-count">Resources (${affectedResources.length}):</div>
                     <div style="margin-top: 3px;">
                         ${resourcesHtml || '<div class="resource-item">No specific resources</div>'}
                     </div>
@@ -1401,12 +1850,12 @@ const processTemplate = (template, data) => {
         .replace(/{{REPORT_DATE}}/g, new Date().toLocaleDateString())
         .replace(/{{AWS_ACCOUNT_ID}}/g, 'Available upon request')
         .replace(/{{TOTAL_FINDINGS}}/g, findings.length.toString())
-        .replace(/{{CRITICAL_COUNT}}/g, (severityCounts.critical || 0).toString())
-        .replace(/{{HIGH_COUNT}}/g, (severityCounts.high || 0).toString())
-        .replace(/{{MEDIUM_COUNT}}/g, (severityCounts.medium || 0).toString())
-        .replace(/{{FINDINGS_ROWS}}/g, findingsRows);
+        .replace(/{{REGIONS_INCLUDED}}/g, regions.size > 0 ? Array.from(regions).join(', ') : 'All available regions')
+        .replace(/{{VPCS_INCLUDED}}/g, 'All VPCs in scope')
+        .replace(/{{SCOPED_ASSETS_LIST}}/g, scopedAssetsList)
+        .replace(/{{FINDINGS_ROWS}}/g, findingsRows)
+        .replace(/{{AUDITOR_NOTES_SECTION}}/g, auditorNotesSection);
 };
-
 // Función para generar y descargar PDF
 const generateAndDownloadPDF = async (htmlContent, filename) => {
     try {
@@ -1551,4 +2000,73 @@ window.processPDFGeneration = async () => {
             generateButton.disabled = false;
         }
     }
+};
+const removeResourceFromFinding = (findingIndex, resourceIndex) => {
+    const finding = window.lastHealthyStatusFindings[findingIndex];
+    if (!finding || !finding.affected_resources) return;
+    
+    // Remover el recurso del array
+    finding.affected_resources.splice(resourceIndex, 1);
+    
+    // Refrescar la vista del modal
+    const resourcesList = document.getElementById('affected-resources-list');
+    if (resourcesList) {
+        updateResourcesListInModal(finding.affected_resources);
+    }
+    
+    // Actualizar el contador
+    const label = document.querySelector('#edit-finding-modal label[for=""]');
+    if (label) {
+        label.textContent = `Affected Resources (${finding.affected_resources.length})`;
+    }
+};
+
+const updateResourcesListInModal = (resources) => {
+    const container = document.getElementById('affected-resources-list');
+    if (!container) return;
+    
+    if (resources.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No resources remaining</p>';
+        return;
+    }
+    
+    const resourcesHtml = resources.map((resource, resourceIndex) => {
+        let resourceName, regionName;
+        
+        if (typeof resource === 'object' && resource.resource && resource.region) {
+            resourceName = resource.resource;
+            regionName = resource.region;
+        } else if (typeof resource === 'string') {
+            resourceName = resource;
+            regionName = 'Global';
+        } else {
+            resourceName = 'Unknown Resource';
+            regionName = 'Global';
+        }
+        
+        return `
+            <div class="resource-item flex items-center justify-between p-2 bg-gray-50 rounded border" data-resource-index="${resourceIndex}">
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 truncate">${resourceName}</div>
+                    <div class="text-xs text-gray-500">${regionName}</div>
+                </div>
+                <button class="remove-resource-btn ml-2 text-red-600 hover:text-red-800 p-1" data-resource-index="${resourceIndex}" title="Remove Resource">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = resourcesHtml;
+    
+    // Re-agregar event listeners
+    container.querySelectorAll('.remove-resource-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const resourceIndex = parseInt(e.currentTarget.getAttribute('data-resource-index'));
+            const findingIndex = parseInt(document.querySelector('[onclick*="saveFindingChanges"]').onclick.toString().match(/\d+/)[0]);
+            removeResourceFromFinding(findingIndex, resourceIndex);
+        });
+    });
 };
