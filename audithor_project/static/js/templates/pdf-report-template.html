@@ -102,19 +102,34 @@
             position: relative;
             z-index: 3;
         }
+
+        .header-content {
+            position: relative; /* Necesario para que el z-index funcione */
+            z-index: 3;       /* MUY IMPORTANTE: Pone el texto por encima de los triángulos */
+        }
+
+        /* El texto de la info del cliente que ya tenías, también con z-index */
+        .header-box {
+            position: relative;
+            z-index: 3;
+        }
+
+        .header-box p {
+            color: white; 
+        }
         
         .company-name {
             font-size: 28px;
             font-weight: 700;
             color: white;
-            margin: 0;
+            margin: 0 0 8px 0;
             letter-spacing: 2px;
         }
         
         .subtitle {
             font-size: 16px;
-            color: #cbd5e1;
-            margin-top: 8px;
+            color: white;
+            margin: 0;
             font-weight: 500;
         }
         
@@ -130,10 +145,12 @@
             font-size: 1.6em;
             margin: 25px 0 15px 0;
             font-weight: 700;
-            border-bottom: 3px solid #eb3496;
+            border-bottom: 2px solid #eb3496;
             padding-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            page-break-after: avoid; /* Añade esta línea */
+
         }
         
         .meta-info {
@@ -200,6 +217,10 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
+        .text-center {
+            text-align: center !important;
+        }
         
         .findings-summary-table td {
             padding: 12px 10px;
@@ -213,12 +234,18 @@
             border-right: none;
         }
         
-        .findings-summary-table tr:nth-child(even) td {
-            background: #f8fafc;
-        }
-        
         .findings-summary-table tr:hover td {
             background: #f1f5f9;
+        }
+
+        .findings-summary-table thead {
+            display: table-header-group;
+        }
+
+        .findings-summary-table td:nth-child(2),
+        .findings-summary-table td:nth-child(3),
+        .findings-summary-table td:nth-child(4) {
+            text-align: center;
         }
 
         /* Individual Finding Styles */
@@ -435,6 +462,11 @@
 </head>
 <body>
     <div class="header">
+        <div class="header-content">
+            <h1 class="company-name">AWS Security Report</h1>
+            <p class="subtitle">Cloud Security Assessment</p>
+        </div>
+
         <div class="header-box">
             <p>Client: {{CLIENT_NAME}} | Report Date: {{REPORT_DATE}} | AWS Account: {{AWS_ACCOUNT_ID}}</p>
         </div>
@@ -496,9 +528,9 @@
         <thead>
             <tr>
                 <th style="width: 45%;">Finding Details</th>
-                <th style="width: 15%;">Severity</th>
-                <th style="width: 25%;">Category</th>
-                <th style="width: 15%;">Affected Resources</th>
+                <th style="width: 15%; text-align: center;">Severity</th>
+                <th style="width: 25%; text-align: center;">Category</th>
+                <th style="width: 15%; text-align: center;">Affected Resources</th>
             </tr>
         </thead>
         <tbody>
@@ -506,7 +538,6 @@
         </tbody>
     </table>
 
-    <div class="page-break"></div>
     <h2>Detailed Findings</h2>
 
     {{DETAILED_FINDINGS_SECTIONS}}
