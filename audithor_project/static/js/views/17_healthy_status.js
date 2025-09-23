@@ -1755,40 +1755,134 @@ const getDefaultTemplate = async () => {
 };
 
 // Función para procesar el template con los datos
+// Función para procesar el template con los datos
 const processTemplate = (template, data) => {
-    const { companyName, clientName, findings } = data;
-    
+    const { companyName, clientName, findings, awsAccountId } = data;
+
     // Mapear severidades
     const severityMap = {
         'Crítico': 'Critical',
-        'Alto': 'High', 
+        'Alto': 'High',
         'Medio': 'Medium',
         'Bajo': 'Low',
         'Informativo': 'Info'
     };
-    
+
+    // Calcular conteos de hallazgos por severidad
+    const criticalCount = findings.filter(f => f.severity === 'Crítico').length;
+    const highCount = findings.filter(f => f.severity === 'Alto').length;
+    const mediumCount = findings.filter(f => f.severity === 'Medio').length;
+    const lowCount = findings.filter(f => f.severity === 'Bajo').length;
+
     // Obtener datos de scope
     const scopedResources = window.scopedResources || {};
     const regions = new Set();
     const vpcs = new Set();
     
+    // Obtener las regiones de los hallazgos ya filtrados
     findings.forEach(finding => {
         (finding.affected_resources || []).forEach(res => {
             if (res.region) regions.add(res.region);
         });
     });
-    
+
     // Generar lista de assets en scope
-    const scopedAssetsList = Object.keys(scopedResources).length > 0 
-        ? `<ul>${Object.keys(scopedResources).map(arn => {
-            const comment = scopedResources[arn].comment;
-            return `<li><strong>ARN:</strong> ${arn}<br><em>${comment}</em></li>`;
-          }).join('')}</ul>`
+    const unifiedScopedItems = [];
+    Object.keys(scopedResources).forEach(arn => {
+        const comment = scopedResources[arn].comment;
+        const service = arn.split(':')[2];
+
+        switch (service) {
+            case 'ec2':
+                const ec2Instance = window.computeApiData?.results?.ec2_instances.find(i => i.ARN === arn);
+                if (ec2Instance) {
+                    unifiedScopedItems.push({
+                        type: 'EC2 Instance',
+                        region: ec2Instance.Region,
+                        identifier: ec2Instance.InstanceId,
+                        comment: comment,
+                    });
+                }
+                break;
+            case 'lambda':
+                const lambdaFunc = window.computeApiData?.results?.lambda_functions.find(f => f.ARN === arn);
+                if (lambdaFunc) {
+                    unifiedScopedItems.push({
+                        type: 'Lambda Function',
+                        region: lambdaFunc.Region,
+                        identifier: lambdaFunc.FunctionName,
+                        comment: comment,
+                    });
+                }
+                break;
+            case 'rds':
+                const rdsInstance = window.databasesApiData?.results?.rds_instances.find(db => db.ARN === arn);
+                if (rdsInstance) {
+                    unifiedScopedItems.push({
+                        type: 'RDS Instance',
+                        region: rdsInstance.Region,
+                        identifier: rdsInstance.DBInstanceIdentifier,
+                        comment: comment,
+                    });
+                }
+                break;
+            case 'secretsmanager':
+                const secret = window.secretsManagerApiData?.results?.secrets.find(s => s.ARN === arn);
+                if (secret) {
+                    unifiedScopedItems.push({
+                        type: 'Secret',
+                        region: secret.Region,
+                        identifier: secret.Name,
+                        comment: comment,
+                    });
+                }
+                break;
+            case 'kms':
+                const kmsKey = window.kmsApiData?.results?.keys.find(k => k.ARN === arn);
+                if (kmsKey) {
+                    unifiedScopedItems.push({
+                        type: 'KMS Key',
+                        region: kmsKey.Region,
+                        identifier: kmsKey.Aliases || kmsKey.KeyId,
+                        comment: comment,
+                    });
+                }
+                break;
+            case 'acm':
+                const certificate = window.acmApiData?.results?.certificates.find(c => c.CertificateArn === arn);
+                if (certificate) {
+                    unifiedScopedItems.push({
+                        type: 'ACM Certificate',
+                        region: certificate.Region,
+                        identifier: certificate.DomainName,
+                        comment: comment,
+                    });
+                }
+                break;
+            default:
+                unifiedScopedItems.push({
+                    type: service,
+                    region: arn.split(':')[3],
+                    identifier: arn,
+                    comment: comment,
+                });
+        }
+    });
+
+    const scopedAssetsList = unifiedScopedItems.length > 0
+        ? `<ul>${unifiedScopedItems.map(item => `
+            <li>
+                <strong>${item.type}:</strong>
+                <span>${item.identifier} (${item.region})</span>
+                <br>
+                <em>Reason: ${item.comment}</em>
+            </li>
+          `).join('')}</ul>`
         : '<p>No specific assets were marked as in-scope during this assessment.</p>';
-    
+
     // Generar sección de notas del auditor
     const auditorNotes = window.auditorNotes || [];
-    const auditorNotesSection = auditorNotes.length > 0 
+    const auditorNotesSection = auditorNotes.length > 0
         ? `<div class="notes-section">
             <h2>Auditor Notes</h2>
             ${auditorNotes.map(note => `
@@ -1804,23 +1898,12 @@ const processTemplate = (template, data) => {
             `).join('')}
            </div>`
         : '';
-    
-    // Generar filas de findings
-    const findingsRows = findings.map(finding => {
+
+    // NUEVA FUNCIONALIDAD: Generar tabla resumen de findings
+    const findingsSummaryRows = findings.map(finding => {
         const severity = severityMap[finding.severity] || finding.severity;
         const severityClass = severity.toLowerCase().replace('crítico', 'critical');
-        
-        const affectedResources = finding.affected_resources || [];
-        const resourcesHtml = affectedResources.map(resource => {
-            if (typeof resource === 'object' && resource.resource && resource.region) {
-                return `<div class="resource-item">${resource.resource} (${resource.region})</div>`;
-            } else if (typeof resource === 'string') {
-                return `<div class="resource-item">${resource} (Global)</div>`;
-            } else {
-                return `<div class="resource-item">Unknown Resource</div>`;
-            }
-        }).join('');
-        
+
         return `
             <tr>
                 <td>
@@ -1829,33 +1912,98 @@ const processTemplate = (template, data) => {
                 </td>
                 <td><span class="severity-${severityClass}">${severity}</span></td>
                 <td><span class="category-badge">${finding.section || 'General'}</span></td>
-                <td>
-                    <div class="description-text">
-                        ${finding.description || 'No description available'}
-                    </div>
-                </td>
-                <td>
-                    <div style="margin-top: 3px;">
-                        ${resourcesHtml || '<div class="resource-item">No specific resources</div>'}
-                    </div>
-                </td>
             </tr>
         `;
     }).join('');
-    
+
+    // NUEVA FUNCIONALIDAD: Generar secciones detalladas individuales para cada finding
+    const detailedFindingsSections = findings.map((finding, index) => {
+        const severity = severityMap[finding.severity] || finding.severity;
+        const severityClass = severity.toLowerCase().replace('crítico', 'critical');
+
+        const affectedResources = finding.affected_resources || [];
+        const resourcesHtml = affectedResources.map(resource => {
+            if (typeof resource === 'object' && resource.resource && resource.region) {
+                return `<li>${resource.resource} (${resource.region})</li>`;
+            } else if (typeof resource === 'string') {
+                return `<li>${resource} (Global)</li>`;
+            } else {
+                return `<li>Unknown Resource</li>`;
+            }
+        }).join('');
+
+        const resourcesSection = resourcesHtml 
+            ? `<div class="finding-resources">
+                <h4>Affected Resources (${affectedResources.length})</h4>
+                <ul class="resource-list">
+                    ${resourcesHtml}
+                </ul>
+               </div>`
+            : `<div class="finding-resources">
+                <h4>Affected Resources</h4>
+                <p class="description-text">No specific resources identified</p>
+               </div>`;
+
+        return `
+            <div class="individual-finding">
+                <h3>Finding ${index + 1}: ${finding.name || 'Unknown Finding'}</h3>
+                
+                <div class="finding-meta">
+                    <div class="finding-meta-item">
+                        <div class="finding-meta-label">Severity</div>
+                        <div class="finding-meta-value severity-${severityClass}">${severity}</div>
+                    </div>
+                    <div class="finding-meta-item">
+                        <div class="finding-meta-label">Category</div>
+                        <div class="finding-meta-value category-badge">${finding.section || 'General'}</div>
+                    </div>
+                    <div class="finding-meta-item">
+                        <div class="finding-meta-label">Rule ID</div>
+                        <div class="finding-meta-value finding-rule">${finding.rule_id || 'N/A'}</div>
+                    </div>
+                </div>
+
+                <div class="finding-description">
+                    <div class="description-text">
+                        ${finding.description || 'No description available'}
+                    </div>
+                </div>
+
+                ${resourcesSection}
+
+                <div class="finding-remediation">
+                    <h4>Recommended Solution</h4>
+                    <div class="description-text">
+                        ${finding.remediation || 'No remediation information available'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
     // Reemplazar placeholders
     return template
         .replace(/{{COMPANY_NAME}}/g, companyName)
         .replace(/{{CLIENT_NAME}}/g, clientName)
         .replace(/{{REPORT_DATE}}/g, new Date().toLocaleDateString())
-        .replace(/{{AWS_ACCOUNT_ID}}/g, 'Available upon request')
+        .replace(/{{AWS_ACCOUNT_ID}}/g, awsAccountId || 'N/A')
         .replace(/{{TOTAL_FINDINGS}}/g, findings.length.toString())
+        .replace(/{{CRITICAL_COUNT}}/g, criticalCount)
+        .replace(/{{HIGH_COUNT}}/g, highCount)
+        .replace(/{{MEDIUM_COUNT}}/g, mediumCount)
         .replace(/{{REGIONS_INCLUDED}}/g, regions.size > 0 ? Array.from(regions).join(', ') : 'All available regions')
         .replace(/{{VPCS_INCLUDED}}/g, 'All VPCs in scope')
         .replace(/{{SCOPED_ASSETS_LIST}}/g, scopedAssetsList)
-        .replace(/{{FINDINGS_ROWS}}/g, findingsRows)
+        // NUEVOS PLACEHOLDERS
+        .replace(/{{FINDINGS_SUMMARY_ROWS}}/g, findingsSummaryRows)
+        .replace(/{{DETAILED_FINDINGS_SECTIONS}}/g, detailedFindingsSections)
+        // Mantener compatibilidad con el placeholder anterior (por si algún template lo usa)
+        .replace(/{{FINDINGS_ROWS}}/g, findingsSummaryRows)
         .replace(/{{AUDITOR_NOTES_SECTION}}/g, auditorNotesSection);
 };
+
+
+
 // Función para generar y descargar PDF
 const generateAndDownloadPDF = async (htmlContent, filename) => {
     try {
