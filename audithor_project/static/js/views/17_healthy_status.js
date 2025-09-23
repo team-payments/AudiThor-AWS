@@ -12,6 +12,10 @@ if (!window.lastHealthyStatusFindings) {
     
 }
 
+if (!window.reportCheckboxStates) {
+    window.reportCheckboxStates = new Set(); // Guarda los índices de findings seleccionados
+}
+
 // --- MAIN VIEW FUNCTION (EXPORTED) ---
 export const buildHealthyStatusView = () => {
     const container = document.getElementById('healthy-status-view');
@@ -534,6 +538,12 @@ const populateFindingsReportData = () => {
 
     // Actualizar el conteo de hallazgos
     updateFindingsCount(findings.length, findings.length, 'report-findings-count-display');
+    
+    if (window.reportCheckboxStates.size === 0) {
+    for (let i = 0; i < findings.length; i++) {
+        window.reportCheckboxStates.add(i);
+    }
+}
 };
 
 const filterAndRenderFindings = () => {
@@ -576,7 +586,7 @@ const renderFindingsSelectionList = (findings) => {
         return `
             <div class="finding-item border border-gray-200 rounded-lg p-4 hover:bg-gray-50" data-finding-index="${index}">
                 <div class="flex items-start space-x-3">
-                    <input type="checkbox" id="finding-${index}" class="finding-checkbox mt-1" checked>
+                    <input type="checkbox" id="finding-${index}" class="finding-checkbox mt-1" ${window.reportCheckboxStates.has(index) ? 'checked' : ''}>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center space-x-2 mb-2">
                             <h5 class="font-semibold text-gray-900 truncate">${finding.name || 'Unknown Finding'}</h5>
@@ -604,6 +614,18 @@ const renderFindingsSelectionList = (findings) => {
             openEditFindingModal(findingIndex, sortedFindings); // Pasar los findings filtrados
         });
     });
+
+    // Agregar event listeners para los checkboxes
+    container.querySelectorAll('.finding-checkbox').forEach((checkbox, idx) => {
+        checkbox.addEventListener('change', (e) => {
+            const index = parseInt(e.target.id.replace('finding-', ''));
+            if (e.target.checked) {
+                window.reportCheckboxStates.add(index);
+            } else {
+                window.reportCheckboxStates.delete(index);
+            }
+        });
+    });
 };
 
 const getSeverityClass = (severity) => {
@@ -628,26 +650,37 @@ const getSeverityLabel = (severity) => {
     return labels[severity] || severity;
 };
 
+
 const selectAllFindings = () => {
-    document.querySelectorAll('.finding-checkbox').forEach(checkbox => {
+    // Marcar todos los checkboxes visibles
+    const checkboxes = document.querySelectorAll('.finding-checkbox');
+    checkboxes.forEach((checkbox, idx) => {
         checkbox.checked = true;
+        const index = parseInt(checkbox.id.replace('finding-', ''));
+        window.reportCheckboxStates.add(index);
     });
 };
 
 const deselectAllFindings = () => {
-    document.querySelectorAll('.finding-checkbox').forEach(checkbox => {
+    // Desmarcar todos los checkboxes visibles
+    const checkboxes = document.querySelectorAll('.finding-checkbox');
+    checkboxes.forEach((checkbox, idx) => {
         checkbox.checked = false;
+        const index = parseInt(checkbox.id.replace('finding-', ''));
+        window.reportCheckboxStates.delete(index);
     });
 };
 
 const getSelectedFindings = () => {
     const selectedFindings = [];
+    const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
+    
     document.querySelectorAll('.finding-checkbox:checked').forEach(checkbox => {
         const findingItem = checkbox.closest('.finding-item');
-        const findingIndex = findingItem.getAttribute('data-finding-index');
-        const findings = window.lastHealthyStatusFindings || [];
-        if (findings[findingIndex]) {
-            selectedFindings.push(findings[findingIndex]);
+        const findingIndex = parseInt(findingItem.getAttribute('data-finding-index'));
+        
+        if (currentlyDisplayedFindings[findingIndex]) {
+            selectedFindings.push(currentlyDisplayedFindings[findingIndex]);
         }
     });
     return selectedFindings;
@@ -662,25 +695,7 @@ const generateCustomPDF = () => {
     }
     
     // CORRECCIÓN: Primero obtener los findings filtrados actuales
-    const filteredFindings = getFilteredFindingsForReport();
-    
-    if (filteredFindings.length === 0) {
-        alert('No findings match the current filter criteria. Please adjust your filters.');
-        return;
-    }
-    
-    // Luego verificar cuáles de esos findings filtrados están seleccionados
-    const selectedFindings = [];
-    document.querySelectorAll('.finding-checkbox:checked').forEach(checkbox => {
-        const findingItem = checkbox.closest('.finding-item');
-        const findingIndex = parseInt(findingItem.getAttribute('data-finding-index'));
-        
-        // IMPORTANTE: Usar el array filtrado mostrado en pantalla, no el original
-        const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
-        if (currentlyDisplayedFindings[findingIndex]) {
-            selectedFindings.push(currentlyDisplayedFindings[findingIndex]);
-        }
-    });
+const selectedFindings = getSelectedFindings();
     
     if (selectedFindings.length === 0) {
         alert('Please select at least one finding to include in the report.');
@@ -875,10 +890,22 @@ window.saveFindingChanges = (findingIndex) => {
     const remediation = document.getElementById('edit-finding-remediation')?.value.trim();
     const severity = document.getElementById('edit-finding-severity')?.value;
     
-    // Actualizar el finding en el array global
-    if (window.lastHealthyStatusFindings[findingIndex]) {
-        window.lastHealthyStatusFindings[findingIndex] = {
-            ...window.lastHealthyStatusFindings[findingIndex],
+    // CORREGIR: Obtener el finding del array filtrado que se está mostrando
+    const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
+    const findingToEdit = currentlyDisplayedFindings[findingIndex];
+    
+    if (!findingToEdit) return;
+    
+    // Buscar este finding en el array original por sus propiedades únicas
+    const originalIndex = window.lastHealthyStatusFindings.findIndex(f => 
+        f.rule_id === findingToEdit.rule_id && 
+        f.name === findingToEdit.name && 
+        f.section === findingToEdit.section
+    );
+    
+    if (originalIndex !== -1) {
+        window.lastHealthyStatusFindings[originalIndex] = {
+            ...window.lastHealthyStatusFindings[originalIndex],
             name,
             description,
             remediation,
@@ -887,7 +914,7 @@ window.saveFindingChanges = (findingIndex) => {
     }
     
     // Refrescar la vista
-    filterAndRenderFindings();
+    applyReportFilters(); // Usar applyReportFilters en lugar de filterAndRenderFindings
     closeEditFindingModal();
 };
 
@@ -2499,24 +2526,41 @@ window.processPDFGeneration = async () => {
     }
 };
 
-
 const removeResourceFromFinding = (findingIndex, resourceIndex) => {
-    const finding = window.lastHealthyStatusFindings[findingIndex];
-    if (!finding || !finding.affected_resources) return;
+    // Obtener el finding del array filtrado que se está mostrando
+    const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
+    const findingToEdit = currentlyDisplayedFindings[findingIndex];
     
-    // Remover el recurso del array
-    finding.affected_resources.splice(resourceIndex, 1);
+    if (!findingToEdit || !findingToEdit.affected_resources) return;
     
-    // Refrescar la vista del modal
-    const resourcesList = document.getElementById('affected-resources-list');
-    if (resourcesList) {
-        updateResourcesListInModal(finding.affected_resources);
-    }
+    // Buscar este finding en el array original por sus propiedades únicas
+    const originalIndex = window.lastHealthyStatusFindings.findIndex(f => 
+        f.rule_id === findingToEdit.rule_id && 
+        f.name === findingToEdit.name && 
+        f.section === findingToEdit.section
+    );
     
-    // Actualizar el contador
-    const label = document.querySelector('#edit-finding-modal label[for=""]');
-    if (label) {
-        label.textContent = `Affected Resources (${finding.affected_resources.length})`;
+    if (originalIndex !== -1) {
+        const originalFinding = window.lastHealthyStatusFindings[originalIndex];
+        if (originalFinding.affected_resources && originalFinding.affected_resources[resourceIndex]) {
+            // Remover el recurso del array original
+            originalFinding.affected_resources.splice(resourceIndex, 1);
+            
+            // También remover del finding filtrado para actualizar la vista del modal
+            findingToEdit.affected_resources.splice(resourceIndex, 1);
+            
+            // Refrescar la vista del modal
+            const resourcesList = document.getElementById('affected-resources-list');
+            if (resourcesList) {
+                updateResourcesListInModal(findingToEdit.affected_resources);
+            }
+            
+            // Actualizar el contador en el modal
+            const label = document.querySelector('#edit-finding-modal label');
+            if (label) {
+                label.textContent = `Affected Resources (${findingToEdit.affected_resources.length})`;
+            }
+        }
     }
 };
 
