@@ -2056,7 +2056,6 @@ const processTemplate = (template, data) => {
         }
     }
 
-
     const regions = window.regionsIncluded || new Set();
 
     // Mapear severidades
@@ -2074,7 +2073,6 @@ const processTemplate = (template, data) => {
     const mediumCount = findings.filter(f => f.severity === 'Medio').length;
     const lowCount = findings.filter(f => f.severity === 'Bajo').length;
 
-    
     // Obtener las regiones de los hallazgos ya filtrados
     findings.forEach(finding => {
         (finding.affected_resources || []).forEach(res => {
@@ -2082,23 +2080,159 @@ const processTemplate = (template, data) => {
         });
     });
 
-    // Generar lista de assets en scope
+    // CORRECCIÓN: Generar lista de assets en scope usando window.scopedResources
+    const scopedResources = window.scopedResources || {};
     const unifiedScopedItems = [];
+    
     Object.keys(scopedResources).forEach(arn => {
         const comment = scopedResources[arn].comment;
         const service = arn.split(':')[2];
-        // ... (el resto de la lógica de unifiedScopedItems permanece igual)
+
+        switch (service) {
+            case 'ec2':
+                const ec2Instance = window.computeApiData?.results?.ec2_instances.find(i => i.ARN === arn);
+                if (ec2Instance) {
+                    unifiedScopedItems.push({
+                        type: 'EC2 Instance',
+                        region: ec2Instance.Region,
+                        identifier: ec2Instance.InstanceId,
+                        details: `Public IP: ${ec2Instance.PublicIpAddress || '-'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            case 'lambda':
+                const lambdaFunc = window.computeApiData?.results?.lambda_functions.find(f => f.ARN === arn);
+                if (lambdaFunc) {
+                    unifiedScopedItems.push({
+                        type: 'Lambda Function',
+                        region: lambdaFunc.Region,
+                        identifier: lambdaFunc.FunctionName,
+                        details: `Runtime: ${lambdaFunc.Runtime}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            case 'rds':
+                const rdsInstance = window.databasesApiData?.results?.rds_instances.find(db => db.ARN === arn);
+                if (rdsInstance) {
+                    unifiedScopedItems.push({
+                        type: 'RDS Instance',
+                        region: rdsInstance.Region,
+                        identifier: rdsInstance.DBInstanceIdentifier,
+                        details: `Public Access: ${rdsInstance.PubliclyAccessible ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            case 'secretsmanager':
+                const secret = window.secretsManagerApiData?.results?.secrets.find(s => s.ARN === arn);
+                if (secret) {
+                    unifiedScopedItems.push({
+                        type: 'Secret',
+                        region: secret.Region,
+                        identifier: secret.Name,
+                        details: `Rotation: ${secret.RotationEnabled ? 'Enabled' : 'Disabled'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            case 'kms':
+                const kmsKey = window.kmsApiData?.results?.keys.find(k => k.ARN === arn);
+                if (kmsKey) {
+                    unifiedScopedItems.push({
+                        type: 'KMS Key',
+                        region: kmsKey.Region,
+                        identifier: kmsKey.Aliases || kmsKey.KeyId,
+                        details: `Manager: ${kmsKey.KeyManager}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            case 'acm':
+                const certificate = window.acmApiData?.results?.certificates.find(c => c.CertificateArn === arn);
+                if (certificate) {
+                    unifiedScopedItems.push({
+                        type: 'ACM Certificate',
+                        region: certificate.Region,
+                        identifier: certificate.DomainName,
+                        details: `Status: ${certificate.Status}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            case 'eks':
+                const eksCluster = window.computeApiData?.results?.eks_clusters.find(c => c.ARN === arn);
+                if (eksCluster) {
+                    unifiedScopedItems.push({
+                        type: 'EKS Cluster',
+                        region: eksCluster.Region,
+                        identifier: eksCluster.ClusterName,
+                        details: `Status: Active`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            case 'ecs':
+                const ecsCluster = window.computeApiData?.results?.ecs_clusters.find(c => c.ARN === arn);
+                if (ecsCluster) {
+                    unifiedScopedItems.push({
+                        type: 'ECS Cluster',
+                        region: ecsCluster.Region,
+                        identifier: ecsCluster.ClusterName,
+                        details: `Status: ${ecsCluster.Status}, Services: ${ecsCluster.ServicesCount}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+            default:
+                // Para otros servicios no reconocidos, agregar información básica
+                unifiedScopedItems.push({
+                    type: service.toUpperCase(),
+                    region: 'Multiple',
+                    identifier: arn.split('/').pop() || arn.split(':').pop(),
+                    details: 'See ARN for full details',
+                    comment: comment,
+                    arn: arn
+                });
+                break;
+        }
     });
+
     const scopedAssetsList = unifiedScopedItems.length > 0
-        ? `<ul>${unifiedScopedItems.map(item => `
-            <li>
-                <strong>${item.type}:</strong>
-                <span>${item.identifier} (${item.region})</span>
-                <br>
-                <em>Reason: ${item.comment}</em>
-            </li>
-          `).join('')}</ul>`
-        : '<p>No specific assets were marked as in-scope during this assessment.</p>';
+        ? `<div class="scoped-assets-section">
+            <table class="scoped-assets-table">
+                <thead>
+                    <tr>
+                        <th>Resource Type</th>
+                        <th>Identifier</th>
+                        <th>Region</th>
+                        <th>Details</th>
+                        <th>Reason for Scoping</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${unifiedScopedItems.map(item => `
+                        <tr>
+                            <td><strong>${item.type}</strong></td>
+                            <td class="resource-id">${item.identifier}</td>
+                            <td>${item.region}</td>
+                            <td>${item.details}</td>
+                            <td class="scope-reason"><em>${item.comment}</em></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+           </div>`
+        : '<p class="no-scoped-assets">No specific assets were marked as in-scope during this assessment.</p>';
 
     // Generar sección de notas del auditor
     const auditorNotes = window.auditorNotes || [];
@@ -2137,7 +2271,7 @@ const processTemplate = (template, data) => {
         `;
     }).join('');
 
-    // NUEVA FUNCIONALIDAD: Generar secciones detalladas individuales para cada finding
+    // Generar secciones detalladas individuales para cada finding
     const detailedFindingsSections = findings.map((finding, index) => {
         const severity = severityMap[finding.severity] || finding.severity;
         const severityClass = severity.toLowerCase().replace('crítico', 'critical');
@@ -2206,9 +2340,11 @@ const processTemplate = (template, data) => {
         .replace(/{{CRITICAL_COUNT}}/g, criticalCount)
         .replace(/{{HIGH_COUNT}}/g, highCount)
         .replace(/{{MEDIUM_COUNT}}/g, mediumCount)
+        .replace(/{{LOW_COUNT}}/g, lowCount)
         .replace(/{{REGIONS_INCLUDED}}/g, (window.regionsIncluded && window.regionsIncluded.length > 0) ? window.regionsIncluded.join(', ') : 'All available regions')
         .replace(/{{VPCS_INCLUDED}}/g, 'All VPCs in scope')
         .replace(/{{SCOPED_ASSETS_LIST}}/g, scopedAssetsList)
+        .replace(/{{SCOPED_ASSETS_COUNT}}/g, unifiedScopedItems.length.toString())
         .replace(/{{FINDINGS_SUMMARY_ROWS}}/g, findingsSummaryRows)
         .replace(/{{DETAILED_FINDINGS_SECTIONS}}/g, detailedFindingsSections)
         .replace(/{{AUDITOR_NOTES_SECTION}}/g, auditorNotesSection);
