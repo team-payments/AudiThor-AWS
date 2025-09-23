@@ -40,20 +40,56 @@
         }
         
         .header {
-            text-align: center;
-            margin-bottom: 25px;
-            padding: 25px 15px 20px;
+            position: relative;
+            overflow: hidden;
+            /* Usamos el degradado azul oscuro de AudiThor */
             background: linear-gradient(135deg, #204071 0%, #2c5282 100%);
             border-radius: 12px;
+            padding: 30px;
+            height: 150px;
             color: white;
         }
-        
-        .header-logo {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 15px;
-            gap: 12px;
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            /* CORRECCIÓN: Los valores de los bordes para el triángulo más grande */
+            border-width: 150px 0 0 300px;
+            /* Color de tu paleta: un tono de azul oscuro */
+            border-color: transparent transparent transparent #1a2b47;
+            z-index: 1;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            /* CORRECCIÓN: Los valores de los bordes para el triángulo más pequeño */
+            border-width: 150px 0 0 200px;
+            /* Color de tu paleta: un tono de rosa/magenta */
+            border-color: transparent transparent transparent #eb3496;
+            z-index: 2;
+        }
+
+        /* El logo y el texto deben ir encima de los triángulos, por lo que necesitan z-index más alto */
+        .header-logo, .subtitle, .meta-info {
+            position: relative;
+            z-index: 3;
+        }
+
+        /* El logo y el texto deben ir encima de los triángulos, por lo que necesitan z-index más alto */
+        .header-logo, .subtitle, .meta-info {
+            position: relative;
+            z-index: 3;
         }
         
         .company-name {
@@ -399,13 +435,8 @@
 </head>
 <body>
     <div class="header">
-        <div class="header-logo">
-            <h1 class="company-name">AudiThor</h1>
-        </div>
-        <p class="subtitle">Security Findings Report</p>
-        
-        <div class="meta-info">
-            <p><strong>Client:</strong> {{CLIENT_NAME}} | <strong>Report Date:</strong> {{REPORT_DATE}} | <strong>AWS Account:</strong> {{AWS_ACCOUNT_ID}}</p>
+        <div class="header-box">
+            <p>Client: {{CLIENT_NAME}} | Report Date: {{REPORT_DATE}} | AWS Account: {{AWS_ACCOUNT_ID}}</p>
         </div>
     </div>
 
@@ -461,12 +492,14 @@
     <div class="page-break"></div>
     <h2>Findings Summary</h2>
 
+
     <table class="findings-summary-table">
         <thead>
             <tr>
-                <th style="width: 50%;">Finding Details</th>
+                <th style="width: 45%;">Finding Details</th>
                 <th style="width: 15%;">Severity</th>
-                <th style="width: 35%;">Category</th>
+                <th style="width: 25%;">Category</th>
+                <th style="width: 15%;">Affected Resources</th>
             </tr>
         </thead>
         <tbody>

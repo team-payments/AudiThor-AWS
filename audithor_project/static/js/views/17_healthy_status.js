@@ -1741,7 +1741,7 @@ const getDefaultTemplate = async () => {
 };
 
 // Función para procesar el template con los datos
-// Función para procesar el template con los datos
+
 const processTemplate = (template, data) => {
     const { clientName, findings, awsAccountId } = data;
 
@@ -1889,15 +1889,17 @@ const processTemplate = (template, data) => {
     const findingsSummaryRows = findings.map(finding => {
         const severity = severityMap[finding.severity] || finding.severity;
         const severityClass = severity.toLowerCase().replace('crítico', 'critical');
+        // Cuenta la cantidad de recursos afectados, si el array no existe, devuelve 0
+        const affectedCount = (finding.affected_resources && finding.affected_resources.length) || 0;
 
         return `
             <tr>
                 <td>
                     <div class="finding-name">${finding.name || 'Unknown Finding'}</div>
-                    <div class="finding-rule">${finding.rule_id || 'N/A'}</div>
                 </td>
                 <td><span class="severity-${severityClass}">${severity}</span></td>
                 <td><span class="category-badge">${finding.section || 'General'}</span></td>
+                <td><span class="affected-count">${affectedCount}</span></td>
             </tr>
         `;
     }).join('');
@@ -1986,6 +1988,7 @@ const processTemplate = (template, data) => {
         .replace(/{{FINDINGS_ROWS}}/g, findingsSummaryRows)
         .replace(/{{AUDITOR_NOTES_SECTION}}/g, auditorNotesSection);
 };
+
 
 
 
