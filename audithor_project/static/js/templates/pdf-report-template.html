@@ -458,6 +458,85 @@
         .scope-details ul li span {
             color: #64748b;
         }
+
+        /* Estilos para la sección de notas del auditor */
+        .notes-section {
+            margin: 30px 0;
+        }
+
+        .notes-section h2 {
+            color: #eb3496;
+            font-size: 1.6em;
+            margin: 25px 0 15px 0;
+            font-weight: 700;
+            border-bottom: 2px solid #eb3496;
+            padding-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            page-break-after: avoid;
+        }
+
+        .individual-note {
+            background: white;
+            margin: 20px 0;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            padding: 20px;
+            page-break-inside: avoid;
+        }
+
+        .individual-note h3 {
+            color: #204071;
+            font-size: 1.4em;
+            margin: 0 0 15px 0;
+            font-weight: 700;
+            border-bottom: 2px solid #eb3496;
+            padding-bottom: 5px;
+        }
+
+        .note-meta-info {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .note-meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .note-meta-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .note-meta-value {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .note-content-section {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .note-content-section p {
+            font-size: 10px;
+            line-height: 1.5;
+            color: #475569;
+            margin: 0;
+        }
+
+
+
+        
     </style>
 </head>
 <body>
@@ -537,6 +616,9 @@
     <h2>Detailed Findings</h2>
 
     {{DETAILED_FINDINGS_SECTIONS}}
+
+    <div class="page-break"></div>
+    {{AUDITOR_NOTES_SECTION}}
 
 </body>
 </html>

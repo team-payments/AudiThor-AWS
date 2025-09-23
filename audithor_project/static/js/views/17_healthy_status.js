@@ -2276,21 +2276,38 @@ const processTemplate = (template, data) => {
 
     // Generar sección de notas del auditor
     const auditorNotes = window.auditorNotes || [];
+
+
     const auditorNotesSection = auditorNotes.length > 0
         ? `<div class="notes-section">
             <h2>Auditor Notes</h2>
             ${auditorNotes.map(note => `
-                <div class="note-item">
-                    <div class="note-title">${note.title || 'Untitled Note'}</div>
-                    <div class="note-meta">
-                        ${note.timestamp ? new Date(note.timestamp).toLocaleString() : ''}
-                        ${note.arn ? `| Resource: ${note.arn}` : ''}
-                        ${note.controlId ? `| Control: ${note.controlId}` : ''}
+                <div class="individual-note">
+                    <h3>${note.title || 'Untitled Note'}</h3>
+                    <div class="note-meta-info">
+                        <div class="note-meta-item">
+                            <div class="note-meta-label">Date Created</div>
+                            <div class="note-meta-value">${note.timestamp ? new Date(note.timestamp).toLocaleDateString() : 'N/A'}</div>
+                        </div>
+                        ${note.arn ? `
+                        <div class="note-meta-item">
+                            <div class="note-meta-label">Related Resource</div>
+                            <div class="note-meta-value">${note.arn}</div>
+                        </div>
+                        ` : ''}
+                        ${note.controlId ? `
+                        <div class="note-meta-item">
+                            <div class="note-meta-label">Control ID</div>
+                            <div class="note-meta-value">${note.controlId}</div>
+                        </div>
+                        ` : ''}
                     </div>
-                    <div class="note-content">${note.content || ''}</div>
+                    <div class="note-content-section">
+                        <p>${note.content || ''}</p>
+                    </div>
                 </div>
             `).join('')}
-           </div>`
+        </div>`
         : '';
 
     // Generar tabla resumen de findings
