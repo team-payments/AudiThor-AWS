@@ -280,7 +280,7 @@ const applyFilters = () => {
     renderHealthyStatusFindings(filteredFindings);
 };
 
-const updateFindingsCount = (filtered, total, countDisplayId) => {
+const updateFindingsCount = (filtered, total, countDisplayId = 'findings-count-display') => {
     const countDisplay = document.getElementById(countDisplayId);
     if (!countDisplay) return;
 
@@ -655,19 +655,24 @@ const getSelectedFindings = () => {
 
 const generateCustomPDF = () => {
     const auditedCompany = document.getElementById('audited-company')?.value.trim();
-    const selectedFindings = getSelectedFindings();
     
     if (!auditedCompany) {
         alert('Please fill in the client company name.');
         return;
     }
     
+    // CORRECCIÓN: Obtener findings filtrados en lugar de solo los seleccionados
+    const filteredFindings = getFilteredFindingsForReport();
+    const selectedFindings = getSelectedFindings().filter(finding => 
+        filteredFindings.includes(finding)
+    );
+    
     if (selectedFindings.length === 0) {
         alert('Please select at least one finding to include in the report.');
         return;
     }
     
-    // Llamar a la función de generación de PDF con los findings seleccionados
+    // Llamar a la función de generación de PDF con los findings seleccionados Y filtrados
     generateCustomPDFReport({
         clientName: auditedCompany,
         findings: selectedFindings
@@ -857,6 +862,52 @@ const generateCustomPDFReport = async (reportData) => {
             generateButton.disabled = false;
         }
     }
+};
+
+const getFilteredFindingsForReport = () => {
+    const regionValue = document.getElementById('report-region-filter')?.value || 'all';
+    const severityValue = document.getElementById('report-severity-filter')?.value || 'all';
+    const sectionValue = document.getElementById('report-section-filter')?.value || 'all';
+    const impactValue = document.getElementById('report-impact-filter')?.value || 'all';
+
+    let filteredFindings = [...(window.lastHealthyStatusFindings || [])];
+
+    if (regionValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => {
+            const resources = finding.affected_resources || [];
+            if (resources.length === 0) return false;
+
+            return resources.some(res => {
+                if (typeof res === 'object' && res !== null) {
+                    const region = res.region || 'Global';
+                    return region === regionValue || region === 'Global';
+                } else if (typeof res === 'string') {
+                    return regionValue === 'Global';
+                }
+                return false;
+            });
+        });
+    }
+
+    if (severityValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            finding.severity === severityValue
+        );
+    }
+
+    if (sectionValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            finding.section === sectionValue
+        );
+    }
+
+    if (impactValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            classifyFindingImpact(finding) === impactValue
+        );
+    }
+
+    return filteredFindings;
 };
 
 
