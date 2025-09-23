@@ -5,16 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AudiThor - Security Findings Report</title>
     <style>
+
         @page {
             size: A4 portrait;
-            margin: 15mm;
-            @top-center { content: none; }
-            @top-right { content: none; }
-            @top-left { content: none; }
-            @bottom-center { content: none; }
-            @bottom-right { content: none; }
-            @bottom-left { content: none; }
+            margin: 15mm 15mm 25mm 15mm;
+                        
+            @bottom-left {
+                content: "Security Assessment Report";
+                font-family: 'Inter', sans-serif;
+                font-size: 8px;
+                color: #64748b;
+            }
+            
+            @bottom-right {
+                content: "Confidential Information";
+                font-family: 'Inter', sans-serif;
+                font-size: 8px;
+                color: #64748b;
+            }
         }
+
+
         @media print {
             body, .header, .summary-card, .findings-table, .individual-finding {
                 -webkit-print-color-adjust: exact !important;
@@ -361,18 +372,7 @@
             font-weight: 600;
             text-transform: uppercase;
         }
-        
-        .footer {
-            margin-top: 30px;
-            padding: 20px;
-            border-top: 3px solid #204071;
-            text-align: center;
-            color: #64748b;
-            font-size: 10px;
-            background: #f8fafc;
-            border-radius: 12px;
-        }
-        
+                
         .page-break {
             page-break-before: always;
         }
@@ -511,9 +511,5 @@
 
     {{DETAILED_FINDINGS_SECTIONS}}
 
-    <div class="footer">
-        <p><strong>AudiThor</strong> | Security Assessment Report | Generated on {{REPORT_DATE}}</p>
-        <p>This document contains confidential and proprietary information. Unauthorized distribution is prohibited.</p>
-    </div>
 </body>
 </html>
