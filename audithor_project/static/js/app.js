@@ -450,6 +450,8 @@ const runAnalysisFromInputs = async () => {
         window.secretsManagerApiData = results.secrets_manager;
         window.connectivityApiData = results.connectivity;
         window.codepipelineApiData = results.codepipeline;
+        window.lastAwsAccountId = window.iamApiData?.metadata?.accountId;
+        window.regionsIncluded = window.iamApiData?.metadata?.regions || [];
         
         console.log('=== CODEPIPELINE ASSIGNMENT DEBUG ===');
         console.log('results.codepipeline:', results.codepipeline);
