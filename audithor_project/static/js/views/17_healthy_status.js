@@ -571,12 +571,11 @@ const getSelectedFindings = () => {
 };
 
 const generateCustomPDF = () => {
-    const auditingCompany = document.getElementById('auditing-company')?.value.trim();
     const auditedCompany = document.getElementById('audited-company')?.value.trim();
     const selectedFindings = getSelectedFindings();
     
-    if (!auditingCompany || !auditedCompany) {
-        alert('Please fill in both company names.');
+    if (!auditedCompany) {
+        alert('Please fill in the client company name.');
         return;
     }
     
@@ -587,8 +586,7 @@ const generateCustomPDF = () => {
     
     // Llamar a la función de generación de PDF con los findings seleccionados
     generateCustomPDFReport({
-        auditingCompany,
-        auditedCompany,
+        clientName: auditedCompany,
         findings: selectedFindings
     });
 };
@@ -737,7 +735,7 @@ window.saveFindingChanges = (findingIndex) => {
 };
 
 const generateCustomPDFReport = async (reportData) => {
-    const { auditingCompany, auditedCompany, findings } = reportData;
+    const { clientName, findings } = reportData;
     
     const generateButton = document.getElementById('generate-custom-pdf');
     const originalText = generateButton?.textContent || '';
@@ -756,12 +754,11 @@ const generateCustomPDFReport = async (reportData) => {
         const template = await response.text();
         
         const processedHTML = processTemplate(template, {
-            companyName: auditingCompany,
-            clientName: auditedCompany,
+            clientName: clientName,
             findings: findings
         });
         
-        await generateAndDownloadPDF(processedHTML, `${auditingCompany.replace(/[^a-zA-Z0-9]/g, '-')}-Custom-Security-Report.pdf`);
+        await generateAndDownloadPDF(processedHTML, `AudiThor-Security-Report-${clientName.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
         
         log('Custom PDF report generated successfully.', 'success');
         
@@ -896,16 +893,10 @@ export const buildFindingsReportView = () => {
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h3 class="font-bold text-lg mb-4 text-[#204071]">Generate Custom Findings Report</h3>
             
-            <!-- Formulario de configuración -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Auditing Company</label>
-                    <input type="text" id="auditing-company" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Your Company Name">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Audited Company</label>
-                    <input type="text" id="audited-company" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Client Company Name">
-                </div>
+            <!-- Formulario de configuración (solo Client Company) -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Client Company</label>
+                <input type="text" id="audited-company" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Client Company Name">
             </div>
             
             <!-- Filtro por región -->
@@ -1676,11 +1667,6 @@ export const showPDFTemplateModal = () => {
             <h3 class="text-xl font-bold text-[#204071] mb-4">Generate PDF Report</h3>
             
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                <input type="text" id="pdf-company-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Your Company Name">
-            </div>
-            
-            <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Client Name</label>
                 <input type="text" id="pdf-client-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Client Name">
             </div>
@@ -1757,7 +1743,7 @@ const getDefaultTemplate = async () => {
 // Función para procesar el template con los datos
 // Función para procesar el template con los datos
 const processTemplate = (template, data) => {
-    const { companyName, clientName, findings, awsAccountId } = data;
+    const { clientName, findings, awsAccountId } = data;
 
     // Mapear severidades
     const severityMap = {
@@ -1983,7 +1969,6 @@ const processTemplate = (template, data) => {
 
     // Reemplazar placeholders
     return template
-        .replace(/{{COMPANY_NAME}}/g, companyName)
         .replace(/{{CLIENT_NAME}}/g, clientName)
         .replace(/{{REPORT_DATE}}/g, new Date().toLocaleDateString())
         .replace(/{{AWS_ACCOUNT_ID}}/g, awsAccountId || 'N/A')
@@ -2036,7 +2021,6 @@ const generateAndDownloadPDF = async (htmlContent, filename) => {
 
 
 window.processPDFGeneration = async () => {
-    const companyName = document.getElementById('pdf-company-name').value || 'Your Company';
     const clientName = document.getElementById('pdf-client-name').value || 'Client Name';
     
     // Mostrar indicador de carga
@@ -2085,7 +2069,7 @@ window.processPDFGeneration = async () => {
     </style>
 </head>
 <body>
-    <h1>{{COMPANY_NAME}} - Security Findings Report</h1>
+    <h1>AudiThor - Security Findings Report</h1>
     <p><strong>Client:</strong> {{CLIENT_NAME}} | <strong>Date:</strong> {{REPORT_DATE}}</p>
     <h2>Summary</h2>
     <p>Total Findings: <strong>{{TOTAL_FINDINGS}}</strong> | Critical: {{CRITICAL_COUNT}} | High: {{HIGH_COUNT}} | Medium: {{MEDIUM_COUNT}}</p>
@@ -2094,10 +2078,10 @@ window.processPDFGeneration = async () => {
         <thead>
             <tr><th>Finding</th><th>Severity</th><th>Category</th><th>Description</th><th>Resources</th></tr>
         </thead>
-        <tbody>{{FINDINGS_ROWS}}</tbody>
+        <tbody>{{FINDINGS_SUMMARY_ROWS}}</tbody>
     </table>
     <div style="margin-top: 40px; text-align: center; color: #666; border-top: 2px solid #ccc; padding-top: 20px;">
-        <p><strong>{{COMPANY_NAME}}</strong> | Security Assessment Report | {{REPORT_DATE}}</p>
+        <p><strong>AudiThor</strong> | Security Assessment Report | {{REPORT_DATE}}</p>
     </div>
 </body>
 </html>`;
@@ -2123,13 +2107,12 @@ window.processPDFGeneration = async () => {
         
         // 3. Procesar placeholders con datos reales
         const processedHTML = processTemplate(htmlTemplate, {
-            companyName,
             clientName,
             findings: window.lastHealthyStatusFindings
         });
         
         // 4. Generar y descargar PDF
-        await generateAndDownloadPDF(processedHTML, `${companyName.replace(/[^a-zA-Z0-9]/g, '-')}-Security-Report.pdf`);
+        await generateAndDownloadPDF(processedHTML, `AudiThor-Security-Report-${clientName.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
         
         // 5. Cerrar modal
         closePDFModal();
@@ -2149,6 +2132,8 @@ window.processPDFGeneration = async () => {
         }
     }
 };
+
+
 const removeResourceFromFinding = (findingIndex, resourceIndex) => {
     const finding = window.lastHealthyStatusFindings[findingIndex];
     if (!finding || !finding.affected_resources) return;
