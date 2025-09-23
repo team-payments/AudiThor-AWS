@@ -560,7 +560,7 @@ const renderFindingsSelectionList = (findings) => {
     if (!container) return;
     
     if (findings.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center py-4">No findings available for the selected region.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center py-4">No findings available for the selected filters.</p>';
         return;
     }
     
@@ -600,8 +600,8 @@ const renderFindingsSelectionList = (findings) => {
     // Agregar event listeners para los botones de editar
     container.querySelectorAll('.edit-finding-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const findingIndex = e.currentTarget.getAttribute('data-finding-index');
-            openEditFindingModal(parseInt(findingIndex), sortedFindings);
+            const findingIndex = parseInt(e.currentTarget.getAttribute('data-finding-index'));
+            openEditFindingModal(findingIndex, sortedFindings); // Pasar los findings filtrados
         });
     });
 };
@@ -661,23 +661,92 @@ const generateCustomPDF = () => {
         return;
     }
     
-    // CORRECCIÓN: Obtener findings filtrados en lugar de solo los seleccionados
+    // CORRECCIÓN: Primero obtener los findings filtrados actuales
     const filteredFindings = getFilteredFindingsForReport();
-    const selectedFindings = getSelectedFindings().filter(finding => 
-        filteredFindings.includes(finding)
-    );
+    
+    if (filteredFindings.length === 0) {
+        alert('No findings match the current filter criteria. Please adjust your filters.');
+        return;
+    }
+    
+    // Luego verificar cuáles de esos findings filtrados están seleccionados
+    const selectedFindings = [];
+    document.querySelectorAll('.finding-checkbox:checked').forEach(checkbox => {
+        const findingItem = checkbox.closest('.finding-item');
+        const findingIndex = parseInt(findingItem.getAttribute('data-finding-index'));
+        
+        // IMPORTANTE: Usar el array filtrado mostrado en pantalla, no el original
+        const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
+        if (currentlyDisplayedFindings[findingIndex]) {
+            selectedFindings.push(currentlyDisplayedFindings[findingIndex]);
+        }
+    });
     
     if (selectedFindings.length === 0) {
         alert('Please select at least one finding to include in the report.');
         return;
     }
     
-    // Llamar a la función de generación de PDF con los findings seleccionados Y filtrados
+    // Llamar a la función de generación de PDF con los findings seleccionados
     generateCustomPDFReport({
         clientName: auditedCompany,
         findings: selectedFindings
     });
 };
+
+const getCurrentlyDisplayedFindings = () => {
+    const regionValue = document.getElementById('report-region-filter')?.value || 'all';
+    const severityValue = document.getElementById('report-severity-filter')?.value || 'all';
+    const sectionValue = document.getElementById('report-section-filter')?.value || 'all';
+    const impactValue = document.getElementById('report-impact-filter')?.value || 'all';
+
+    let displayedFindings = [...(window.lastHealthyStatusFindings || [])];
+
+    // Aplicar exactamente los mismos filtros que se usan en la vista
+    if (regionValue !== 'all') {
+        displayedFindings = displayedFindings.filter(finding => {
+            const resources = finding.affected_resources || [];
+            if (resources.length === 0) return false;
+
+            return resources.some(res => {
+                if (typeof res === 'object' && res !== null) {
+                    const region = res.region || 'Global';
+                    return region === regionValue || region === 'Global';
+                } else if (typeof res === 'string') {
+                    return regionValue === 'Global';
+                }
+                return false;
+            });
+        });
+    }
+
+    if (severityValue !== 'all') {
+        displayedFindings = displayedFindings.filter(finding => 
+            finding.severity === severityValue
+        );
+    }
+
+    if (sectionValue !== 'all') {
+        displayedFindings = displayedFindings.filter(finding => 
+            finding.section === sectionValue
+        );
+    }
+
+    if (impactValue !== 'all') {
+        displayedFindings = displayedFindings.filter(finding => 
+            classifyFindingImpact(finding) === impactValue
+        );
+    }
+
+    // Ordenar igual que en la vista (por severidad)
+    const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 };
+    return displayedFindings.sort((a, b) => 
+        (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99)
+    );
+};
+
+
+
 
 const openEditFindingModal = (findingIndex, findings) => {
     const finding = findings[findingIndex];
