@@ -280,32 +280,34 @@ const applyFilters = () => {
     renderHealthyStatusFindings(filteredFindings);
 };
 
-const updateFindingsCount = (filtered, total) => {
-    const countDisplay = document.getElementById('findings-count-display');
-    if (countDisplay) {
-        if (filtered === total) {
-            countDisplay.innerHTML = `
-                <div class="flex items-center space-x-1">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                    </svg>
-                    <span>${total} finding${total !== 1 ? 's' : ''}</span>
-                </div>
-            `;
-            countDisplay.className = "bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center";
-        } else {
-            countDisplay.innerHTML = `
-                <div class="flex items-center space-x-1">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
-                    </svg>
-                    <span>${filtered}/${total}</span>
-                </div>
-            `;
-            countDisplay.className = "bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center animate-pulse";
-        }
+const updateFindingsCount = (filtered, total, countDisplayId) => {
+    const countDisplay = document.getElementById(countDisplayId);
+    if (!countDisplay) return;
+
+    if (filtered === total) {
+        countDisplay.innerHTML = `
+            <div class="flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                <span>${total} finding${total !== 1 ? 's' : ''}</span>
+            </div>
+        `;
+        countDisplay.className = "bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center";
+    } else {
+        countDisplay.innerHTML = `
+            <div class="flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
+                </svg>
+                <span>${filtered}/${total}</span>
+            </div>
+        `;
+        countDisplay.className = "bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center animate-pulse";
     }
 };
+
+
 
 const updateActiveFiltersDisplay = () => {
     const activeFiltersContainer = document.getElementById('active-filters-container');
@@ -408,27 +410,71 @@ const setupFindingsReportEvents = () => {
     document.getElementById('select-all-findings')?.addEventListener('click', selectAllFindings);
     document.getElementById('deselect-all-findings')?.addEventListener('click', deselectAllFindings);
     document.getElementById('generate-custom-pdf')?.addEventListener('click', generateCustomPDF);
-    
-    // Poblar la lista inicial
+
+    // Pasa los findings iniciales a la función de renderizado
     populateFindingsReportData();
+
+    // Configura los event listeners para los nuevos filtros
+    const regionFilter = document.getElementById('report-region-filter');
+    const severityFilter = document.getElementById('report-severity-filter');
+    const sectionFilter = document.getElementById('report-section-filter');
+    const impactFilter = document.getElementById('report-impact-filter');
+    const resetBtn = document.getElementById('report-reset-filters-btn');
+
+    let filterTimeout;
+    const debouncedApplyFilters = () => {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(applyReportFilters, 100);
+    };
+
+    [regionFilter, severityFilter, sectionFilter, impactFilter].forEach(filter => {
+        if (filter) {
+            filter.removeEventListener('change', debouncedApplyFilters);
+            filter.addEventListener('change', debouncedApplyFilters);
+        }
+    });
+
+    if (resetBtn) {
+        resetBtn.removeEventListener('click', resetReportFilters);
+        resetBtn.addEventListener('click', resetReportFilters);
+    }
+
+    // Observa la pestaña para refrescar los filtros cuando se haga visible
+    const container = document.getElementById('hs-findings-report-content');
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && 
+                mutation.attributeName === 'class' && 
+                !container.classList.contains('hidden')) {
+                // La pestaña se hizo visible, refrescar datos
+                populateFindingsReportData();
+            }
+        });
+    });
+    observer.observe(container, { attributes: true });
 };
 
 const populateFindingsReportData = () => {
     const regionFilter = document.getElementById('report-region-filter');
+    const severityFilter = document.getElementById('report-severity-filter');
+    const sectionFilter = document.getElementById('report-section-filter');
+    const impactFilter = document.getElementById('report-impact-filter');
     const findingsList = document.getElementById('findings-selection-list');
-    
-    if (!regionFilter || !findingsList) return;
-    
+
+    if (!regionFilter || !severityFilter || !sectionFilter || !impactFilter || !findingsList) return;
+
     const findings = window.lastHealthyStatusFindings || [];
-    
-    // Si no hay findings, mostrar mensaje
+
     if (findings.length === 0) {
         findingsList.innerHTML = '<p class="text-gray-500 text-center py-8">No findings available yet. Please run an analysis from another section first.</p>';
         regionFilter.innerHTML = '<option value="all">All Regions</option>';
+        severityFilter.innerHTML = '<option value="all">All Severities</option>';
+        sectionFilter.innerHTML = '<option value="all">All Sections</option>';
+        impactFilter.innerHTML = '<option value="all">All Impact Types</option>';
         return;
     }
-    
-    // Poblar filtro de regiones
+
+    // Poblar filtros de región
     const regions = new Set();
     findings.forEach(finding => {
         (finding.affected_resources || []).forEach(res => {
@@ -436,7 +482,6 @@ const populateFindingsReportData = () => {
             regions.add(region);
         });
     });
-    
     regionFilter.innerHTML = '<option value="all">All Regions</option>';
     Array.from(regions).sort().forEach(region => {
         const option = document.createElement('option');
@@ -444,13 +489,51 @@ const populateFindingsReportData = () => {
         option.textContent = region;
         regionFilter.appendChild(option);
     });
-    
-    // Escuchar cambios en el filtro
-    regionFilter.removeEventListener('change', filterAndRenderFindings); // Evitar listeners duplicados
-    regionFilter.addEventListener('change', filterAndRenderFindings);
-    
-    // Renderizar findings iniciales
-    filterAndRenderFindings();
+
+    // Poblar filtros de severidad
+    const severities = ['Crítico', 'Alto', 'Medio', 'Bajo', 'Informativo'];
+    const severityLabels = { 'Crítico': 'Critical', 'Alto': 'High', 'Medio': 'Medium', 'Bajo': 'Low', 'Informativo': 'Info' };
+    severityFilter.innerHTML = '<option value="all">All Severities</option>';
+    severities.forEach(severity => {
+        const option = document.createElement('option');
+        option.value = severity;
+        option.textContent = severityLabels[severity] || severity;
+        severityFilter.appendChild(option);
+    });
+
+    // Poblar filtros de sección
+    const sections = new Set(findings.map(f => f.section).filter(Boolean));
+    sectionFilter.innerHTML = '<option value="all">All Sections</option>';
+    Array.from(sections).sort().forEach(section => {
+        const option = document.createElement('option');
+        option.value = section;
+        option.textContent = section;
+        sectionFilter.appendChild(option);
+    });
+
+    // Poblar filtros de impacto
+    const impacts = new Set(findings.map(classifyFindingImpact).filter(Boolean));
+    const impactLabels = {
+        'compliance': 'Compliance Risk',
+        'data_breach': 'Data Breach Risk',
+        'operational': 'Operational Risk',
+        'access_control': 'Access Control Risk',
+        'monitoring': 'Monitoring Gap',
+        'encryption': 'Encryption Issue'
+    };
+    impactFilter.innerHTML = '<option value="all">All Impact Types</option>';
+    Array.from(impacts).sort().forEach(impact => {
+        const option = document.createElement('option');
+        option.value = impact;
+        option.textContent = impactLabels[impact] || impact;
+        impactFilter.appendChild(option);
+    });
+
+    // Renderizar hallazgos iniciales sin filtros
+    renderFindingsSelectionList(findings);
+
+    // Actualizar el conteo de hallazgos
+    updateFindingsCount(findings.length, findings.length, 'report-findings-count-display');
 };
 
 const filterAndRenderFindings = () => {
@@ -893,29 +976,104 @@ export const buildFindingsReportView = () => {
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h3 class="font-bold text-lg mb-4 text-[#204071]">Generate Custom Findings Report</h3>
             
-            <!-- Formulario de configuración (solo Client Company) -->
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Client Company</label>
                 <input type="text" id="audited-company" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Client Company Name">
             </div>
-            
-            <!-- Filtro por región -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Region</label>
-                <select id="report-region-filter" class="w-full p-2 border border-gray-300 rounded-lg">
-                    <option value="all">All Regions</option>
-                </select>
-            </div>
-            
-            <!-- Lista de findings para seleccionar -->
-            <div class="mb-6">
-                <h4 class="font-semibold text-gray-800 mb-3">Select Findings to Include</h4>
-                <div id="findings-selection-list" class="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4">
-                    <!-- Aquí se llenarán los findings -->
+
+            <div class="bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-[#eb3496]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293.707L3.293 7.707A1 1 0 013 7V4z"></path>
+                        </svg>
+                        <h3 class="text-lg font-bold text-gray-800">Filter Options</h3>
+                    </div>
+                    <div id="report-findings-count-display" class="bg-[#eb3496] text-white px-3 py-1 rounded-full text-sm font-semibold"></div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+                    <div class="group">
+                        <label for="report-region-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-blue-500" viewBox="0 0 16 16">
+                                <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A32 32 0 0 1 8 14.58a32 32 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10"/>
+                                <path d="M8 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4m0 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+                            </svg>
+                            Region
+                        </label>
+                        <select id="report-region-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-blue-300">
+                            <option value="all">All Regions</option>
+                        </select>
+                    </div>
+                    
+                    <div class="group">
+                        <label for="report-severity-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-red-500" viewBox="0 0 16 16">
+                                <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
+                                <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+                            </svg>
+                            Severity
+                        </label>
+                        <select id="report-severity-filter" class="severity-select w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-red-300">
+                            <option value="all">All Severities</option>
+                        </select>
+                    </div>
+                    
+                    <div class="group">
+                        <label for="report-section-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-green-500" viewBox="0 0 16 16">
+                                <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464z"/>
+                            </svg>
+                            Section
+                        </label>
+                        <select id="report-section-filter" class="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-green-300">
+                            <option value="all">All Sections</option>
+                        </select>
+                    </div>
+                    
+                    <div class="group">
+                        <label for="report-impact-filter" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-4 h-4 mr-1 text-purple-500" viewBox="0 0 16 16">
+                                <path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2.5-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16m0-1c-1.657 0-3-1-3-2.75 0-.75.25-2 1.25-3C6.125 10 7 10.5 7 10.5c-.375-1.25.5-3.25 2-3.5-.179 1-.25 2 1 3 .625.5 1 1.364 1 2.25C11 14 9.657 15 8 15"/>
+                            </svg>
+                            Impact Type
+                        </label>
+                        <select id="report-impact-filter" class="impact-select w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#eb3496] focus:border-[#eb3496] transition-all duration-200 bg-white hover:border-gray-300 group-hover:border-purple-300">
+                            <option value="all">All Impact Types</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="report-active-filters-display" class="hidden mb-4">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-sm font-medium text-gray-600">Active filters:</span>
+                        <div id="report-active-filters-container" class="flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <button id="report-reset-filters-btn" class="inline-flex items-center px-4 py-2 text-sm font-medium text-[#eb3496] bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 hover:border-[#eb3496] transition-all duration-200 group">
+                        <svg class="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Reset All Filters
+                    </button>
+                    
+                    <div class="flex items-center space-x-2 text-sm text-gray-600">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <span>Active filters will update results instantly</span>
+                    </div>
                 </div>
             </div>
             
-            <!-- Botones de acción -->
+            <div class="mb-6">
+                <h4 class="font-semibold text-gray-800 mb-3">Select Findings to Include</h4>
+                <div id="findings-selection-list" class="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                    </div>
+            </div>
+            
             <div class="flex space-x-3">
                 <button id="select-all-findings" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Select All</button>
                 <button id="deselect-all-findings" class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">Deselect All</button>
@@ -2205,4 +2363,72 @@ const updateResourcesListInModal = (resources) => {
             removeResourceFromFinding(findingIndex, resourceIndex);
         });
     });
+};
+
+const applyReportFilters = () => {
+    const regionValue = document.getElementById('report-region-filter')?.value || 'all';
+    const severityValue = document.getElementById('report-severity-filter')?.value || 'all';
+    const sectionValue = document.getElementById('report-section-filter')?.value || 'all';
+    const impactValue = document.getElementById('report-impact-filter')?.value || 'all';
+
+    let filteredFindings = [...(window.lastHealthyStatusFindings || [])];
+
+    if (regionValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => {
+            const resources = finding.affected_resources || [];
+            if (resources.length === 0) return false;
+
+            return resources.some(res => {
+                if (typeof res === 'object' && res !== null) {
+                    const region = res.region || 'Global';
+                    return region === regionValue || region === 'Global';
+                } else if (typeof res === 'string') {
+                    return regionValue === 'Global';
+                }
+                return false;
+            });
+        });
+    }
+
+    if (severityValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            finding.severity === severityValue
+        );
+    }
+
+    if (sectionValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            finding.section === sectionValue
+        );
+    }
+
+    if (impactValue !== 'all') {
+        filteredFindings = filteredFindings.filter(finding => 
+            classifyFindingImpact(finding) === impactValue
+        );
+    }
+
+    updateFindingsCount(filteredFindings.length, (window.lastHealthyStatusFindings || []).length, 'report-findings-count-display');
+
+    updateActiveFiltersDisplay('report');
+
+    renderFindingsSelectionList(filteredFindings);
+};
+
+const resetReportFilters = () => {
+    const filters = [
+        'report-region-filter', 
+        'report-severity-filter', 
+        'report-section-filter', 
+        'report-impact-filter'
+    ];
+
+    filters.forEach(filterId => {
+        const filter = document.getElementById(filterId);
+        if (filter) {
+            filter.value = 'all';
+        }
+    });
+
+    setTimeout(applyReportFilters, 50);
 };
