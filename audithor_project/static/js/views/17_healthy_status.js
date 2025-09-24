@@ -414,6 +414,8 @@ const setupFindingsReportEvents = () => {
     document.getElementById('select-all-findings')?.addEventListener('click', selectAllFindings);
     document.getElementById('deselect-all-findings')?.addEventListener('click', deselectAllFindings);
     document.getElementById('generate-custom-pdf')?.addEventListener('click', generateCustomPDF);
+    document.getElementById('reset-finding-edits')?.addEventListener('click', resetFindingEdits);
+
 
     // Pasa los findings iniciales a la función de renderizado
     populateFindingsReportData();
@@ -458,6 +460,7 @@ const setupFindingsReportEvents = () => {
     observer.observe(container, { attributes: true });
 };
 
+// REEMPLAZA LA FUNCIÓN ENTERA
 const populateFindingsReportData = () => {
     const regionFilter = document.getElementById('report-region-filter');
     const severityFilter = document.getElementById('report-severity-filter');
@@ -467,9 +470,10 @@ const populateFindingsReportData = () => {
 
     if (!regionFilter || !severityFilter || !sectionFilter || !impactFilter || !findingsList) return;
 
-    const findings = window.lastHealthyStatusFindings || [];
+    // ¡CAMBIO CLAVE! Creamos aquí la copia editable para trabajar sobre ella.
+    window.editableFindings = JSON.parse(JSON.stringify(window.lastHealthyStatusFindings || []));
 
-    if (findings.length === 0) {
+    if (window.editableFindings.length === 0) {
         findingsList.innerHTML = '<p class="text-gray-500 text-center py-8">No findings available yet. Please run an analysis from another section first.</p>';
         regionFilter.innerHTML = '<option value="all">All Regions</option>';
         severityFilter.innerHTML = '<option value="all">All Severities</option>';
@@ -477,6 +481,8 @@ const populateFindingsReportData = () => {
         impactFilter.innerHTML = '<option value="all">All Impact Types</option>';
         return;
     }
+
+    const findings = window.editableFindings; // Usamos la copia
 
     // Poblar filtros de región
     const regions = new Set();
@@ -540,10 +546,10 @@ const populateFindingsReportData = () => {
     updateFindingsCount(findings.length, findings.length, 'report-findings-count-display');
     
     if (window.reportCheckboxStates.size === 0) {
-    for (let i = 0; i < findings.length; i++) {
-        window.reportCheckboxStates.add(i);
+        for (let i = 0; i < findings.length; i++) {
+            window.reportCheckboxStates.add(i);
+        }
     }
-}
 };
 
 const filterAndRenderFindings = () => {
@@ -709,15 +715,16 @@ const selectedFindings = getSelectedFindings();
     });
 };
 
+// REEMPLAZA LA FUNCIÓN ENTERA
 const getCurrentlyDisplayedFindings = () => {
     const regionValue = document.getElementById('report-region-filter')?.value || 'all';
     const severityValue = document.getElementById('report-severity-filter')?.value || 'all';
     const sectionValue = document.getElementById('report-section-filter')?.value || 'all';
     const impactValue = document.getElementById('report-impact-filter')?.value || 'all';
 
-    let displayedFindings = [...(window.lastHealthyStatusFindings || [])];
+    // ¡CAMBIO CLAVE! Se obtienen los datos de la copia editable.
+    let displayedFindings = [...(window.editableFindings || [])];
 
-    // Aplicar exactamente los mismos filtros que se usan en la vista
     if (regionValue !== 'all') {
         displayedFindings = displayedFindings.filter(finding => {
             const resources = finding.affected_resources || [];
@@ -753,7 +760,6 @@ const getCurrentlyDisplayedFindings = () => {
         );
     }
 
-    // Ordenar igual que en la vista (por severidad)
     const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 };
     return displayedFindings.sort((a, b) => 
         (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99)
@@ -884,28 +890,28 @@ window.closeEditFindingModal = () => {
     if (modal) modal.remove();
 };
 
+// REEMPLAZA LA FUNCIÓN ENTERA
 window.saveFindingChanges = (findingIndex) => {
     const name = document.getElementById('edit-finding-name')?.value.trim();
     const description = document.getElementById('edit-finding-description')?.value.trim();
     const remediation = document.getElementById('edit-finding-remediation')?.value.trim();
     const severity = document.getElementById('edit-finding-severity')?.value;
     
-    // CORREGIR: Obtener el finding del array filtrado que se está mostrando
     const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
     const findingToEdit = currentlyDisplayedFindings[findingIndex];
     
     if (!findingToEdit) return;
     
-    // Buscar este finding en el array original por sus propiedades únicas
-    const originalIndex = window.lastHealthyStatusFindings.findIndex(f => 
+    // ¡CAMBIO CLAVE! Buscamos el hallazgo en la lista editable para modificarlo.
+    const editableIndex = window.editableFindings.findIndex(f => 
         f.rule_id === findingToEdit.rule_id && 
         f.name === findingToEdit.name && 
         f.section === findingToEdit.section
     );
     
-    if (originalIndex !== -1) {
-        window.lastHealthyStatusFindings[originalIndex] = {
-            ...window.lastHealthyStatusFindings[originalIndex],
+    if (editableIndex !== -1) {
+        window.editableFindings[editableIndex] = {
+            ...window.editableFindings[editableIndex], // Mantiene los recursos
             name,
             description,
             remediation,
@@ -913,8 +919,7 @@ window.saveFindingChanges = (findingIndex) => {
         };
     }
     
-    // Refrescar la vista
-    applyReportFilters(); // Usar applyReportFilters en lugar de filterAndRenderFindings
+    applyReportFilters();
     closeEditFindingModal();
 };
 
@@ -1224,6 +1229,7 @@ export const buildFindingsReportView = () => {
             <div class="flex space-x-3">
                 <button id="select-all-findings" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Select All</button>
                 <button id="deselect-all-findings" class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">Deselect All</button>
+                <button id="reset-finding-edits" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Reset Edits</button>
                 <button id="generate-custom-pdf" class="px-4 py-2 bg-[#204071] text-white rounded-lg hover:bg-[#1a365d]">Generate PDF Report</button>
             </div>
         </div>
@@ -2617,36 +2623,32 @@ window.processPDFGeneration = async () => {
     }
 };
 
+// REEMPLAZA LA FUNCIÓN ENTERA
 const removeResourceFromFinding = (findingIndex, resourceIndex) => {
-    // Obtener el finding del array filtrado que se está mostrando
     const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
     const findingToEdit = currentlyDisplayedFindings[findingIndex];
     
     if (!findingToEdit || !findingToEdit.affected_resources) return;
     
-    // Buscar este finding en el array original por sus propiedades únicas
-    const originalIndex = window.lastHealthyStatusFindings.findIndex(f => 
+    // ¡CAMBIO CLAVE! Buscamos el hallazgo en la lista editable para modificar sus recursos.
+    const editableIndex = window.editableFindings.findIndex(f => 
         f.rule_id === findingToEdit.rule_id && 
         f.name === findingToEdit.name && 
         f.section === findingToEdit.section
     );
     
-    if (originalIndex !== -1) {
-        const originalFinding = window.lastHealthyStatusFindings[originalIndex];
+    if (editableIndex !== -1) {
+        const originalFinding = window.editableFindings[editableIndex];
         if (originalFinding.affected_resources && originalFinding.affected_resources[resourceIndex]) {
-            // Remover el recurso del array original
             originalFinding.affected_resources.splice(resourceIndex, 1);
             
-            // También remover del finding filtrado para actualizar la vista del modal
             findingToEdit.affected_resources.splice(resourceIndex, 1);
             
-            // Refrescar la vista del modal
             const resourcesList = document.getElementById('affected-resources-list');
             if (resourcesList) {
                 updateResourcesListInModal(findingToEdit.affected_resources);
             }
             
-            // Actualizar el contador en el modal
             const label = document.querySelector('#edit-finding-modal label');
             if (label) {
                 label.textContent = `Affected Resources (${findingToEdit.affected_resources.length})`;
@@ -2705,13 +2707,15 @@ const updateResourcesListInModal = (resources) => {
     });
 };
 
+// REEMPLAZA LA FUNCIÓN ENTERA
 const applyReportFilters = () => {
     const regionValue = document.getElementById('report-region-filter')?.value || 'all';
     const severityValue = document.getElementById('report-severity-filter')?.value || 'all';
     const sectionValue = document.getElementById('report-section-filter')?.value || 'all';
     const impactValue = document.getElementById('report-impact-filter')?.value || 'all';
 
-    let filteredFindings = [...(window.lastHealthyStatusFindings || [])];
+    // ¡CAMBIO CLAVE! Se filtra sobre la copia editable.
+    let filteredFindings = [...(window.editableFindings || [])];
 
     if (regionValue !== 'all') {
         filteredFindings = filteredFindings.filter(finding => {
@@ -2748,10 +2752,8 @@ const applyReportFilters = () => {
         );
     }
 
-    updateFindingsCount(filteredFindings.length, (window.lastHealthyStatusFindings || []).length, 'report-findings-count-display');
-
+    updateFindingsCount(filteredFindings.length, (window.editableFindings || []).length, 'report-findings-count-display');
     updateActiveFiltersDisplay('report');
-
     renderFindingsSelectionList(filteredFindings);
 };
 
@@ -2771,4 +2773,17 @@ const resetReportFilters = () => {
     });
 
     setTimeout(applyReportFilters, 50);
+};
+
+// AÑADE ESTA FUNCIÓN COMPLETA
+const resetFindingEdits = () => {
+    if (confirm('¿Estás seguro de que quieres descartar todas las ediciones y restaurar los hallazgos originales?')) {
+        // 1. Restaura la copia editable a partir de la fuente original
+        window.editableFindings = JSON.parse(JSON.stringify(window.lastHealthyStatusFindings || []));
+        
+        // 2. Vuelve a aplicar los filtros y a dibujar la lista en pantalla
+        applyReportFilters(); 
+        
+        log('Las ediciones de los hallazgos han sido reiniciadas.', 'info');
+    }
 };
