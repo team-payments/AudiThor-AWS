@@ -2388,6 +2388,67 @@ const processTemplate = (template, data) => {
         `;
     }).join('');
 
+    // Calcular datos para los gráficos
+    const severityCounts = {
+        critical: findings.filter(f => f.severity === 'Crítico').length,
+        high: findings.filter(f => f.severity === 'Alto').length,
+        medium: findings.filter(f => f.severity === 'Medio').length,
+        low: findings.filter(f => f.severity === 'Bajo').length
+    };
+
+    const maxSeverityCount = Math.max(...Object.values(severityCounts));
+
+// Generar datos para el gráfico stacked
+    const sectionCounts = {};
+    findings.forEach(finding => {
+        const section = finding.section || 'Other';
+        if (!sectionCounts[section]) {
+            sectionCounts[section] = { critical: 0, high: 0, medium: 0, low: 0 };
+        }
+        
+        switch(finding.severity) {
+            case 'Crítico': sectionCounts[section].critical++; break;
+            case 'Alto': sectionCounts[section].high++; break;
+            case 'Medio': sectionCounts[section].medium++; break;
+            case 'Bajo': sectionCounts[section].low++; break;
+        }
+    });
+
+    // Generar HTML para el stacked chart
+    let stackedChartData = '';
+    const maxSectionTotal = Math.max(...Object.values(sectionCounts).map(s => s.critical + s.high + s.medium + s.low));
+
+    Object.entries(sectionCounts)
+        .sort(([,a], [,b]) => (b.critical + b.high + b.medium + b.low) - (a.critical + a.high + a.medium + a.low))
+        .forEach(([section, counts]) => {
+            const total = counts.critical + counts.high + counts.medium + counts.low;
+            const barWidth = (total / maxSectionTotal) * 100;
+            
+            // Calcular porcentajes para cada segmento
+            const criticalWidth = (counts.critical / total) * barWidth;
+            const highWidth = (counts.high / total) * barWidth;
+            const mediumWidth = (counts.medium / total) * barWidth;
+            const lowWidth = (counts.low / total) * barWidth;
+            
+            stackedChartData += `
+                <div class="stack-bar-row">
+                    <div class="stack-bar" style="height: ${(total / maxSectionTotal) * 150}px; position: relative;">
+                        <div class="stack-total">${total}</div>
+                        ${counts.low > 0 ? `<div class="stack-segment severity-low" style="height: ${(counts.low / total) * ((total / maxSectionTotal) * 150)}px">${counts.low}</div>` : ''}
+                        ${counts.medium > 0 ? `<div class="stack-segment severity-medium" style="height: ${(counts.medium / total) * ((total / maxSectionTotal) * 150)}px">${counts.medium}</div>` : ''}
+                        ${counts.high > 0 ? `<div class="stack-segment severity-high" style="height: ${(counts.high / total) * ((total / maxSectionTotal) * 150)}px">${counts.high}</div>` : ''}
+                        ${counts.critical > 0 ? `<div class="stack-segment severity-critical" style="height: ${(counts.critical / total) * ((total / maxSectionTotal) * 150)}px">${counts.critical}</div>` : ''}
+                    </div>
+                    <div class="stack-label">${section}</div>
+                </div>
+            `;
+        });
+
+    // Reemplazar placeholders
+    template = template.replace(/{{STACKED_CHART_DATA}}/g, stackedChartData);
+
+
+
     // Reemplazar placeholders
     return template
         .replace(/{{CLIENT_NAME}}/g, clientName)
