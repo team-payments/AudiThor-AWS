@@ -552,25 +552,6 @@ const populateFindingsReportData = () => {
     }
 };
 
-const filterAndRenderFindings = () => {
-    const regionFilter = document.getElementById('report-region-filter');
-    const selectedRegion = regionFilter?.value || 'all';
-    const findings = window.lastHealthyStatusFindings || [];
-    
-    let filteredFindings = findings;
-    
-    if (selectedRegion !== 'all') {
-        filteredFindings = findings.filter(finding => {
-            return (finding.affected_resources || []).some(res => {
-                const region = res.region || 'Global';
-                return region === selectedRegion || region === 'Global';
-            });
-        });
-    }
-    
-    renderFindingsSelectionList(filteredFindings);
-};
-
 const renderFindingsSelectionList = (findings) => {
     const container = document.getElementById('findings-selection-list');
     if (!container) return;
@@ -965,53 +946,6 @@ const generateCustomPDFReport = async (reportData) => {
     }
 };
 
-const getFilteredFindingsForReport = () => {
-    const regionValue = document.getElementById('report-region-filter')?.value || 'all';
-    const severityValue = document.getElementById('report-severity-filter')?.value || 'all';
-    const sectionValue = document.getElementById('report-section-filter')?.value || 'all';
-    const impactValue = document.getElementById('report-impact-filter')?.value || 'all';
-
-    let filteredFindings = [...(window.lastHealthyStatusFindings || [])];
-
-    if (regionValue !== 'all') {
-        filteredFindings = filteredFindings.filter(finding => {
-            const resources = finding.affected_resources || [];
-            if (resources.length === 0) return false;
-
-            return resources.some(res => {
-                if (typeof res === 'object' && res !== null) {
-                    const region = res.region || 'Global';
-                    return region === regionValue || region === 'Global';
-                } else if (typeof res === 'string') {
-                    return regionValue === 'Global';
-                }
-                return false;
-            });
-        });
-    }
-
-    if (severityValue !== 'all') {
-        filteredFindings = filteredFindings.filter(finding => 
-            finding.severity === severityValue
-        );
-    }
-
-    if (sectionValue !== 'all') {
-        filteredFindings = filteredFindings.filter(finding => 
-            finding.section === sectionValue
-        );
-    }
-
-    if (impactValue !== 'all') {
-        filteredFindings = filteredFindings.filter(finding => 
-            classifyFindingImpact(finding) === impactValue
-        );
-    }
-
-    return filteredFindings;
-};
-
-
 // --- IMPACT CLASSIFICATION ---
 const classifyFindingImpact = (finding) => {
     const name = (finding.name || '').toLowerCase();
@@ -1332,52 +1266,6 @@ export const generateGeminiReport = async () => {
     }
 };
 
-export const check_healthy_status_rules = (auditData) => {
-    const findings = [];
-    
-    try {
-        const users = auditData.iam?.results?.users || [];
-        const noMfaUsers = users.filter(user => 
-            !user.MFADevices || user.MFADevices.length === 0
-        ).map(user => user.UserName || 'Unknown user');
-        
-        if (noMfaUsers.length > 0) {
-            findings.push({
-                rule_id: "IAM_001",
-                section: "Identity & Access",
-                name: "User without MFA enabled",
-                severity: "Alto",
-                description: "IAM users without Multi-Factor Authentication (MFA) enabled pose a significant security risk.",
-                remediation: "Enable MFA for all IAM users, especially those with console access.",
-                affected_resources: noMfaUsers.map(name => ({ resource: name, region: 'Global' }))
-            });
-        }
-
-        const guarddutyStatus = auditData.guardduty?.results?.status || [];
-        const disabledGuardDuty = guarddutyStatus.filter(status => 
-            status.Status !== "Enabled"
-        ).map(status => status.Region);
-        
-        if (disabledGuardDuty.length > 0) {
-            findings.push({
-                rule_id: "GUARDDUTY_001",
-                section: "Security Services",
-                name: "GuardDuty not enabled in some regions",
-                severity: "Medio",
-                description: "AWS GuardDuty provides threat detection but is not enabled in all regions.",
-                remediation: "Enable GuardDuty in all active AWS regions for comprehensive threat detection.",
-                affected_resources: disabledGuardDuty.map(region => ({ resource: 'GuardDuty Service', region }))
-            });
-        }
-
-    } catch (error) {
-        console.error('Error in rule checking:', error);
-        log(`Error checking rules: ${error.message}`, 'error');
-    }
-
-    return findings;
-};
-
 export const renderHealthyStatusFindings = (findings) => {
     const container = document.getElementById('healthy-status-container');
     if (!container) return;
@@ -1568,17 +1456,6 @@ export const populateHealthyStatusFilter = (findings) => {
         updateFindingsCount(findings.length, findings.length);
     }
 };
-
-export const initializeFiltersAfterDataLoad = (findings) => {
-    window.lastHealthyStatusFindings = findings || [];
-    
-    populateHealthyStatusFilter(findings);
-    
-    renderHealthyStatusFindings(findings);
-    
-    setupFilterEventListeners();
-};
-
 
 /**
  * Construye la vista de inventario de recursos marcados (scoped) en una tabla unificada.
