@@ -294,6 +294,18 @@ function renderWafAclsTable(acls) {
 function renderWafAclRow(acl) {
     // Resources HTML
     let resourcesHtml = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">No associated resources</span>';
+
+    if (acl.Version === 'Classic') {
+        resourcesHtml = `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800" title="La API de WAF Classic no permite listar recursos asociados directamente. Revisa manualmente en la consola.">Revisión Manual Requerida</span>`;
+    } 
+    // --- FIN DE LA MODIFICACIÓN ---
+    else if (acl.AssociatedResourceArns && acl.AssociatedResourceArns.length > 0) {
+        resourcesHtml = `<div class="flex flex-col space-y-1">` + 
+            acl.AssociatedResourceArns.map(arn => 
+                `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 font-mono">${arn}</span>`
+            ).join('') + `</div>`;
+    }
+
     if (acl.AssociatedResourceArns && acl.AssociatedResourceArns.length > 0) {
         resourcesHtml = `<div class="flex flex-col space-y-1">` + 
             acl.AssociatedResourceArns.map(arn => 

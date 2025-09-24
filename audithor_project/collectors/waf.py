@@ -33,6 +33,12 @@ def parse_resource_arn(arn):
             api_parts = resource_part.split('/')
             if len(api_parts) > 2:
                 return f"{api_parts[1]}/{api_parts[2]}"
+        # Para ARNs de API Gateway Stages
+        if 'execute-api' in parts[2]:
+            return f"apigw-stage/{resource_part.split('/')[-1]}"
+        # Para ARNs de CloudFront
+        if 'cloudfront' in parts[2]:
+            return f"cloudfront/{resource_part.split('/')[-1]}"
         return resource_part.split('/')[-1]
     except Exception:
         return arn
@@ -131,7 +137,11 @@ def collect_waf_data(session):
     all_ip_sets = []
     regions = get_all_aws_regions(session)
 
-    # --- 1. Collect CloudFront (Global) Web ACLs ---
+    # Listas temporales para WAF Classic
+    classic_global_acls = []
+    classic_regional_acls = {} # Usaremos un diccionario para las regionales
+
+    # --- 1. Collect CloudFront (Global) Web ACLs from WAFv2 ---
     try:
         client_global = session.client("wafv2", region_name="us-east-1")
         response = client_global.list_web_acls(Scope="CLOUDFRONT")
@@ -146,12 +156,10 @@ def collect_waf_data(session):
                 WebACLArn=acl_summary["ARN"]
             ).get("ResourceArns", [])
             
-            # Get detailed logging configuration
             logging_details = get_logging_configuration_details(
                 client_global, acl_summary["ARN"], "CLOUDFRONT"
             )
             
-            # --- Collect CloudWatch metrics for the ACL ---
             top_rules = []
             try:
                 cloudwatch_client = session.client('cloudwatch', region_name="us-east-1")
@@ -167,7 +175,7 @@ def collect_waf_data(session):
                                     {'Name': 'Rule', 'Value': 'ALL'}
                                 ]
                             },
-                            'Period': 2592000,  # 30 days in seconds
+                            'Period': 2592000,
                             'Stat': 'Sum',
                         },
                         'ReturnData': True,
@@ -182,7 +190,7 @@ def collect_waf_data(session):
                         if total_blocked > 0:
                             top_rules.append({"RuleName": rule_name, "BlockedRequests": int(total_blocked)})
             except ClientError:
-                pass # Fails silently if metrics are not available
+                pass 
 
             all_acls.append({
                 "Name": acl_summary["Name"],
@@ -199,8 +207,22 @@ def collect_waf_data(session):
     except ClientError:
         pass
 
+    # --- 1.5. Collect CloudFront (Global) Web ACLs IDs from WAF Classic ---
+    try:
+        client_classic_global = session.client("waf", region_name="us-east-1")
+        response_classic = client_classic_global.list_web_acls(Limit=100)
+        
+        for acl_summary in response_classic.get("WebACLs", []):
+            classic_global_acls.append({
+                "Name": f"{acl_summary['Name']} (Classic)",
+                "Id": acl_summary["WebACLId"]
+            })
+    except ClientError as e:
+        pass
+
     # --- 2. Collect Regional Web ACLs ---
     for region in regions:
+        # --- 2.1 Regional WAFv2 ---
         try:
             client_regional = session.client("wafv2", region_name=region)
             response = client_regional.list_web_acls(Scope="REGIONAL")
@@ -215,12 +237,10 @@ def collect_waf_data(session):
                     WebACLArn=acl_summary["ARN"]
                 ).get("ResourceArns", [])
 
-                # Get detailed logging configuration
                 logging_details = get_logging_configuration_details(
                     client_regional, acl_summary["ARN"], "REGIONAL"
                 )
 
-                # --- Collect CloudWatch metrics for the ACL ---
                 top_rules = []
                 try:
                     cloudwatch_client = session.client('cloudwatch', region_name=region)
@@ -236,7 +256,7 @@ def collect_waf_data(session):
                                         {'Name': 'Rule', 'Value': 'ALL'}
                                     ]
                                 },
-                                'Period': 259200, # 3 days in seconds
+                                'Period': 259200,
                                 'Stat': 'Sum',
                             },
                             'ReturnData': True,
@@ -251,7 +271,7 @@ def collect_waf_data(session):
                             if total_blocked > 0:
                                 top_rules.append({"RuleName": rule_name, "BlockedRequests": int(total_blocked)})
                 except ClientError:
-                    pass # Fails silently if metrics are not available
+                    pass
 
                 all_acls.append({
                     "Name": acl_summary["Name"],
@@ -267,50 +287,137 @@ def collect_waf_data(session):
                 })
         except ClientError:
             pass
+        
+        # --- 2.5. Collect Regional Web ACLs IDs from WAF Classic ---
+        try:
+            client_classic_regional = session.client("waf-regional", region_name=region)
+            response_classic_regional = client_classic_regional.list_web_acls(Limit=100)
+            
+            if region not in classic_regional_acls:
+                classic_regional_acls[region] = []
 
-    # --- 3. Collect CloudFront (Global) IP Sets ---
+            for acl_summary in response_classic_regional.get("WebACLs", []):
+                classic_regional_acls[region].append({
+                    "Name": f"{acl_summary['Name']} (Classic)",
+                    "Id": acl_summary["WebACLId"]
+                })
+        except ClientError as e:
+            pass
+
+    # --- 3. Collect IP Sets (V2 and Classic logic can be added similarly if needed) ---
+    # CloudFront (Global) IP Sets
     try:
         client_global = session.client("wafv2", region_name="us-east-1")
         response = client_global.list_ip_sets(Scope="CLOUDFRONT")
         for ip_set_summary in response.get("IPSets", []):
-            details = client_global.get_ip_set(
-                Name=ip_set_summary["Name"],
-                Scope="CLOUDFRONT",
-                Id=ip_set_summary["Id"]
-            )
+            details = client_global.get_ip_set(Name=ip_set_summary["Name"], Scope="CLOUDFRONT", Id=ip_set_summary["Id"])
             ip_set = details["IPSet"]
             all_ip_sets.append({
-                "Name": ip_set["Name"],
-                "ARN": ip_set["ARN"],
-                "Scope": "CLOUDFRONT",
-                "Region": "Global",
-                "IPAddressVersion": ip_set["IPAddressVersion"],
-                "AddressCount": len(ip_set["Addresses"])
+                "Name": ip_set["Name"], "ARN": ip_set["ARN"], "Scope": "CLOUDFRONT", "Region": "Global",
+                "IPAddressVersion": ip_set["IPAddressVersion"], "AddressCount": len(ip_set["Addresses"])
             })
     except ClientError:
         pass
 
-    # --- 4. Collect Regional IP Sets ---
+    # Regional IP Sets
     for region in regions:
         try:
             client_regional = session.client("wafv2", region_name=region)
             response = client_regional.list_ip_sets(Scope="REGIONAL")
             for ip_set_summary in response.get("IPSets", []):
-                details = client_regional.get_ip_set(
-                    Name=ip_set_summary["Name"],
-                    Scope="REGIONAL",
-                    Id=ip_set_summary["Id"]
-                )
+                details = client_regional.get_ip_set(Name=ip_set_summary["Name"], Scope="REGIONAL", Id=ip_set_summary["Id"])
                 ip_set = details["IPSet"]
                 all_ip_sets.append({
-                    "Name": ip_set["Name"],
-                    "ARN": ip_set["ARN"],
-                    "Scope": "REGIONAL",
-                    "Region": region,
-                    "IPAddressVersion": ip_set["IPAddressVersion"],
-                    "AddressCount": len(ip_set["Addresses"])
+                    "Name": ip_set["Name"], "ARN": ip_set["ARN"], "Scope": "REGIONAL", "Region": region,
+                    "IPAddressVersion": ip_set["IPAddressVersion"], "AddressCount": len(ip_set["Addresses"])
                 })
         except ClientError:
             pass
+
+    # --- 4. Find and Map WAF Classic Resource Associations ---
+    classic_acl_associations = {}
+    
+    # 4.1. CloudFront Distributions (Global)
+    try:
+        cf_client = session.client('cloudfront')
+        paginator = cf_client.get_paginator('list_distributions')
+        for page in paginator.paginate():
+            for dist in page.get('DistributionList', {}).get('Items', []):
+                web_acl_id = dist.get('WebACLId')
+                if web_acl_id:
+                    acl_id_clean = web_acl_id.split('/')[-1]
+                    if acl_id_clean in [acl['Id'] for acl in classic_global_acls]:
+                        if acl_id_clean not in classic_acl_associations:
+                            classic_acl_associations[acl_id_clean] = []
+                        classic_acl_associations[acl_id_clean].append(dist['ARN'])
+    except ClientError:
+        pass
+
+    # 4.2. Regional Resources (ALB, API Gateway)
+    for region in regions:
+        # Application Load Balancers (ALB)
+        try:
+            elbv2_client = session.client('elbv2', region_name=region)
+            waf_regional_client = session.client('waf-regional', region_name=region)
+            paginator = elbv2_client.get_paginator('describe_load_balancers')
+            for page in paginator.paginate():
+                for lb in page.get('LoadBalancers', []):
+                    lb_arn = lb['LoadBalancerArn']
+                    try:
+                        result = waf_regional_client.get_web_acl_for_resource(ResourceArn=lb_arn)
+                        acl_id = result.get('WebACLSummary', {}).get('WebACLId')
+                        if acl_id:
+                            if acl_id not in classic_acl_associations:
+                                classic_acl_associations[acl_id] = []
+                            classic_acl_associations[acl_id].append(lb_arn)
+                    except ClientError as e:
+                        if e.response['Error']['Code'] == 'WAFNonexistentItemException':
+                            continue
+        except ClientError:
+            pass
+
+        # API Gateway Stages
+        try:
+            apigw_client = session.client('apigateway', region_name=region)
+            account_id = session.client('sts').get_caller_identity()['Account']
+            apis = apigw_client.get_rest_apis(limit=500).get('items', [])
+            for api in apis:
+                api_id = api['id']
+                stages = apigw_client.get_stages(restApiId=api_id).get('item', [])
+                for stage in stages:
+                    stage_arn = f"arn:aws:execute-api:{region}:{account_id}:{api_id}/{stage['stageName']}"
+                    web_acl_id = stage.get('webAclArn')
+                    if web_acl_id:
+                        acl_id_clean = web_acl_id.split('/')[-1]
+                        if acl_id_clean in [acl['Id'] for acl in classic_regional_acls.get(region, [])]:
+                            if acl_id_clean not in classic_acl_associations:
+                                classic_acl_associations[acl_id_clean] = []
+                            classic_acl_associations[acl_id_clean].append(stage_arn)
+        except ClientError:
+            pass
+
+    # --- 5. Final Integration of WAF Classic ACLs with resolved resources ---
+    # Globales
+    for acl in classic_global_acls:
+        associated_resources = classic_acl_associations.get(acl['Id'], [])
+        all_acls.append({
+            "Name": acl['Name'], "ARN": acl["Id"], "Id": acl["Id"],
+            "Scope": "CLOUDFRONT", "Region": "Global",
+            "AssociatedResourceArns": [parse_resource_arn(r) for r in associated_resources] if associated_resources else [],
+            "LoggingConfiguration": {}, "LoggingDetails": {'all_logging': {'enabled': False}, 'destination_only_logging': {'enabled': False}},
+            "VisibilityConfig": {}, "TopRules": [], "Version": "Classic"
+        })
+
+    # Regionales
+    for region, acls in classic_regional_acls.items():
+        for acl in acls:
+            associated_resources = classic_acl_associations.get(acl['Id'], [])
+            all_acls.append({
+                "Name": acl['Name'], "ARN": acl["Id"], "Id": acl["Id"],
+                "Scope": "REGIONAL", "Region": region,
+                "AssociatedResourceArns": [parse_resource_arn(r) for r in associated_resources] if associated_resources else [],
+                "LoggingConfiguration": {}, "LoggingDetails": {'all_logging': {'enabled': False}, 'destination_only_logging': {'enabled': False}},
+                "VisibilityConfig": {}, "TopRules": [], "Version": "Classic"
+            })
             
     return {"acls": all_acls, "ip_sets": all_ip_sets}

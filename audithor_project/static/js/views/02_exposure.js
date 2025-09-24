@@ -1015,45 +1015,6 @@ window.openS3BucketDetails = (bucketName, region) => {
     modal.classList.remove('hidden');
 };
 
-
-const generateS3SecurityAnalysis = (bucketName) => {
-    const findings = {
-        issues: [
-            'Bucket allows public read access',
-            'No encryption detected on public bucket',
-            'Missing bucket policy restrictions',
-            'Versioning may not be enabled'
-        ],
-        analysis: [
-            `Bucket name: ${bucketName}`,
-            'Public access method: ACL or Bucket Policy',
-            'Risk level: HIGH - Data exposure potential',
-            'Compliance impact: May violate data protection policies'
-        ],
-        recommendations: [
-            'Enable "Block all public access" if not needed for legitimate use',
-            'Review and tighten bucket policy statements',
-            'Enable server-side encryption (SSE-S3 or SSE-KMS)',
-            'Enable versioning and MFA delete protection',
-            'Set up CloudTrail logging for bucket access monitoring',
-            'Consider using CloudFront for controlled public content delivery'
-        ]
-    };
-    
-    // Personalizar basado en el nombre del bucket
-    if (bucketName.includes('log') || bucketName.includes('backup')) {
-        findings.issues.unshift('CRITICAL: Logs/backup bucket exposed publicly');
-        findings.recommendations.unshift('URGENT: Remove public access immediately');
-    }
-    
-    if (bucketName.includes('www') || bucketName.includes('static')) {
-        findings.analysis.push('Likely used for web hosting - public access may be intentional');
-        findings.recommendations.push('If used for web hosting, consider CloudFront + private S3');
-    }
-    
-    return findings;
-};
-
 const renderLambdaCredentialsTable = (credentials) => {
     if (!credentials || credentials.length === 0) {
         return `<div class="bg-white p-6 rounded-xl border border-gray-100">
