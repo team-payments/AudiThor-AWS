@@ -1795,14 +1795,29 @@ const exitEditMode = (index) => {
 };
 
 // Función para eliminar recurso
+// 17_healthy_status.js --> Reemplaza esta función
+// EN 17_healthy_status.js --> Modifica también esta función
+
 const deleteResource = (index, items) => {
     const arn = items[index].arn;
     const resourceName = items[index].identifier;
     
+    console.group(`[INVENTORY] User initiated delete for item at index ${index}`);
+    console.log(`Resource Name: ${resourceName}`);
+    console.log(`ARN: ${arn}`);
+
     if (confirm(`¿Seguro que quieres quitar "${resourceName}" del scope?`)) {
-        removeScopedResource(arn);
-        refreshScopedInventory();
+        console.log('User confirmed deletion. Calling a function named removeScopedResource...');
+        
+        // Llamada que estamos investigando
+        window.removeResourceScope(arn); 
+        
+        console.log('Calling refreshScopedInventory to update the inventory table...');
+        refreshScopedInventory(); 
+    } else {
+        console.log('User cancelled deletion.');
     }
+    console.groupEnd();
 };
 
 // Función para actualizar comentario
@@ -1812,10 +1827,6 @@ const updateScopedResourceComment = (arn, newComment) => {
     }
 };
 
-// Función para eliminar recurso
-const removeScopedResource = (arn) => {
-    delete window.scopedResources[arn];
-};
 
 // Función para refrescar vista
 const refreshScopedInventory = () => {

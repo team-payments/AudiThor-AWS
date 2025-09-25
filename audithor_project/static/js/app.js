@@ -146,21 +146,26 @@ const setResourceScope = (arn, comment) => {
     rerenderCurrentView(); // Función para refrescar la vista actual
 };
 
+
 const removeResourceScope = (arn) => {
-    console.log('=== ANTES DE ELIMINAR ===');
-    console.log('ARN a eliminar:', arn);
-    console.log('Estado actual de scopedResources:', window.scopedResources);
+    console.log('%c[LOG DESDE app.js] -> Se ha llamado a la función GLOBAL removeResourceScope.', 'color: green; font-weight: bold;');
+
+    console.group(`[APP] Attempting to remove scope for ARN: ${arn}`);
     
     if (arn && window.scopedResources[arn]) {
+        console.log('Before Deletion:', JSON.parse(JSON.stringify(window.scopedResources)));
         delete window.scopedResources[arn];
-        console.log('=== DESPUÉS DE ELIMINAR ===');
-        console.log('Nuevo estado de scopedResources:', window.scopedResources);
-        log(`Recurso ${arn} desmarcado.`, 'info');
+        console.log('After Deletion:', JSON.parse(JSON.stringify(window.scopedResources)));
+        log(`Resource ${arn} unmarked.`, 'info');
+        saveScopedResources();
+        
+        console.log('Now calling rerenderCurrentView() to update the UI...');
+        rerenderCurrentView();
+
     } else {
-        console.log('ERROR: ARN no encontrado en scopedResources');
+        console.error('ARN not found in scopedResources. Nothing to remove.');
     }
-    saveScopedResources();
-    rerenderCurrentView();
+    console.groupEnd();
 };
 
 
@@ -279,27 +284,66 @@ const openNotesModal = (noteId = null) => {
     titleInput.focus();
 };
 
-
-// Refresca la vista activa para que los cambios de scope se reflejen inmediatamente
 const rerenderCurrentView = () => {
-    console.log("=== RERENDERIZANDO VISTAS ===");
-    console.log("ARNs actuales:", Object.keys(window.scopedResources));
-    
-    // Siempre forzar refresco de network-policies en la pestaña VPCs
-    if (window.networkPoliciesApiData) {
-        log('Forzando refresco de network-policies en pestaña VPCs...', 'info');
-        buildNetworkPoliciesView('np-vpcs-content');
-    }
-    
-    // Refrescar healthy status si no está activo
-    const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
-    const activeViewName = activeLink ? activeLink.dataset.view : null;
-    
-    if (activeViewName !== 'healthy-status') {
-        buildHealthyStatusView();
-    }
-};
+    log('Rerendering view(s) to reflect state changes...', 'info');
 
+    // 1. Identificar la vista activa en la barra lateral
+    const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+    if (!activeLink) {
+        log('Could not find an active view to rerender.', 'warning');
+        return;
+    }
+    
+    const activeViewName = activeLink.dataset.view;
+    log(`Active view identified: ${activeViewName}`, 'info');
+
+    // 2. LÓGICA DE REFRESCO INTELIGENTE
+    
+    // CASO ESPECIAL: Si estamos en Healthy Status, solo refrescamos el inventario para no salirnos de la pestaña.
+    if (activeViewName === 'healthy-status') {
+        log('Currently in Healthy Status view. Refreshing ONLY the scoped inventory tab.', 'info');
+        buildScopedInventoryView(); 
+    } else {
+        // CASO GENERAL: Si estamos en cualquier otra vista, la refrescamos por completo.
+        const viewRenderers = {
+            'iam': buildIamView,
+            'exposure': buildExposureView,
+            'guardduty': buildGuarddutyView,
+            'ecr': buildEcrView,
+            'waf': buildWafView,
+            'cloudtrail': buildCloudtrailView,
+            'cloudwatch': buildCloudwatchView,
+            'inspector': buildInspectorView,
+            'acm': buildAcmView,
+            'compute': buildComputeView,
+            'databases': buildDatabasesView,
+            'kms-secrets': buildKmsSecretsView,
+            'network-policies': buildNetworkPoliciesView,
+            'connectivity': buildConnectivityView,
+            'config-sh': buildConfigSHView,
+            'codepipeline': buildCodePipelineView,
+            'playground': buildPlaygroundView
+        };
+        
+        const renderFunction = viewRenderers[activeViewName];
+        if (renderFunction) {
+            log(`Calling full renderer for active view: '${activeViewName}'...`, 'info');
+            renderFunction();
+        }
+    }
+
+    // 3. REFRESCO ADICIONAL EN SEGUNDO PLANO
+    // Forzamos el refresco de las vistas clave que contienen elementos "scopeables"
+    // para que el cambio se refleje la próxima vez que el usuario entre en ellas.
+    log('Performing background refresh of key views...', 'info');
+    if (window.networkPoliciesApiData) {
+        buildNetworkPoliciesView();
+    }
+    if (window.computeApiData) {
+        buildComputeView();
+    }
+    // Añade aquí otras vistas importantes si es necesario, ej: buildDatabasesView();
+};
 // Función para abrir y manejar el modal de scope
 const openScopeModal = (arn, currentComment = '') => {
     const modal = document.getElementById('scope-modal');
@@ -1387,6 +1431,7 @@ window.buildCodePipelineView = buildCodePipelineView;
 window.openModalWithUserRoles = openModalWithUserRoles;
 window.openModalWithSecretDetails = openModalWithSecretDetails;
 window.openScopeModal = openScopeModal;
+window.removeResourceScope = removeResourceScope;
 window.openNotesModal = openNotesModal;
 window.showNoteDetails = showNoteDetails;
 window.deleteAuditorNote = deleteAuditorNote;

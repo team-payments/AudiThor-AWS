@@ -9,6 +9,7 @@ import { handleTabClick, log } from '../utils.js';
 
 // --- FUNCIÓN PRINCIPAL DE LA VISTA (EXPORTADA) ---
 export const buildNetworkPoliciesView = (forceTab = null) => {
+    console.log('%c[NETWORK VIEW] buildNetworkPoliciesView() has been executed!', 'color: #eb3496; font-weight: bold;');
     const container = document.getElementById('network-policies-view');
     let activeTabData = forceTab;
     if (!activeTabData) {
