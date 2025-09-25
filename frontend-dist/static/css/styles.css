@@ -1,0 +1,191 @@
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #f1f5f9; 
+}
+
+::-webkit-scrollbar { 
+    width: 8px; 
+}
+
+::-webkit-scrollbar-track { 
+    background: #f1f1f1; 
+}
+
+::-webkit-scrollbar-thumb { 
+    background: #888; 
+    border-radius: 4px; 
+}
+
+::-webkit-scrollbar-thumb:hover { 
+    background: #555; 
+}
+
+.spinner { 
+    border: 4px solid rgba(255, 255, 255, 0.2); 
+    width: 24px; 
+    height: 24px; 
+    border-radius: 50%; 
+    border-left-color: #ffffff; 
+    animation: spin 1s ease infinite; 
+}
+
+@keyframes spin { 
+    0% { transform: rotate(0deg); } 
+    100% { transform: rotate(360deg); } 
+}
+
+/* Event Log Styles - Mejorados */
+/* ==== ESTILOS UNIFICADOS PARA ACCIONES FLOTANTES ==== */
+
+/* Contenedor principal que alinea los botones */
+#floating-actions-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+/* Estilo idéntico para ambos botones flotantes */
+#open-notes-btn,
+#log-panel.floating {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #eb3496, #d42c86);
+    color: white;
+    box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 3px solid white;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Efecto hover idéntico para ambos */
+#open-notes-btn:hover,
+#log-panel.floating:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(235, 52, 150, 0.6);
+}
+
+/* Estructura del panel de log cuando está MAXIMIZADO */
+#log-panel:not(.floating) {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    max-width: 34rem;
+    height: 16rem;
+    background-color: #1a2b47;
+    color: white;
+    border-top-left-radius: 0.5rem;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    z-index: 50;
+}
+
+/* Lógica para ocultar/mostrar contenido */
+#log-panel.floating .log-panel-content { display: none; }
+#log-panel.floating #floating-icon { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;}
+#log-panel:not(.floating) .log-panel-content { display: flex; flex-direction: column; height: 100%; }
+#log-panel:not(.floating) #floating-icon { display: none; }
+
+/* Animación de pulso */
+#log-panel.floating.new-log {
+    animation: pulse-log 2s infinite;
+}
+
+@keyframes pulse-log {
+    0% { box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4); }
+    50% { box-shadow: 0 4px 25px rgba(235, 52, 150, 0.8), 0 0 15px rgba(235, 52, 150, 0.5); }
+    100% { box-shadow: 0 4px 20px rgba(235, 52, 150, 0.4); }
+}
+
+.log-entry { 
+    font-family: 'Courier New', Courier, monospace; 
+}
+
+.log-info { 
+    color: #3b82f6; 
+}
+
+.log-success { 
+    color: #16a34a; 
+}
+
+.log-error { 
+    color: #dc2626; 
+}
+.page-break {
+    page-break-before: always;
+}
+
+.header {
+    position: relative; /* Esencial para posicionar los pseudo-elementos */
+    overflow: hidden; /* Asegura que las formas no se salgan del encabezado */
+    /* Mantén tu degradado de fondo o color sólido aquí */
+    background: linear-gradient(135deg, #2a526f 0%, #3e78a0 100%); /* Ejemplo de tu degradado */
+    color: white; /* Asegura que el texto sea visible */
+    padding: 30px; /* Ajusta el padding según necesites */
+    height: 150px; /* Ajusta la altura del encabezado */
+}
+
+.header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 150px 200px; /* Ajusta estos valores para cambiar la forma y tamaño del triángulo */
+    border-color: transparent transparent #266d77 transparent; /* Color del primer triángulo (verde azulado) */
+    z-index: 1; /* Para que quede debajo del contenido principal si lo necesitas */
+}
+
+.header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 150px 300px; /* Ajusta estos valores */
+    border-color: transparent transparent #2a526f transparent; /* Color del segundo triángulo (azul oscuro) */
+    transform: rotate(180deg) scaleX(-1); /* Para orientar el triángulo correctamente */
+    transform-origin: top left;
+    z-index: 0; /* Para que quede debajo del primer triángulo */
+}
+
+/* Mantén tus estilos existentes para .header-logo, .company-name, .subtitle, .meta-info, etc. */
+.header-logo {
+    position: relative;
+    z-index: 2; /* Asegura que el logo esté por encima de los triángulos */
+}
+
+.company-name {
+    /* Tus estilos para el nombre de la compañía */
+}
+
+.subtitle, .meta-info {
+    position: relative;
+    z-index: 2; /* Asegura que el texto esté por encima */
+}
+
+.header-box {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+    border-left: 5px solid #eb3496;
+    font-size: 12px;
+    color: #204071;
+}
