@@ -111,8 +111,38 @@ def collect_compute_data(session):
                         "ARN": function_arn
                     })
 
-            # --- 3 & 4. Collect EKS & ECS Cluster Data (sin cambios) ---
-            # ... (código de EKS y ECS se mantiene igual) ...
+            # --- 3. Recolectar datos de EKS ---
+            eks_paginator = eks_client.get_paginator('list_clusters')
+            for page in eks_paginator.paginate():
+                for cluster_name in page.get('clusters', []):
+                    try:
+                        cluster_details = eks_client.describe_cluster(name=cluster_name)['cluster']
+                        result_eks_clusters.append({
+                            "Region": region,
+                            "ClusterName": cluster_name,
+                            "ARN": cluster_details.get('arn'),
+                            "Version": cluster_details.get('version')
+                        })
+                    except ClientError:
+                        continue # Si no se puede describir un cluster, continuamos con el siguiente
+
+            # --- 4. Recolectar datos de ECS ---
+            ecs_paginator = ecs_client.get_paginator('list_clusters')
+            for page in ecs_paginator.paginate():
+                cluster_arns = page.get('clusterArns', [])
+                if not cluster_arns:
+                    continue
+                
+                # Describimos los clusters encontrados para obtener más detalles
+                described_clusters = ecs_client.describe_clusters(clusters=cluster_arns)['clusters']
+                for cluster in described_clusters:
+                    result_ecs_clusters.append({
+                        "Region": region,
+                        "ClusterName": cluster.get('clusterName'),
+                        "ARN": cluster.get('clusterArn'),
+                        "Status": cluster.get('status'),
+                        "ServicesCount": cluster.get('activeServicesCount', 0)
+                    })
 
         except ClientError as e:
             common_errors = ['InvalidClientTokenId', 'UnrecognizedClientException', 'AuthFailure', 'AccessDeniedException']

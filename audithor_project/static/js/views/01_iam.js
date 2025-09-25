@@ -1199,60 +1199,6 @@ const getIamPermissionDetails = () => {
     }
 };
 
-
-const renderIamPermissionDetails = (principal, type, searchedTerm) => {
-    const resultsContainer = document.getElementById('iam-details-result-container');
-    if (!principal) {
-        resultsContainer.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-lg"><h4 class="font-bold">Not Found</h4><p>Could not find any user, group, or role with the name or ARN '${searchedTerm}'.</p></div>`;
-        log(`IAM Principal '${searchedTerm}' not found.`, 'error');
-        return;
-    }
-
-    let detailsToShow = {};
-    const name = type === 'User' ? principal.UserName : (type === 'Group' ? principal.GroupName : principal.RoleName);
-
-    if (type === 'User') {
-        detailsToShow = {
-            Type: 'User',
-            Name: principal.UserName,
-            DirectPermissions: {
-                AttachedPolicies: principal.AttachedPolicies,
-                InlinePolicies: principal.InlinePolicies,
-            },
-            InheritedPermissions: {
-                 Groups: principal.Groups,
-                 OrganizationalRoles_by_Tag: principal.Roles || [],
-                 AssumableRoles_by_Policy: principal.AssumableRoles || []
-            }
-        };
-    } else if (type === 'Group') {
-         detailsToShow = {
-            Type: 'Group',
-            Name: principal.GroupName,
-            Permissions: {
-                AttachedPolicies: principal.AttachedPolicies,
-            }
-        };
-    } else if (type === 'Role') {
-         detailsToShow = {
-            Type: 'Role',
-            Name: principal.RoleName,
-            Permissions: {
-                AttachedPolicies: principal.AttachedPolicies,
-                InlinePolicies: principal.InlinePolicies
-            }
-        };
-    }
-    
-    const formattedJson = JSON.stringify(detailsToShow, null, 2);
-    log(`Showing details for ${type}: ${name}`, 'success');
-
-    resultsContainer.innerHTML = `
-        <h3 class="text-xl font-bold text-[#204071] mb-4">Showing details for ${type}: ${name}</h3>
-        <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${formattedJson}</pre>
-    `;
-};
-
 const getSelectedSearchType = () => {
     const principalBtn = document.getElementById('search-type-principal');
     return principalBtn.classList.contains('bg-[#eb3496]') ? 'principal' : 'policy';

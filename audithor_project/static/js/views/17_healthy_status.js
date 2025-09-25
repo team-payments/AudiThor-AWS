@@ -1602,8 +1602,36 @@ export const buildScopedInventoryView = () => {
                     });
                 }
                 break;
+            
+            case 'eks':
+                const eksCluster = window.computeApiData?.results?.eks_clusters.find(c => c.ARN === arn);
+                if (eksCluster) {
+                    unifiedScopedItems.push({
+                        type: 'EKS Cluster',
+                        region: eksCluster.Region,
+                        identifier: eksCluster.ClusterName,
+                        details: `Version: ${eksCluster.Version}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
 
-        }
+            case 'ecs':
+                const ecsCluster = window.computeApiData?.results?.ecs_clusters.find(c => c.ARN === arn);
+                if (ecsCluster) {
+                    unifiedScopedItems.push({
+                        type: 'ECS Cluster',
+                        region: ecsCluster.Region,
+                        identifier: ecsCluster.ClusterName,
+                        details: `Status: ${ecsCluster.Status}, Services: ${ecsCluster.ServicesCount}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+
+            }
     });
 
     // Renderizar la tabla unificada
