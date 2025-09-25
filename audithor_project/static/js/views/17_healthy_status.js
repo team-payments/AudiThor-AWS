@@ -703,46 +703,63 @@ const getCurrentlyDisplayedFindings = () => {
     const sectionValue = document.getElementById('report-section-filter')?.value || 'all';
     const impactValue = document.getElementById('report-impact-filter')?.value || 'all';
 
-    // ¡CAMBIO CLAVE! Se obtienen los datos de la copia editable.
     let displayedFindings = [...(window.editableFindings || [])];
 
     if (regionValue !== 'all') {
-        displayedFindings = displayedFindings.filter(finding => {
+        // PASO 1: Filtrar los findings que tienen AL MENOS UN recurso en la región seleccionada.
+        const relevantFindings = displayedFindings.filter(finding => {
             const resources = finding.affected_resources || [];
             if (resources.length === 0) return false;
 
             return resources.some(res => {
-                if (typeof res === 'object' && res !== null) {
-                    const region = res.region || 'Global';
-                    return region === regionValue || region === 'Global';
-                } else if (typeof res === 'string') {
-                    return regionValue === 'Global';
-                }
-                return false;
+                const region = (typeof res === 'object' && res.region) ? res.region : 'Global';
+                return region === regionValue || region === 'Global';
             });
         });
+
+        // PASO 2: Mapear sobre los findings relevantes para filtrar SU PROPIA lista de recursos.
+        displayedFindings = relevantFindings.map(finding => {
+            // Se crea una copia profunda para no modificar el dato original (window.editableFindings).
+            const newFinding = JSON.parse(JSON.stringify(finding));
+
+            // Filtramos la lista de recursos INTERNA del finding.
+            newFinding.affected_resources = (finding.affected_resources || []).filter(res => {
+                const region = (typeof res === 'object' && res.region) ? res.region : 'Global';
+                // La condición es la misma: mantener solo los de la región seleccionada o los globales.
+                return region === regionValue || region === 'Global';
+            });
+
+            return newFinding; // Devolvemos la copia del finding con los recursos ya filtrados.
+        });
+
+    } else {
+        // Si no hay filtro de región, simplemente clonamos para evitar mutaciones no deseadas.
+        displayedFindings = displayedFindings.map(f => JSON.parse(JSON.stringify(f)));
     }
 
+
+    // El resto de los filtros no necesitan esta lógica de mapeo, ya que operan sobre el finding en general.
     if (severityValue !== 'all') {
-        displayedFindings = displayedFindings.filter(finding => 
+        displayedFindings = displayedFindings.filter(finding =>
             finding.severity === severityValue
         );
     }
 
     if (sectionValue !== 'all') {
-        displayedFindings = displayedFindings.filter(finding => 
+        displayedFindings = displayedFindings.filter(finding =>
             finding.section === sectionValue
         );
     }
 
     if (impactValue !== 'all') {
-        displayedFindings = displayedFindings.filter(finding => 
+        displayedFindings = displayedFindings.filter(finding =>
             classifyFindingImpact(finding) === impactValue
         );
     }
 
+    // Finalmente, se ordena como siempre.
     const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 };
-    return displayedFindings.sort((a, b) => 
+    return displayedFindings.sort((a, b) =>
         (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99)
     );
 };
