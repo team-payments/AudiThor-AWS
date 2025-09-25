@@ -305,6 +305,7 @@ const rerenderCurrentView = () => {
         buildScopedInventoryView(); 
     } else {
         // CASO GENERAL: Si estamos en cualquier otra vista, la refrescamos por completo.
+        const activeSubTab = document.querySelector(`#${activeViewName}-view .tab-link.border-\\[\\#eb3496\\]`);
         const viewRenderers = {
             'iam': buildIamView,
             'exposure': buildExposureView,
@@ -329,21 +330,26 @@ const rerenderCurrentView = () => {
         if (renderFunction) {
             log(`Calling full renderer for active view: '${activeViewName}'...`, 'info');
             renderFunction();
+            if (activeSubTab) document.querySelector(`[data-tab="${activeSubTab.dataset.tab}"]`)?.click();
         }
     }
 
     // 3. REFRESCO ADICIONAL EN SEGUNDO PLANO
-    // Forzamos el refresco de las vistas clave que contienen elementos "scopeables"
-    // para que el cambio se refleje la próxima vez que el usuario entre en ellas.
+    // Forzamos el refresco de las vistas clave, SIEMPRE Y CUANDO no sea la que ya tenemos activa.
     log('Performing background refresh of key views...', 'info');
-    if (window.networkPoliciesApiData) {
+    
+    if (window.networkPoliciesApiData && activeViewName !== 'network-policies') { // <-- CORRECCIÓN AÑADIDA
         buildNetworkPoliciesView();
     }
-    if (window.computeApiData) {
+    if (window.computeApiData && activeViewName !== 'compute') { // <-- CORRECCIÓN AÑADIDA
         buildComputeView();
     }
-    // Añade aquí otras vistas importantes si es necesario, ej: buildDatabasesView();
+    if (window.databasesApiData && activeViewName !== 'databases') { // <-- CORRECCIÓN AÑADIDA
+        buildDatabasesView();
+    }
 };
+
+
 // Función para abrir y manejar el modal de scope
 const openScopeModal = (arn, currentComment = '') => {
     const modal = document.getElementById('scope-modal');

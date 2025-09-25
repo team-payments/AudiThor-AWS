@@ -1548,7 +1548,9 @@ export const buildScopedInventoryView = () => {
                     });
                 }
                 break;
+
             case 'rds':
+                // Primero, intenta encontrarlo como una instancia RDS
                 const rdsInstance = window.databasesApiData?.results?.rds_instances.find(db => db.ARN === arn);
                 if (rdsInstance) {
                     unifiedScopedItems.push({
@@ -1559,9 +1561,51 @@ export const buildScopedInventoryView = () => {
                         comment: comment,
                         arn: arn
                     });
+                    break; // Sale si lo encuentra
+                }
+
+                // Si no es una instancia, intenta encontrarlo como un cluster Aurora
+                const auroraCluster = window.databasesApiData?.results?.aurora_clusters.find(c => c.ARN === arn);
+                if (auroraCluster) {
+                    unifiedScopedItems.push({
+                        type: 'Aurora Cluster',
+                        region: auroraCluster.Region,
+                        identifier: auroraCluster.ClusterIdentifier,
+                        details: `Encrypted: ${auroraCluster.Encrypted ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                    break; // Sale si lo encuentra
+                }
+                
+                // Finalmente, intenta encontrarlo como un cluster DocumentDB
+                const docdbCluster = window.databasesApiData?.results?.documentdb_clusters.find(c => c.ARN === arn);
+                if (docdbCluster) {
+                    unifiedScopedItems.push({
+                        type: 'DocumentDB Cluster',
+                        region: docdbCluster.Region,
+                        identifier: docdbCluster.ClusterIdentifier,
+                        details: `Encrypted: ${docdbCluster.Encrypted ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
                 }
                 break;
-            
+
+            case 'dynamodb':
+                const dynamoTable = window.databasesApiData?.results?.dynamodb_tables.find(t => t.ARN === arn);
+                if (dynamoTable) {
+                    unifiedScopedItems.push({
+                        type: 'DynamoDB Table',
+                        region: dynamoTable.Region,
+                        identifier: dynamoTable.TableName,
+                        details: `Encrypted: ${dynamoTable.Encrypted ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+
             case 'secretsmanager':
                 const secret = window.secretsManagerApiData?.results?.secrets.find(s => s.ARN === arn);
                 if (secret) {
@@ -2142,19 +2186,64 @@ const processTemplate = (template, data) => {
                     });
                 }
                 break;
+
             case 'rds':
+                // Primero, intenta encontrarlo como una instancia RDS
                 const rdsInstance = window.databasesApiData?.results?.rds_instances.find(db => db.ARN === arn);
                 if (rdsInstance) {
                     unifiedScopedItems.push({
                         type: 'RDS Instance',
                         region: rdsInstance.Region,
                         identifier: rdsInstance.DBInstanceIdentifier,
-                        details: `Public Access: ${rdsInstance.PubliclyAccessible ? 'YES' : 'NO'}`,
+                        details: `Public Access: ${rdsInstance.PubliclyAccessible ? '<span class="text-red-600 font-bold">YES</span>' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                    break; // Sale si lo encuentra
+                }
+
+                // Si no, intenta encontrarlo como un cluster Aurora
+                const auroraCluster = window.databasesApiData?.results?.aurora_clusters.find(c => c.ARN === arn);
+                if (auroraCluster) {
+                    unifiedScopedItems.push({
+                        type: 'Aurora Cluster',
+                        region: auroraCluster.Region,
+                        identifier: auroraCluster.ClusterIdentifier,
+                        details: `Encrypted: ${auroraCluster.Encrypted ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                    break; // Sale si lo encuentra
+                }
+                
+                // Finalmente, intenta encontrarlo como un cluster DocumentDB
+                const docdbCluster = window.databasesApiData?.results?.documentdb_clusters.find(c => c.ARN === arn);
+                if (docdbCluster) {
+                    unifiedScopedItems.push({
+                        type: 'DocumentDB Cluster',
+                        region: docdbCluster.Region,
+                        identifier: docdbCluster.ClusterIdentifier,
+                        details: `Encrypted: ${docdbCluster.Encrypted ? 'YES' : 'NO'}`,
                         comment: comment,
                         arn: arn
                     });
                 }
                 break;
+
+            case 'dynamodb':
+                const dynamoTable = window.databasesApiData?.results?.dynamodb_tables.find(t => t.ARN === arn);
+                if (dynamoTable) {
+                    unifiedScopedItems.push({
+                        type: 'DynamoDB Table',
+                        region: dynamoTable.Region,
+                        identifier: dynamoTable.TableName,
+                        details: `Encrypted: ${dynamoTable.Encrypted ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+
             case 'secretsmanager':
                 const secret = window.secretsManagerApiData?.results?.secrets.find(s => s.ARN === arn);
                 if (secret) {
