@@ -1020,14 +1020,6 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebarNav.addEventListener('click', handleMainNavClick);
     }
 
-    // Configurar botón de notas
-const openNotesButton = document.getElementById('open-notes-btn');
-if (openNotesButton) {
-    openNotesButton.addEventListener('click', () => {
-        // Mostrar menú con opciones
-        showNotesMenu();
-    });
-}
 
 const showNotesMenu = () => {
     // Crear menú desplegable
@@ -1060,6 +1052,16 @@ const showNotesMenu = () => {
         document.removeEventListener('click', closeMenu, true);
     }
 };
+
+
+    // Configurar botón de notas
+const openNotesButton = document.getElementById('open-notes-btn');
+if (openNotesButton) {
+    openNotesButton.addEventListener('click', () => {
+        // Mostrar menú con opciones
+        showNotesMenu();
+    });
+}
 
 
     // Configurar botón de análisis

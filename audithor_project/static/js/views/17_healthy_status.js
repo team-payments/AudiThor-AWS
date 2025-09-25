@@ -2045,19 +2045,45 @@ const processTemplate = (template, data) => {
         const service = arn.split(':')[2];
 
         switch (service) {
+            
             case 'ec2':
-                const ec2Instance = window.computeApiData?.results?.ec2_instances.find(i => i.ARN === arn);
-                if (ec2Instance) {
-                    unifiedScopedItems.push({
-                        type: 'EC2 Instance',
-                        region: ec2Instance.Region,
-                        identifier: ec2Instance.InstanceId,
-                        details: `Public IP: ${ec2Instance.PublicIpAddress || '-'}`,
-                        comment: comment,
-                        arn: arn
+                // Verificar si es una VPC o una instancia EC2 basándonos en el ARN
+                if (arn.includes(':vpc/')) {
+                    // Es una VPC. Búscala en los datos de políticas de red.
+                    const vpc = window.networkPoliciesApiData?.results?.vpcs.find(v => {
+                        // Reconstruimos el ARN para asegurar la coincidencia
+                        const vpcArn = `arn:aws:ec2:${v.Region}:${window.iamApiData?.metadata?.accountId || 'unknown'}:vpc/${v.VpcId}`;
+                        return vpcArn === arn;
                     });
+                    if (vpc) {
+                        unifiedScopedItems.push({
+                            type: 'VPC',
+                            region: vpc.Region,
+                            identifier: vpc.VpcId,
+                            details: `CIDR: ${vpc.CidrBlock}, Default: ${vpc.IsDefault ? 'YES' : 'NO'}`,
+                            comment: comment,
+                            arn: arn
+                        });
+                    }
+                } else if (arn.includes(':instance/')) {
+                    // Es una instancia EC2. Mantenemos la lógica original.
+                    const ec2Instance = window.computeApiData?.results?.ec2_instances.find(i => i.ARN === arn);
+                    if (ec2Instance) {
+                        unifiedScopedItems.push({
+                            type: 'EC2 Instance',
+                            region: ec2Instance.Region,
+                            identifier: ec2Instance.InstanceId,
+                            details: `Public IP: ${ec2Instance.PublicIpAddress || '-'}`,
+                            comment: comment,
+                            arn: arn
+                        });
+                    }
                 }
-                break;
+                // --- FIN DE LA CORRECCIÓN ---
+            break;
+
+
+            
             case 'lambda':
                 const lambdaFunc = window.computeApiData?.results?.lambda_functions.find(f => f.ARN === arn);
                 if (lambdaFunc) {
