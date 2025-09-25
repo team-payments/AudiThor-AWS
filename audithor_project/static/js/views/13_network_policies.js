@@ -8,8 +8,13 @@ import { handleTabClick, log } from '../utils.js';
 
 
 // --- FUNCIÓN PRINCIPAL DE LA VISTA (EXPORTADA) ---
-export const buildNetworkPoliciesView = () => {
+export const buildNetworkPoliciesView = (forceTab = null) => {
     const container = document.getElementById('network-policies-view');
+    let activeTabData = forceTab;
+    if (!activeTabData) {
+        const activeTabEl = container.querySelector('#network-policies-tabs .border-\\[\\#eb3496\\]');
+        activeTabData = activeTabEl ? activeTabEl.dataset.tab : 'np-summary-content';
+    }
     if (!window.networkPoliciesApiData || !window.computeApiData || !window.databasesApiData) {
         container.innerHTML = '<p class="text-center text-gray-500">Network Policies, Compute, or Databases data not available.</p>';
         return;
@@ -159,9 +164,29 @@ container.addEventListener('change', (e) => {
     }
 
     const tabsNav = container.querySelector('#network-policies-tabs');
-    if (tabsNav) {
-        tabsNav.addEventListener('click', handleTabClick(tabsNav, '.network-policies-tab-content'));
+
+    // Si hay una pestaña activa que no es Summary, cambiar a ella
+    if (activeTabData !== 'np-summary-content') {
+        // Quitar estado activo de Summary
+        const defaultActiveLink = tabsNav.querySelector('a[data-tab="np-summary-content"]');
+        const defaultActiveContent = document.getElementById('np-summary-content');
+        if (defaultActiveLink && defaultActiveContent) {
+            defaultActiveLink.classList.remove('border-[#eb3496]', 'text-[#eb3496]');
+            defaultActiveLink.classList.add('border-transparent', 'text-gray-500');
+            defaultActiveContent.classList.add('hidden');
+        }
+
+        // Activar la pestaña correcta
+        const newActiveLink = tabsNav.querySelector(`a[data-tab="${activeTabData}"]`);
+        const newActiveContent = document.getElementById(activeTabData);
+        if (newActiveLink && newActiveContent) {
+            newActiveLink.classList.add('border-[#eb3496]', 'text-[#eb3496]');
+            newActiveLink.classList.remove('border-transparent', 'text-gray-500');
+            newActiveContent.classList.remove('hidden');
+        }
     }
+
+    if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.network-policies-tab-content'));
 };
 
 
@@ -285,12 +310,53 @@ const renderVPCsTable = (vpcs, allRegions, selectedRegion = 'all') => {
     const regionOptions = allRegions.map(r => `<option value="${r}" ${selectedRegion === r ? 'selected' : ''}>${r}</option>`).join('');
     const filterControl = `<div class="mb-4 flex items-center gap-2"><label for="vpc-region-filter" class="text-sm font-medium text-gray-700">Filter by Region:</label><select id="vpc-region-filter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5"><option value="all">All Regions</option>${regionOptions}</select></div>`;
     if (!vpcs || vpcs.length === 0) return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No VPCs matching the selected filters were found.</p></div>`;
-    let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CIDR Block</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Is Default</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+    
+    let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                '<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CIDR Block</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Is Default</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>' +
+                '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+    
     vpcs.sort((a,b) => a.Region.localeCompare(b.Region)).forEach(v => {
-        const tagsStr = Object.entries(v.Tags).map(([k, val]) => `${k}:${val}`).join(', ') || '-';
+        const originalIndex = window.networkPoliciesApiData.results.vpcs.findIndex(orig => orig.VpcId === v.VpcId);
+        const tagCount = Object.keys(v.Tags).length;
+        
+        // Crear botón de tags
+        let tagsHtml = '-';
+        if (tagCount > 0) {
+            tagsHtml = `<button 
+                            onclick="openModalWithVpcTags(${originalIndex})" 
+                            class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition whitespace-nowrap">
+                            View (${tagCount})
+                        </button>`;
+        }
+        
+        // Lógica para scope
+        const vpcArn = `arn:aws:ec2:${v.Region}:${window.iamApiData?.metadata?.accountId || 'unknown'}:vpc/${v.VpcId}`;
+        const scopeDetails = window.scopedResources[vpcArn];
+        const isScoped = !!scopeDetails;
+        const rowClass = isScoped ? 'bg-pink-50 hover:bg-pink-100' : 'hover:bg-gray-50';
+        const scopeComment = isScoped ? scopeDetails.comment : '';
+        const scopeIcon = isScoped 
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-star w-5 h-5 text-pink-600" viewBox="0 0 16 16"><path d="M7.84 4.1a.178.178 0 0 1 .32 0l.634 1.285a.18.18 0 0 0 .134.098l1.42.206c.145.021.204.2.098.303L9.42 6.993a.18.18 0 0 0-.051.158l.242 1.414a.178.178 0 0 1-.258.187l-1.27-.668a.18.18 0 0 0-.165 0l-1.27.668a.178.178 0 0 1-.257-.187l.242-1.414a.18.18 0 0 0-.05-.158l-1.03-1.001a.178.178 0 0 1 .098-.303l1.42-.206a.18.18 0 0 0 .134-.098z"/><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/></svg>` 
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-star w-5 h-5 text-gray-400" viewBox="0 0 16 16"><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/></svg>`;
+        const scopeButton = `<button onclick="openScopeModal('${vpcArn}', '${encodeURIComponent(scopeComment)}')" title="${isScoped ? `Marcado: ${scopeComment}` : 'Marcar este recurso'}" class="p-1 rounded-full hover:bg-gray-200 transition">${scopeIcon}</button>`;
+
         const isDefault = v.IsDefault ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">YES</span>' : 'NO';
-        table += `<tr class="hover:bg-gray-50"><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${v.Region}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${v.VpcId}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${v.CidrBlock}</td><td class="px-4 py-4 whitespace-nowrap text-sm">${isDefault}</td><td class="px-4 py-4 text-sm text-gray-600 break-all">${tagsStr}</td></tr>`;
+        
+        table += `<tr class="${rowClass}">
+                    <td class="px-2 py-4 whitespace-nowrap text-sm text-center">${scopeButton}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${v.Region}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${v.VpcId}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${v.CidrBlock}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm">${isDefault}</td>
+                    <td class="px-4 py-4 text-sm text-gray-600">${tagsHtml}</td>
+                </tr>`;
     });
+    
     table += '</tbody></table></div>';
     return `<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">${filterControl}${table}</div>`;
 };
@@ -569,4 +635,35 @@ const renderNetworkDetailResult = (tableString) => {
         <h3 class="text-xl font-bold text-[#204071] mb-4">Analysis Results</h3>
         <pre class="bg-[#204071] text-white p-4 rounded-lg text-xs font-mono overflow-x-auto">${tableString}</pre>
     `;
+};
+
+export const openModalWithVpcTags = (vpcIndex) => {
+    const modal = document.getElementById('details-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+    const vpc = window.networkPoliciesApiData.results.vpcs[vpcIndex];
+
+    if (!modal || !vpc || !vpc.Tags) return;
+
+    modalTitle.textContent = `Tags for VPC: ${vpc.VpcId}`;
+    const tags = vpc.Tags;
+    const tagCount = Object.keys(tags).length;
+    let tagsListHtml = '';
+
+    if (tagCount > 0) {
+        tagsListHtml = '<div class="space-y-2 text-left">';
+        for (const key in tags) {
+            tagsListHtml += `
+                <div class="flex items-center bg-slate-100 p-2 rounded-md text-sm">
+                    <span class="font-bold text-slate-600 w-1/3">${key}:</span>
+                    <span class="font-mono text-slate-800 w-2/3">${tags[key]}</span>
+                </div>`;
+        }
+        tagsListHtml += '</div>';
+    } else {
+        tagsListHtml = '<p class="text-sm text-gray-500 text-center py-4">This VPC has no tags.</p>';
+    }
+
+    modalContent.innerHTML = tagsListHtml;
+    modal.classList.remove('hidden');
 };

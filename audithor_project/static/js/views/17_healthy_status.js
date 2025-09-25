@@ -1483,7 +1483,27 @@ export const buildScopedInventoryView = () => {
         const service = arn.split(':')[2];
 
         switch (service) {
-            case 'ec2':
+
+        case 'ec2':
+            // Verificar si es una VPC o una instancia EC2
+            if (arn.includes(':vpc/')) {
+                // Es una VPC
+                const vpc = window.networkPoliciesApiData?.results?.vpcs.find(v => {
+                    const vpcArn = `arn:aws:ec2:${v.Region}:${window.iamApiData?.metadata?.accountId || 'unknown'}:vpc/${v.VpcId}`;
+                    return vpcArn === arn;
+                });
+                if (vpc) {
+                    unifiedScopedItems.push({
+                        type: 'VPC',
+                        region: vpc.Region,
+                        identifier: vpc.VpcId,
+                        details: `CIDR: ${vpc.CidrBlock}, Default: ${vpc.IsDefault ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+            } else if (arn.includes(':instance/')) {
+                // Es una instancia EC2
                 const ec2Instance = window.computeApiData?.results?.ec2_instances.find(i => i.ARN === arn);
                 if (ec2Instance) {
                     unifiedScopedItems.push({
@@ -1495,7 +1515,9 @@ export const buildScopedInventoryView = () => {
                         arn: arn
                     });
                 }
-                break;
+            }
+            break;
+            
             case 'lambda':
                 const lambdaFunc = window.computeApiData?.results?.lambda_functions.find(f => f.ARN === arn);
                 if (lambdaFunc) {
@@ -2157,6 +2179,15 @@ const processTemplate = (template, data) => {
            </div>`
         : '<p class="no-scoped-assets">No specific assets were marked as in-scope during this assessment.</p>';
 
+    // Detectar si hay VPCs marcadas para incluir diagrama de arquitectura
+    const scopedVpcs = unifiedScopedItems.filter(item => item.type === 'VPC');
+    const hasVpcsInScope = scopedVpcs.length > 0;
+
+    let architectureDiagramSection = '';
+    if (hasVpcsInScope) {
+        architectureDiagramSection = generateArchitectureDiagramSection();
+    }
+
     // Generar sección de notas del auditor
     const auditorNotes = window.auditorNotes || [];
 
@@ -2348,7 +2379,8 @@ const processTemplate = (template, data) => {
         .replace(/{{SCOPED_ASSETS_COUNT}}/g, unifiedScopedItems.length.toString())
         .replace(/{{FINDINGS_SUMMARY_ROWS}}/g, findingsSummaryRows)
         .replace(/{{DETAILED_FINDINGS_SECTIONS}}/g, detailedFindingsSections)
-        .replace(/{{AUDITOR_NOTES_SECTION}}/g, auditorNotesSection);
+        .replace(/{{AUDITOR_NOTES_SECTION}}/g, auditorNotesSection)
+        .replace(/{{ARCHITECTURE_DIAGRAM_SECTION}}/g, architectureDiagramSection);
 };
 
 
@@ -2663,4 +2695,94 @@ const resetFindingEdits = () => {
         
         log('Las ediciones de los hallazgos han sido reiniciadas.', 'info');
     }
+};
+
+const generateArchitectureDiagramSection = () => {
+    if (!window.networkPoliciesApiData || !window.computeApiData || !window.databasesApiData) {
+        return '';
+    }
+
+    const { vpcs, subnets } = window.networkPoliciesApiData.results;
+    const { ec2_instances, lambda_functions } = window.computeApiData.results;
+    const { rds_instances, aurora_clusters } = window.databasesApiData.results;
+    const nat_gateways = window.networkPoliciesApiData.results.nat_gateways || [];
+
+    // Filtrar solo las VPCs que están marcadas como "in scope"
+    const scopedVpcs = vpcs.filter(vpc => {
+        const vpcArn = `arn:aws:ec2:${vpc.Region}:${window.iamApiData?.metadata?.accountId || 'unknown'}:vpc/${vpc.VpcId}`;
+        return window.scopedResources[vpcArn];
+    });
+
+    if (scopedVpcs.length === 0) return '';
+
+    // Generar diagrama adaptado para PDF
+    const diagramHtml = renderVpcDiagramForPdf(scopedVpcs, subnets, ec2_instances, lambda_functions, rds_instances, aurora_clusters, nat_gateways);
+
+    return `
+        <div class="architecture-section">
+            <h2>Architecture Diagram</h2>
+            <p>Network architecture for VPCs marked as in-scope during this assessment.</p>
+            ${diagramHtml}
+        </div>
+    `;
+};
+
+const renderVpcDiagramForPdf = (vpcs, subnets, instances, lambdas, rdsInstances, auroraClusters, natGateways) => {
+    if (!vpcs || vpcs.length === 0) return '<p>No VPCs were found to display in the diagram.</p>';
+    
+    let diagramHtml = '<div class="vpc-diagrams">';
+
+    vpcs.forEach(vpc => {
+        const vpcSubnets = subnets.filter(s => s.VpcId === vpc.VpcId);
+        const vpcInstances = instances.filter(i => vpcSubnets.some(s => s.SubnetId === i.SubnetId));
+        const vpcLambdas = lambdas.filter(l => l.VpcConfig && l.VpcConfig.VpcId === vpc.VpcId);
+        const vpcRds = rdsInstances.filter(r => r.VpcId === vpc.VpcId);
+        const vpcAurora = auroraClusters.filter(a => a.VpcId === vpc.VpcId);
+
+        const totalResources = vpcInstances.length + vpcLambdas.length + vpcRds.length + vpcAurora.length;
+
+        diagramHtml += `<div class="vpc-diagram">
+            <h3>${vpc.Tags['Name'] || vpc.VpcId}</h3>
+            <div class="vpc-info">${vpc.Region} | ${vpc.VpcId} | ${vpc.CidrBlock} | ${totalResources} resources</div>
+            <div class="subnets-grid">`;
+
+        vpcSubnets.forEach(subnet => {
+            diagramHtml += `<div class="subnet-box">
+                <div class="subnet-header">${subnet.Tags['Name'] || subnet.SubnetId}</div>
+                <div class="subnet-cidr">${subnet.CidrBlock}</div>
+                <div class="resources">`;
+            
+            // EC2 Instances
+            const subnetInstances = vpcInstances.filter(i => i.SubnetId === subnet.SubnetId);
+            subnetInstances.forEach(instance => {
+                const state = instance.State.toLowerCase();
+                const stateClass = (state === 'running') ? 'resource-running' : 'resource-stopped';
+                diagramHtml += `<div class="resource ${stateClass}">EC2: ${instance.Tags['Name'] || instance.InstanceId}</div>`;
+            });
+
+            // Lambda Functions
+            const subnetLambdas = vpcLambdas.filter(l => l.VpcConfig?.SubnetIds?.includes(subnet.SubnetId));
+            subnetLambdas.forEach(lambda => {
+                diagramHtml += `<div class="resource resource-lambda">Lambda: ${lambda.FunctionName}</div>`;
+            });
+
+            // NAT Gateways
+            const subnetNatGateways = natGateways.filter(nat => nat.SubnetId === subnet.SubnetId);
+            subnetNatGateways.forEach(nat => {
+                const natName = nat.Tags['Name'] || nat.NatGatewayId;
+                diagramHtml += `<div class="resource resource-nat">NAT: ${natName}</div>`;
+            });
+
+            if (subnetInstances.length === 0 && subnetLambdas.length === 0 && subnetNatGateways.length === 0) {
+                diagramHtml += '<div class="no-resources">No resources</div>';
+            }
+
+            diagramHtml += `</div></div>`;
+        });
+
+        diagramHtml += `</div></div>`;
+    });
+
+    diagramHtml += '</div>';
+    return diagramHtml;
 };

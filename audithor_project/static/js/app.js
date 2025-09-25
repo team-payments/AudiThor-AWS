@@ -34,7 +34,7 @@ import { buildAcmView } from '/static/js/views/09_acm.js';
 import { buildComputeView } from '/static/js/views/10_compute.js';
 import { buildDatabasesView } from '/static/js/views/11_databases.js';
 import { buildKmsSecretsView } from '/static/js/views/12_kms_secrets.js';
-import { buildNetworkPoliciesView } from '/static/js/views/13_network_policies.js';
+import { buildNetworkPoliciesView, openModalWithVpcTags } from '/static/js/views/13_network_policies.js';
 import { buildConnectivityView } from '/static/js/views/14_connectivity.js';
 import { buildConfigSHView } from '/static/js/views/15_config_sh.js';
 import { buildCodePipelineView } from '/static/js/views/18_codepipeline.js';
@@ -147,12 +147,20 @@ const setResourceScope = (arn, comment) => {
 };
 
 const removeResourceScope = (arn) => {
+    console.log('=== ANTES DE ELIMINAR ===');
+    console.log('ARN a eliminar:', arn);
+    console.log('Estado actual de scopedResources:', window.scopedResources);
+    
     if (arn && window.scopedResources[arn]) {
         delete window.scopedResources[arn];
+        console.log('=== DESPUÉS DE ELIMINAR ===');
+        console.log('Nuevo estado de scopedResources:', window.scopedResources);
         log(`Recurso ${arn} desmarcado.`, 'info');
+    } else {
+        console.log('ERROR: ARN no encontrado en scopedResources');
     }
     saveScopedResources();
-    rerenderCurrentView(); // Función para refrescar la vista actual
+    rerenderCurrentView();
 };
 
 
@@ -274,24 +282,21 @@ const openNotesModal = (noteId = null) => {
 
 // Refresca la vista activa para que los cambios de scope se reflejen inmediatamente
 const rerenderCurrentView = () => {
-    const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
-    if (!activeLink) return;
-    const viewName = activeLink.dataset.view;
+    console.log("=== RERENDERIZANDO VISTAS ===");
+    console.log("ARNs actuales:", Object.keys(window.scopedResources));
     
-    // Mapeo de nombre de vista a función de renderizado
-    const viewBuilderMap = {
-        'iam': buildIamView,
-        'exposure': buildExposureView,
-        'compute': buildComputeView,
-        'databases': buildDatabasesView,
-        'kms': buildKmsSecretsView,
-        'acm': buildAcmView, 
-        'healthy-status': buildHealthyStatusView,
-    };
-
-    if (viewBuilderMap[viewName]) {
-        log(`Refrescando vista '${viewName}' para actualizar el scope...`, 'info');
-        viewBuilderMap[viewName]();
+    // Siempre forzar refresco de network-policies en la pestaña VPCs
+    if (window.networkPoliciesApiData) {
+        log('Forzando refresco de network-policies en pestaña VPCs...', 'info');
+        buildNetworkPoliciesView('np-vpcs-content');
+    }
+    
+    // Refrescar healthy status si no está activo
+    const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+    const activeViewName = activeLink ? activeLink.dataset.view : null;
+    
+    if (activeViewName !== 'healthy-status') {
+        buildHealthyStatusView();
     }
 };
 
@@ -1387,3 +1392,4 @@ window.showNoteDetails = showNoteDetails;
 window.deleteAuditorNote = deleteAuditorNote;
 window.activateElementSelector = activateElementSelector;
 window.showNotesMenu = showNotesMenu;
+window.openModalWithVpcTags = openModalWithVpcTags;
