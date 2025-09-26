@@ -17,6 +17,33 @@ const requireApi = (path, fallbackMsg) => {
     return v;
 };
 
+// ---- FETCH con backoff para 502/503/504 ----
+async function fetchWithBackoff(url, opts = {}, {
+  attempts = 5,
+  baseDelayMs = 500,
+  backoffFactor = 2,
+  retryStatuses = [502, 503, 504]
+} = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, opts);
+      if (res.ok || !retryStatuses.includes(res.status)) {
+        return res;
+      }
+      // Estado 5xx transitorio: esperar y reintentar
+      const bodyPreview = await res.text().catch(() => '');
+      lastErr = new Error(`HTTP ${res.status}${bodyPreview ? ` - ${bodyPreview.slice(0, 500)}` : ''}`);
+    } catch (e) {
+      lastErr = e;
+    }
+    // backoff exponencial: 500ms, 1s, 2s, 4s...
+    const delay = baseDelayMs * Math.pow(backoffFactor, i);
+    await new Promise(r => setTimeout(r, delay));
+  }
+  throw lastErr || new Error('fetchWithBackoff: unknown error');
+}
+
 // 1. IMPORTACIONES
 import { 
     log, 
@@ -157,13 +184,12 @@ const loadScopedResources = () => {
     log(`${Object.keys(window.scopedResources).length} recursos marcados cargados desde localStorage.`, 'info');
 };
 const saveScopedResources = () => localStorage.setItem(SCOPE_STORAGE_KEY, JSON.stringify(window.scopedResources));
-const setResourceScope = (arn, comment) => {
-    if (arn && comment) {
-        window.scopedResources[arn] = { comment };
-        log(`Recurso ${arn} marcado como 'in scope'.`, 'success');
-    }
-    saveScopedResources();
-    rerenderCurrentView();
+const setResourceScope = (arn, comment = '') => {
+  if (!arn) return;
+  window.scopedResources[arn] = { comment: comment ?? '' };
+  log(`Recurso ${arn} marcado como 'in scope'.`, 'success');
+  saveScopedResources();
+  rerenderCurrentView();
 };
 const removeResourceScope = (arn) => {
     console.log('%c[LOG DESDE app.js] -> Se ha llamado a la función GLOBAL removeResourceScope.', 'color: green; font-weight: bold;');
@@ -276,55 +302,101 @@ const openNotesModal = (noteId = null) => {
     modal.classList.remove('hidden');
     titleInput.focus();
 };
-
-const rerenderCurrentView = () => {
-    log('Rerendering view(s) to reflect state changes...', 'info');
-    const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
-    if (!activeLink) { log('Could not find an active view to rerender.', 'warning'); return; }
-    const activeViewName = activeLink.dataset.view;
-    log(`Active view identified: ${activeViewName}`, 'info');
-
-    if (activeViewName === 'healthy-status') {
-        log('Currently in Healthy Status view. Refreshing ONLY the scoped inventory tab.', 'info');
-        buildScopedInventoryView(); 
-    } else {
-        const renderFunction = VIEW_BUILDERS[activeViewName];
-        if (renderFunction) {
-            log(`Calling full renderer for active view: '${activeViewName}'...`, 'info');
-            renderFunction();
-        }
-    }
-
-    log('Performing background refresh of key views...', 'info');
-    if (window.networkPoliciesApiData) buildNetworkPoliciesView();
-    if (window.computeApiData) buildComputeView();
-};
-
-// Modal de scope
+// Modal de scope (crear/editar el comentario del recurso)
 const openScopeModal = (arn, currentComment = '') => {
-    const modal = document.getElementById('scope-modal');
-    const title = document.getElementById('scope-modal-title');
-    const textarea = document.getElementById('scope-comment-textarea');
-    const saveBtn = document.getElementById('scope-modal-save-btn');
-    const unscopeBtn = document.getElementById('scope-modal-unscope-btn');
-    const closeBtn = document.getElementById('scope-modal-close-btn');
+  const modal = document.getElementById('scope-modal');
+  const title = document.getElementById('scope-modal-title');
+  const textarea = document.getElementById('scope-comment-textarea');
+  const saveBtn = document.getElementById('scope-modal-save-btn');
+  const unscopeBtn = document.getElementById('scope-modal-unscope-btn');
+  const closeBtn = document.getElementById('scope-modal-close-btn');
 
-    if (!modal) return;
+  if (!modal) {
+    console.warn('openScopeModal: no se encontró #scope-modal en el DOM');
+    return;
+  }
 
-    title.textContent = `Marcar Recurso: ${arn.split('/').pop()}`;
-    textarea.value = decodeURIComponent(currentComment);
+  // Título y texto inicial
+  try {
+    title.textContent = `Marcar Recurso: ${String(arn || '').split('/').pop()}`;
+  } catch { title.textContent = 'Marcar recurso'; }
+  textarea.value = decodeURIComponent(currentComment || '');
 
-    const newSaveBtn = saveBtn.cloneNode(true);
-    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-    const newUnscopeBtn = unscopeBtn.cloneNode(true);
-    unscopeBtn.parentNode.replaceChild(newUnscopeBtn, unscopeBtn);
+  // Reemplazar listeners para evitar duplicados
+  const newSaveBtn = saveBtn.cloneNode(true);
+  saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+  const newUnscopeBtn = unscopeBtn.cloneNode(true);
+  unscopeBtn.parentNode.replaceChild(newUnscopeBtn, unscopeBtn);
 
-    newSaveBtn.addEventListener('click', () => { setResourceScope(arn, textarea.value); modal.classList.add('hidden'); });
-    newUnscopeBtn.addEventListener('click', () => { removeResourceScope(arn); modal.classList.add('hidden'); });
-    closeBtn.onclick = () => modal.classList.add('hidden');
+  newSaveBtn.addEventListener('click', () => {
+    setResourceScope(arn, textarea.value);
+    modal.classList.add('hidden');
+  });
 
-    modal.classList.remove('hidden');
-    textarea.focus();
+  newUnscopeBtn.addEventListener('click', () => {
+    removeResourceScope(arn);
+    modal.classList.add('hidden');
+  });
+
+  closeBtn.onclick = () => modal.classList.add('hidden');
+
+  modal.classList.remove('hidden');
+  textarea.focus();
+};
+// REEMPLAZA COMPLETO
+const rerenderCurrentView = () => {
+  log('Rerendering view(s) to reflect state changes...', 'info');
+
+  // 1) Vista activa
+  const activeLink = document.querySelector('#sidebar-nav a.bg-\\[\\#eb3496\\]');
+  if (!activeLink) {
+    log('Could not find an active view to rerender.', 'warning');
+    return;
+  }
+
+  const activeViewName = activeLink.dataset.view;
+  log(`Active view identified: ${activeViewName}`, 'info');
+
+  // 2) Refresco inteligente
+  if (activeViewName === 'healthy-status') {
+    log('In Healthy Status. Refreshing ONLY the scoped inventory tab.', 'info');
+    try { buildScopedInventoryView(); } catch (e) { console.error(e); }
+  } else {
+    const renderFunction = VIEW_BUILDERS?.[activeViewName];
+    if (typeof renderFunction === 'function') {
+      log(`Calling full renderer for active view: '${activeViewName}'...`, 'info');
+
+      // ✅ selector correcto del sub-tab activo dentro de la vista
+      let activeSubTabKey = null;
+      try {
+        const sel = `#${activeViewName}-view .tab-link.border-\\[\\#eb3496\\]`;
+        activeSubTabKey = document.querySelector(sel)?.dataset?.tab || null;
+      } catch (err) {
+        console.warn('Active sub-tab selector failed; continuing without restoring tab.', err);
+      }
+
+      try { renderFunction(); } catch (e) { console.error(e); }
+
+      // Re-activar el mismo sub-tab si existía
+      if (activeSubTabKey) {
+        document
+          .querySelector(`#${activeViewName}-view [data-tab="${activeSubTabKey}"]`)
+          ?.click();
+      }
+    } else {
+      log(`No renderer found for view '${activeViewName}'.`, 'warning');
+    }
+  }
+
+  // 3) Refrescos en segundo plano (no tocan la vista actual)
+  log('Performing background refresh of key views...', 'info');
+  try {
+    if (window.networkPoliciesApiData && activeViewName !== 'network-policies') buildNetworkPoliciesView();
+    if (window.computeApiData && activeViewName !== 'compute') buildComputeView();
+    if (window.databasesApiData && activeViewName !== 'databases') buildDatabasesView();
+  } catch (e) {
+    console.error('Background refresh error:', e);
+  }
 };
 
 // === NUEVO: función común para mostrar vista y disparar builder ===
@@ -360,26 +432,29 @@ const handleMainNavClick = (e) => {
 // === BULK JOB HELPERS (asíncrono + polling con /api/scan/*) ========
 // ===================================================================
 const startBulkAudit = async (payload) => {
-    const url = requireApi(API.BULK_RUN, 'Missing API.BULK_RUN');
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); if (j?.error) msg += ` - ${j.error}`; } catch {}
-      throw new Error(msg);
-    }
-    const data = await res.json();
-    if (!data?.job_id) throw new Error('Invalid response from bulk audit: missing job_id');
-  
-    const jobId = data.job_id;
-    const pollUrl = requireApi(API.JOB_STATUS?.(jobId), 'Missing API.JOB_STATUS');
-    const resultUrl = requireApi(API.JOB_RESULT?.(jobId), 'Missing API.JOB_RESULT');
-  
-    return { jobId, pollUrl, resultUrl };
-  };
+  const url = requireApi(API.BULK_RUN, 'Missing API.BULK_RUN');
+
+  // Reintento con backoff para 502/503/504 + logging del cuerpo de error
+  const res = await fetchWithBackoff(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const bodyTxt = await res.text().catch(() => '');
+    throw new Error(`Bulk start failed: HTTP ${res.status}${bodyTxt ? ` - ${bodyTxt.slice(0, 500)}` : ''}`);
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!data?.job_id) throw new Error('Invalid response from bulk audit: missing job_id');
+
+  const jobId = data.job_id;
+  const pollUrl = requireApi(API.JOB_STATUS?.(jobId), 'Missing API.JOB_STATUS');
+  const resultUrl = requireApi(API.JOB_RESULT?.(jobId), 'Missing API.JOB_RESULT');
+
+  return { jobId, pollUrl, resultUrl };
+};
   
   const pollJobUntilDone = async (
     { pollUrl, resultUrl },
@@ -396,7 +471,7 @@ const startBulkAudit = async (payload) => {
   
       let res, data;
       try {
-        res = await fetch(pollUrl, { method: 'GET' });
+        res = await fetchWithBackoff(pollUrl, { method: 'GET' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         data = await res.json(); // { job_id, state, progress, error }
       } catch (err) {
@@ -424,11 +499,10 @@ const startBulkAudit = async (payload) => {
   
       if (state === 'done') {
         // pedir resultado final
-        const rr = await fetch(resultUrl, { method: 'GET' });
+        const rr = await fetchWithBackoff(resultUrl, { method: 'GET' });
         if (!rr.ok) {
-          let msg = `HTTP ${rr.status}`;
-          try { const j = await rr.json(); if (j?.error) msg += ` - ${j.error}`; } catch {}
-          throw new Error(`Error fetching job result: ${msg}`);
+          const bodyTxt = await rr.text().catch(() => '');
+          throw new Error(`Error fetching job result: HTTP ${rr.status}${bodyTxt ? ` - ${bodyTxt.slice(0, 500)}` : ''}`);
         }
         const result = await rr.json();
         return result; // shape con todas las colecciones
@@ -1222,17 +1296,7 @@ const openNotesModalWithEvidence = (evidence) => {
         const textarea = document.getElementById('notes-modal-textarea');
         titleInput.value = `Issue found: ${evidence.data.issue || evidence.elementType}`;
         arnInput.value = evidence.data.arn || '';
-        const evidenceText = `EVIDENCE CAPTURED:
-Timestamp: ${evidence.timestamp}
-Section: ${evidence.section}
-Sub-section: ${evidence.subSection || 'Main view'}
-Element Type: ${evidence.elementType}
-
-Details:
-${JSON.stringify(evidence.data, null, 2)}
-
-Additional Notes:
-`;
+        const evidenceText = `EVIDENCE CAPTURED:\nTimestamp: ${evidence.timestamp}\nSection: ${evidence.section}\nSub-section: ${evidence.subSection || 'Main view'}\nElement Type: ${evidence.elementType}\n\nDetails:\n${JSON.stringify(evidence.data, null, 2)}\n\nAdditional Notes:\n`;
         textarea.value = evidenceText;
         textarea.focus();
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
@@ -1284,3 +1348,27 @@ window.showNoteDetails = showNoteDetails;
 window.deleteAuditorNote = deleteAuditorNote;
 window.activateElementSelector = activateElementSelector;
 window.openModalWithVpcTags = openModalWithVpcTags;
+window.setResourceScope = setResourceScope;
+
+// === Delegación global para botones de Scope ===
+document.addEventListener('click', (e) => {
+  // Toggle scope inline
+  const toggleBtn = e.target.closest('[data-action="toggle-scope"]');
+  if (toggleBtn) {
+    const arn = toggleBtn.dataset.arn;
+    if (!arn) return;
+    if (window.scopedResources[arn]) {
+      removeResourceScope(arn);
+    } else {
+      setResourceScope(arn, ''); // comentario opcional
+    }
+    return; // evita caer al siguiente handler en el mismo click
+  }
+  // Abrir modal de scope
+  const openBtn = e.target.closest('[data-action="open-scope-modal"]');
+  if (openBtn) {
+    const arn = openBtn.dataset.arn;
+    const currentComment = openBtn.dataset.comment || '';
+    if (arn) openScopeModal(arn, currentComment);
+  }
+});
