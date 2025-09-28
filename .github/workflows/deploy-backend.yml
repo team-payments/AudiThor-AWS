@@ -76,10 +76,24 @@ jobs:
       - name: Register new task definition revision (with new image)
         id: register
         run: |
-          NEW_TD=$(jq --arg name "${CONTAINER_NAME}" --arg image "${IMAGE}" \
-            ' .containerDefinitions = (.containerDefinitions | map(if .name == $name then .image = $image | . else . end))
-            | del(.taskDefinitionArn, .revision, .status, .registeredBy, .registeredAt, .compatibilities)
-            ' taskdef.json)
+          NEW_TD=$(jq --arg name "${CONTAINER_NAME}" --arg image "${IMAGE}" '
+            .containerDefinitions = (
+              .containerDefinitions | map(
+                if .name == $name then .image = $image | . else . end
+              )
+            )
+            | del(
+                .taskDefinitionArn,
+                .revision,
+                .status,
+                .registeredBy,
+                .registeredAt,
+                .compatibilities,
+                .requiresAttributes,   # 👈 lo eliminamos
+                .deregisteredAt,
+                .registeredAt
+              )
+          ' taskdef.json)
 
           echo "$NEW_TD" > new-taskdef.json
 
