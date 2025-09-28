@@ -9,13 +9,19 @@ on:
       - ".github/workflows/deploy-frontend.yml"
   workflow_dispatch:
 
+# Evita despliegues paralelos sobre el mismo bucket
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+
 permissions:
-  id-token: write     # necesario para OIDC
+  id-token: write      # necesario para OIDC
   contents: read
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}                # ej. us-west-2
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}                  # ej. audithor-frontend
+  S3_PREFIX: frontend-dist                             # mantenemos la carpeta del bucket
   CF_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
 
 jobs:
@@ -26,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Asume el rol OIDC que ya creaste
+      # Asumir el rol OIDC (ya creado en IAM)
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -36,16 +42,14 @@ jobs:
       # ─────────────────────────────────────────────────────────────
       # ELIGE UNA DE ESTAS DOS OPCIONES DE BUILD
 
-      # Opción A: proyecto estático ya listo (carpeta 'public' o 'frontend/dist')
-      # Descomenta UNA de las dos líneas de 'SOURCE_DIR'
+      # Opción A: ya tienes los estáticos listos en 'public' o 'frontend/dist'
       - name: Select source folder
         run: |
           # export SOURCE_DIR=public
           export SOURCE_DIR=frontend/dist
           echo "SOURCE_DIR=$SOURCE_DIR" >> $GITHUB_ENV
 
-      # Opción B: proyecto con npm build (React/Vite/Next static export, etc.)
-      # Descomenta si necesitas construir
+      # Opción B: necesitas compilar (React/Vite/Next static export, etc.)
       # - name: Setup Node
       #   uses: actions/setup-node@v4
       #   with:
@@ -60,27 +64,35 @@ jobs:
 
       # ─────────────────────────────────────────────────────────────
 
-      - name: Sync to S3 (fast)
+      - name: Sync to S3 (to bucket/prefix)
         run: |
-          aws s3 sync "$SOURCE_DIR" "s3://${S3_BUCKET}" \
+          DEST="s3://${S3_BUCKET}/${S3_PREFIX}"
+          echo "Uploading to $DEST"
+          aws s3 sync "$SOURCE_DIR" "$DEST" \
             --delete \
             --only-show-errors
 
-      # Cache-control fino: HTML no cacheado, assets con cache largo
+      # Cache-control fino: HTML sin caché
       - name: Set cache headers for HTML
         run: |
-          aws s3 cp "s3://${S3_BUCKET}" "s3://${S3_BUCKET}" \
+          DEST="s3://${S3_BUCKET}/${S3_PREFIX}"
+          aws s3 cp "$DEST" "$DEST" \
             --recursive \
             --exclude "*" --include "*.html" \
             --metadata-directive REPLACE \
             --cache-control "no-store, max-age=0" \
             --content-type "text/html"
 
+      # Cache-control para estáticos (1 año, immutable)
       - name: Set cache headers for static assets
         run: |
-          aws s3 cp "s3://${S3_BUCKET}" "s3://${S3_BUCKET}" \
+          DEST="s3://${S3_BUCKET}/${S3_PREFIX}"
+          aws s3 cp "$DEST" "$DEST" \
             --recursive \
-            --exclude "*" --include "*.js" --include "*.css" --include "*.png" --include "*.jpg" --include "*.jpeg" --include "*.svg" --include "*.webp" --include "*.ico" \
+            --exclude "*" \
+            --include "*.js" --include "*.css" \
+            --include "*.png" --include "*.jpg" --include "*.jpeg" --include "*.svg" \
+            --include "*.webp" --include "*.gif" --include "*.ico" --include "*.woff" --include "*.woff2" \
             --metadata-directive REPLACE \
             --cache-control "public, max-age=31536000, immutable"
 
