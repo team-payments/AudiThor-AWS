@@ -40,7 +40,7 @@ jobs:
 
       - name: Select source folder
         run: |
-          export SOURCE_DIR=frontend/dist
+          export SOURCE_DIR=frontend-dist
           echo "SOURCE_DIR=$SOURCE_DIR" >> $GITHUB_ENV
           ls -la "$SOURCE_DIR" || (echo "No existe $SOURCE_DIR" && exit 1)
 
