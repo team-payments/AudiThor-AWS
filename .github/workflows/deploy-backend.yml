@@ -15,10 +15,12 @@ permissions:
 env:
   AWS_REGION: us-west-2
   AWS_ACCOUNT_ID: "759132943136"
-  ECR_REPO: "audithor-api"            # nombre del repo en ECR
-  ECS_CLUSTER: "audithor-cluster"
-  ECS_SERVICE: "audithor-service"
-  CONTAINER_NAME: "audithor-api"      # nombre del contenedor dentro de la task definition
+  ECR_REPO: "audithor-api"          # nombre del repo ECR
+  ECS_CLUSTER: "audithor-cluster"   # nombre del clúster ECS
+  ECS_SERVICE: "audithor-service"   # nombre del servicio ECS
+  CONTAINER_NAME: "audithor-api"    # nombre del contenedor en la task definition
+  DOCKER_CONTEXT: "./audithor_project"  # carpeta donde está el Dockerfile del backend
+  # DOCKERFILE_PATH: "./audithor_project/Dockerfile" # <- descomenta si tu Dockerfile no se llama 'Dockerfile'
 
 jobs:
   deploy:
@@ -34,41 +36,35 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_BACKEND }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
+      - name: Log in to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Instalar jq para manipular JSON
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # Construir & subir imagen
       - name: Build, tag and push image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          set -e
-          IMAGE_URI="$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG"
-          IMAGE_URI_LATEST="$ECR_REGISTRY/${ECR_REPO}:latest"
+          set -euo pipefail
+          echo "Registry: $ECR_REGISTRY"
+          echo "Building image tag: $IMAGE_TAG"
 
-          # Ajusta --platform si tu imagen base/target es distinta
-          docker build \
-            --platform=linux/amd64 \
-            -t "$IMAGE_URI" \
-            -t "$IMAGE_URI_LATEST" \
-            audithor_project
+          # Si tu Dockerfile NO se llama exactamente "Dockerfile", usa la siguiente línea:
+          # docker build -f "${DOCKERFILE_PATH}" -t "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG" "${DOCKER_CONTEXT}"
+          docker build -t "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG" "${DOCKER_CONTEXT}"
 
-          docker push "$IMAGE_URI"
-          docker push "$IMAGE_URI_LATEST"
+          docker tag "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG" "$ECR_REGISTRY/${ECR_REPO}:latest"
+          docker push "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/${ECR_REPO}:latest"
+          echo "IMAGE=$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG" >> $GITHUB_ENV
 
-          echo "IMAGE=$IMAGE_URI" >> $GITHUB_ENV
-
-      # Exportar la task definition usada por el servicio
       - name: Get current task definition
         id: td
         run: |
-          set -e
+          set -euo pipefail
           TD_ARN=$(aws ecs describe-services \
             --cluster "${ECS_CLUSTER}" \
             --services "${ECS_SERVICE}" \
@@ -76,23 +72,38 @@ jobs:
             --output text)
           echo "Current TD ARN: $TD_ARN"
 
+          # Guardamos la respuesta COMPLETA (sin --query) para mantener la estructura válida
           aws ecs describe-task-definition \
             --task-definition "$TD_ARN" \
-            --query 'taskDefinition' > taskdef.json
+            --output json > taskdef.json
 
           echo "TD_ARN=$TD_ARN" >> $GITHUB_OUTPUT
-          jq '.family, .containerDefinitions[] | {name, image}' taskdef.json
 
-      # Registrar nueva revisión reemplazando SOLO la imagen del contenedor objetivo
       - name: Register new task definition revision (with new image)
         id: register
         run: |
-          set -e
-          jq --arg name "${CONTAINER_NAME}" --arg image "${IMAGE}" \
-            ' .containerDefinitions = (.containerDefinitions
-                | map(if .name == $name then .image = $image else . end))
-            | del(.taskDefinitionArn, .revision, .status, .registeredBy, .registeredAt, .compatibilities)
-            ' taskdef.json > new-taskdef.json
+          set -euo pipefail
+
+          # Validamos que exista el contenedor objetivo y sustituimos la imagen
+          NEW_TD=$(jq --arg name "${CONTAINER_NAME}" --arg image "${IMAGE}" '
+            .taskDefinition
+            | ( .containerDefinitions
+                = ( .containerDefinitions
+                    | ( [ .[].name ] | index($name) ) as $i
+                    | if $i == null then
+                        halt_error(1; "Container name \"" + $name + "\" not found in task definition")
+                      else
+                        map( if .name == $name then .image = $image | . else . end )
+                      end
+                  )
+              )
+            # Eliminar campos de solo-lectura/no aceptados al registrar
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .registeredBy, .registeredAt, .compatibilities)
+          ' taskdef.json)
+
+          echo "$NEW_TD" > new-taskdef.json
+          echo "Prepared new task definition:"
+          jq '.family, (.containerDefinitions[] | {name, image})' new-taskdef.json
 
           NEW_TD_ARN=$(aws ecs register-task-definition \
             --cli-input-json file://new-taskdef.json \
@@ -102,20 +113,19 @@ jobs:
           echo "New TD ARN: $NEW_TD_ARN"
           echo "NEW_TD_ARN=$NEW_TD_ARN" >> $GITHUB_OUTPUT
 
-      # Actualizar el servicio a la nueva revisión
       - name: Update service
         run: |
-          set -e
+          set -euo pipefail
           aws ecs update-service \
             --cluster "${ECS_CLUSTER}" \
             --service "${ECS_SERVICE}" \
             --task-definition "${{ steps.register.outputs.NEW_TD_ARN }}" \
             --force-new-deployment
 
-      # Esperar a que se estabilice
       - name: Wait for service stability
         run: |
+          set -euo pipefail
           aws ecs wait services-stable \
             --cluster "${ECS_CLUSTER}" \
             --services "${ECS_SERVICE}"
-          echo "Deployment completed ✅"
+          echo "Deployment finished successfully ✅"
