@@ -1,0 +1,83 @@
+name: Deploy Frontend to S3 + CloudFront
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "frontend/**"
+      - "public/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  CF_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+  S3_PREFIX: frontend-dist
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_FRONTEND }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Who am I?
+        run: |
+          aws sts get-caller-identity
+          aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" || true
+
+      - name: Select source folder
+        run: |
+          export SOURCE_DIR=frontend/dist
+          echo "SOURCE_DIR=$SOURCE_DIR" >> $GITHUB_ENV
+          ls -la "$SOURCE_DIR" || (echo "No existe $SOURCE_DIR" && exit 1)
+
+      - name: Sync to S3 (to prefix)
+        run: |
+          aws s3 sync "$SOURCE_DIR" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --delete \
+            --only-show-errors
+          aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" --recursive | tail -n 20
+
+      - name: Set cache headers for HTML
+        run: |
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.html" \
+            --metadata-directive REPLACE \
+            --cache-control "no-store, max-age=0" \
+            --content-type "text/html"
+
+      - name: Set cache headers for static assets
+        run: |
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive \
+            --exclude "*" \
+            --include "*.js" --include "*.css" --include "*.png" --include "*.jpg" \
+            --include "*.jpeg" --include "*.svg" --include "*.webp" --include "*.ico" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable"
+
+      - name: Create CloudFront invalidation and wait
+        run: |
+          OUT=$(aws cloudfront create-invalidation \
+            --distribution-id "${CF_DISTRIBUTION_ID}" \
+            --paths "/*")
+          ID=$(echo "$OUT" | jq -r '.Invalidation.Id')
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${CF_DISTRIBUTION_ID}" \
+            --id "$ID"
+          aws cloudfront get-invalidation \
+            --distribution-id "${CF_DISTRIBUTION_ID}" \
+            --id "$ID"
