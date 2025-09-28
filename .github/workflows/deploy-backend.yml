@@ -19,7 +19,7 @@ env:
   ECS_CLUSTER: "audithor-cluster"
   ECS_SERVICE: "audithor-service"
   CONTAINER_NAME: "audithor-api"
-  DOCKER_CONTEXT: "audithor_project"   # 👈 Aquí está tu backend
+  BUILD_CONTEXT: "audithor_project"   # 👈 antes se llamaba DOCKER_CONTEXT
 
 jobs:
   deploy:
@@ -48,9 +48,9 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
-          echo "Building Docker image from context: ${DOCKER_CONTEXT}"
+          echo "Building Docker image from context path: ${BUILD_CONTEXT}"
 
-          docker build -t "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG" "${DOCKER_CONTEXT}"
+          docker build -t "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG" "${BUILD_CONTEXT}"
 
           docker tag "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG" "$ECR_REGISTRY/${ECR_REPO}:latest"
           docker push "$ECR_REGISTRY/${ECR_REPO}:$IMAGE_TAG"
