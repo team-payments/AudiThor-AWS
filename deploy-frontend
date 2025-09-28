@@ -1,0 +1,91 @@
+name: Deploy Frontend to S3 + CloudFront
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "frontend/**"
+      - "public/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write     # necesario para OIDC
+  contents: read
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  CF_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Asume el rol OIDC que ya creaste
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_FRONTEND }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ─────────────────────────────────────────────────────────────
+      # ELIGE UNA DE ESTAS DOS OPCIONES DE BUILD
+
+      # Opción A: proyecto estático ya listo (carpeta 'public' o 'frontend/dist')
+      # Descomenta UNA de las dos líneas de 'SOURCE_DIR'
+      - name: Select source folder
+        run: |
+          # export SOURCE_DIR=public
+          export SOURCE_DIR=frontend/dist
+          echo "SOURCE_DIR=$SOURCE_DIR" >> $GITHUB_ENV
+
+      # Opción B: proyecto con npm build (React/Vite/Next static export, etc.)
+      # Descomenta si necesitas construir
+      # - name: Setup Node
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "20"
+      #
+      # - name: Install & build
+      #   working-directory: frontend
+      #   run: |
+      #     npm ci
+      #     npm run build
+      #     echo "SOURCE_DIR=frontend/dist" >> $GITHUB_ENV
+
+      # ─────────────────────────────────────────────────────────────
+
+      - name: Sync to S3 (fast)
+        run: |
+          aws s3 sync "$SOURCE_DIR" "s3://${S3_BUCKET}" \
+            --delete \
+            --only-show-errors
+
+      # Cache-control fino: HTML no cacheado, assets con cache largo
+      - name: Set cache headers for HTML
+        run: |
+          aws s3 cp "s3://${S3_BUCKET}" "s3://${S3_BUCKET}" \
+            --recursive \
+            --exclude "*" --include "*.html" \
+            --metadata-directive REPLACE \
+            --cache-control "no-store, max-age=0" \
+            --content-type "text/html"
+
+      - name: Set cache headers for static assets
+        run: |
+          aws s3 cp "s3://${S3_BUCKET}" "s3://${S3_BUCKET}" \
+            --recursive \
+            --exclude "*" --include "*.js" --include "*.css" --include "*.png" --include "*.jpg" --include "*.jpeg" --include "*.svg" --include "*.webp" --include "*.ico" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable"
+
+      - name: Create CloudFront invalidation
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${CF_DISTRIBUTION_ID}" \
+            --paths "/*"
