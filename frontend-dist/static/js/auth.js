@@ -1,26 +1,37 @@
-// === auth.js (ESM, sin bundler) ===
-// Carga oidc-client-ts desde CDN para que funcione en S3/CloudFront sin build.
-const _oidc = import(
-  "https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js"
-);
+// === auth.js (ESM sin bundler; carga UMD de oidc-client-ts) ===
+
+// Carga el bundle UMD que expone window.oidc (UserManager, etc.)
+const _oidc = new Promise((resolve, reject) => {
+  if (window.oidc) return resolve(window.oidc); // ya cargado
+  const s = document.createElement("script");
+  s.src =
+    "https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js";
+  s.async = true;
+  s.onload = () => {
+    if (window.oidc) resolve(window.oidc);
+    else reject(new Error("oidc-client-ts UMD not available on window.oidc"));
+  };
+  s.onerror = () => reject(new Error("Failed to load oidc-client-ts script"));
+  document.head.appendChild(s);
+});
 
 // ⚙️ Configuración Cognito (Hosted UI)
-const COGNITO_DOMAIN = "https://audithor-spa-client.auth.us-west-2.amazoncognito.com";
+const COGNITO_DOMAIN =
+  "https://audithor-spa-client.auth.us-west-2.amazoncognito.com"; // sin /login
 const CLIENT_ID = "2faon57u5n65mliv7ncj1us53";
 const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 
-// Inicializa UserManager cuando el módulo de OIDC esté cargado
+// Inicializa UserManager cuando el bundle esté cargado
 const _userManagerPromise = _oidc.then(({ UserManager }) => {
   return new UserManager({
-    authority: COGNITO_DOMAIN,              // Hosted UI domain (sin /login)
+    authority: COGNITO_DOMAIN,
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-    response_type: "code",                  // Authorization Code + PKCE
-    scope: "openid email profile phone",    // scopes recomendados
-    // Nota: oidc-client-ts ya usa localStorage por defecto para la sesión
-    // No hace falta WebStorageStateStore en esta versión
+    response_type: "code", // Authorization Code + PKCE
+    scope: "openid email profile phone",
+    // oidc-client-ts ya persiste en storage apropiado por defecto
     // (opcional) loadUserInfo: true,
   });
 });
@@ -46,7 +57,7 @@ export function isAuthCallback() {
   const q = new URLSearchParams(window.location.search);
   if (q.has("code") || q.has("state")) return true;
 
-  // (por si algún proveedor retorna por hash)
+  // Por si algún IdP devuelve en hash
   const h = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   return h.has("code") || h.has("state");
 }
@@ -54,7 +65,7 @@ export function isAuthCallback() {
 export async function completeAuth() {
   const um = await _userManagerPromise;
   await um.signinRedirectCallback();
-  // Limpia parámetros de la URL (quita ?code&state) dejando la raíz exacta
+  // Limpia parámetros (?code&state) dejando la raíz exacta
   window.history.replaceState({}, document.title, REDIRECT_URI);
 }
 
@@ -68,9 +79,7 @@ export async function requireAuth() {
   return user;
 }
 
-// --------------------- Auto-inicialización opcional ---------------------
-// Si quieres que la SPA requiera sesión siempre al entrar, deja este bloque activo.
-// Si prefieres controlar tú el flujo (p.ej. botón Login), comenta el IIFE.
+// --------------------- Auto-inicialización ---------------------
 (async () => {
   try {
     if (isAuthCallback()) {
