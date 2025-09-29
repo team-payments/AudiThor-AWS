@@ -1,68 +1,32 @@
-// === auth.js ===
-import { UserManager, WebStorageStateStore } from "oidc-client-ts";
+// /static/js/auth.js
+import { UserManager } from "https://cdn.jsdelivr.net/npm/oidc-client-ts@2.2.1/+esm";
 
-// ⚠️ Rellena con tus datos reales
-const COGNITO_DOMAIN = "https://<tu-dominio>.auth.us-west-2.amazoncognito.com"; 
-// Ej: https://audithor-spa-client.auth.us-west-2.amazoncognito.com
-const CLIENT_ID = "<tu-app-client-id>"; // sin secret
-const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";      // EXACTA
-const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/"; // EXACTA
-
+// Rellena con tus valores reales de Cognito
 const cognitoAuthConfig = {
-  // Recomendado: usar el dominio de Hosted UI como authority
-  authority: COGNITO_DOMAIN,
-  client_id: CLIENT_ID,
-  redirect_uri: REDIRECT_URI,
-  post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
+  authority: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_ATD5cVZi3", // User Pool issuer
+  client_id: "2faon57u5n65mliv7ncj1us53", // App client ID
+  redirect_uri: "https://d38k4y82pqltc.cloudfront.net", // URL pública del frontend
   response_type: "code",
-  scope: "openid email phone",
-  userStore: new WebStorageStateStore({ store: window.localStorage }),
-  // Descubrimiento OIDC: el dominio Hosted UI publica /.well-known/openid-configuration
+  scope: "openid email profile"
 };
 
-export const userManager = new UserManager(cognitoAuthConfig);
+const userManager = new UserManager(cognitoAuthConfig);
 
-export function isAuthCallback() {
-  // Code Flow: Cognito devuelve ?code=... (&state=...)
-  const q = new URLSearchParams(window.location.search);
-  return q.has("code") || q.has("state");
+export async function login() {
+  await userManager.signinRedirect();
 }
 
-export async function completeAuth() {
-  await userManager.signinRedirectCallback();
-  // Limpia la query para no dejar el ?code en la barra
-  const url = new URL(window.location.href);
-  url.search = "";
-  window.history.replaceState({}, "", url.toString());
+export async function logout() {
+  await userManager.signoutRedirect();
 }
 
-export function login() {
-  return userManager.signinRedirect();
-}
-
-export function logout() {
-  return userManager.signoutRedirect();
-}
-
-export function getUser() {
-  return userManager.getUser();
-}
-
-/** Fuerza login si no hay sesión */
-export async function requireAuth() {
-  const user = await getUser();
-  if (!user || user.expired) {
-    await login();
-    return new Promise(() => {}); // evitar continuar ejecutando el resto de JS
+export async function getUser() {
+  // Devuelve el usuario si ya está en storage
+  const user = await userManager.getUser();
+  // Si volvemos del callback (tras login), procesa el redirect
+  if (!user && window.location.search.includes("code=")) {
+    await userManager.signinRedirectCallback().catch(() => {});
+    return await userManager.getUser();
   }
   return user;
 }
-
-// Inicialización automática
-(async () => {
-  if (isAuthCallback()) {
-    await completeAuth();
-  } else {
-    await requireAuth();
-  }
-})();
