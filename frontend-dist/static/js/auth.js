@@ -2,14 +2,13 @@
 // Cargamos oidc-client-ts como ES module real (evita "no es un constructor").
 const OIDC_URL = "https://esm.sh/oidc-client-ts@2.4.1";
 
-// 👉 PON AQUÍ TU DOMINIO DEL HOSTED UI (no el endpoint cognito-idp):
-// Formato: https://<pool-prefix>.auth.<region>.amazoncognito.com
+// 👉 DOMINIO DEL HOSTED UI (NO el endpoint cognito-idp)
 const COGNITO_DOMAIN = "https://us-west-2atd5cvzi3.auth.us-west-2.amazoncognito.com";
 
 // App client (público, sin secret)
 const CLIENT_ID = "2faon57u5n65mliv7ncj1us53";
 
-// Deben coincidir EXACTAS con lo configurado en “Allowed callback URLs” y “Allowed sign-out URLs”
+// Deben coincidir EXACTAS con Allowed callback URLs y Allowed sign-out URLs
 const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 
@@ -18,29 +17,53 @@ const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 /* ------------------------------------------------------------------ */
 let _userManagerPromise = null;
 
+async function importOidc() {
+  // 1) Intento principal: esm.sh (ESM real)
+  try {
+    const mod = await import(OIDC_URL);
+    if (mod?.UserManager && mod?.WebStorageStateStore) return mod;
+  } catch (e) {
+    console.warn("No se pudo cargar oidc-client-ts desde esm.sh:", e);
+  }
+
+  // 2) Fallback opcional: jsDelivr ESM build (por si el anterior falla)
+  try {
+    const alt = await import(
+      "https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js"
+    );
+    // Algunos builds exponen en default; normalizamos
+    const mod = alt?.default ? alt.default : alt;
+    if (mod?.UserManager && mod?.WebStorageStateStore) return mod;
+  } catch (e) {
+    console.warn("Fallback jsDelivr también falló:", e);
+  }
+
+  throw new Error("No se pudo cargar oidc-client-ts desde los CDNs.");
+}
+
 async function getUserManager() {
   if (_userManagerPromise) return _userManagerPromise;
 
   _userManagerPromise = (async () => {
-    // Cargamos el bundle ESM
-    const mod = await import(OIDC_URL);
-    // oidc-client-ts exporta las clases como export nombrado
-    const { UserManager, WebStorageStateStore } = mod;
+    const { UserManager, WebStorageStateStore } = await importOidc();
 
-    // Config OIDC apuntando al Hosted UI (authority)
     const settings = {
-      authority: COGNITO_DOMAIN,                    // 👈 Hosted UI domain
+      // 👇 MUY IMPORTANTE: el dominio del Hosted UI
+      authority: COGNITO_DOMAIN,
+
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-      response_type: "code",                        // Code flow (PKCE auto)
+
+      response_type: "code",                // Authorization Code + PKCE (auto)
       scope: "openid email profile phone",
+
       // Persistimos sesión OIDC en localStorage
       userStore: new WebStorageStateStore({ store: window.localStorage }),
 
-      // Opcional: tiempos de tolerancia de reloj para evitar desajustes
-      clockSkew: 5,
-      automaticSilentRenew: false,                  // (Hosted UI no permite silent iframe)
+      // Ajustes seguros para SPA con Hosted UI
+      automaticSilentRenew: false,          // Hosted UI no soporta silent iframe
+      clockSkew: 5,                          // tolerancia de reloj (segundos)
     };
 
     return new UserManager(settings);
