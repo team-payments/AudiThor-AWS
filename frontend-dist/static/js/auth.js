@@ -12,7 +12,7 @@ const REGION = "us-west-2";
 const USER_POOL_ID = "us-west-2_ATD5cVZi3"; // <-- confirma que está exactamente así
 
 // 3) App client (público, sin secret)
-const CLIENT_ID = "2faon57u5n6smli1v7ncg1us53";
+const CLIENT_ID = "2faon57u5n65mliv7ncj1us53";
 
 // 4) Deben coincidir EXACTAS con Allowed callback URLs / sign-out URLs
 const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
