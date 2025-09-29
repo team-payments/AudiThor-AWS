@@ -1,69 +1,41 @@
-// === /static/js/auth.js (ESM, sin bundler) ===
-// Cargamos oidc-client-ts como ES module real (evita "no es un constructor").
+// === /static/js/auth.js (ESM, sin bundler, login forzado) ===
+
+// Cargamos oidc-client-ts como ES module real
 const OIDC_URL = "https://esm.sh/oidc-client-ts@2.4.1";
 
-// 👉 DOMINIO DEL HOSTED UI (NO el endpoint cognito-idp)
+// 👉 Dominio del Hosted UI de tu pool (NO el endpoint cognito-idp).
+// Lo ves en Cognito → Tu User pool → App integration → Dominio de Cognito
 const COGNITO_DOMAIN = "https://us-west-2atd5cvzi3.auth.us-west-2.amazoncognito.com";
 
 // App client (público, sin secret)
 const CLIENT_ID = "2faon57u5n65mliv7ncj1us53";
 
-// Deben coincidir EXACTAS con Allowed callback URLs y Allowed sign-out URLs
+// Deben coincidir EXACTAS con Allowed callback URLs / sign-out URLs
 const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 
-/* ------------------------------------------------------------------ */
-/*   Carga del módulo y creación perezosa del UserManager              */
-/* ------------------------------------------------------------------ */
+// ———————————————————————————————————————————————————————————————
+//  Carga perezosa de UserManager
+// ———————————————————————————————————————————————————————————————
 let _userManagerPromise = null;
-
-async function importOidc() {
-  // 1) Intento principal: esm.sh (ESM real)
-  try {
-    const mod = await import(OIDC_URL);
-    if (mod?.UserManager && mod?.WebStorageStateStore) return mod;
-  } catch (e) {
-    console.warn("No se pudo cargar oidc-client-ts desde esm.sh:", e);
-  }
-
-  // 2) Fallback opcional: jsDelivr ESM build (por si el anterior falla)
-  try {
-    const alt = await import(
-      "https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js"
-    );
-    // Algunos builds exponen en default; normalizamos
-    const mod = alt?.default ? alt.default : alt;
-    if (mod?.UserManager && mod?.WebStorageStateStore) return mod;
-  } catch (e) {
-    console.warn("Fallback jsDelivr también falló:", e);
-  }
-
-  throw new Error("No se pudo cargar oidc-client-ts desde los CDNs.");
-}
 
 async function getUserManager() {
   if (_userManagerPromise) return _userManagerPromise;
 
   _userManagerPromise = (async () => {
-    const { UserManager, WebStorageStateStore } = await importOidc();
+    const mod = await import(OIDC_URL);
+    const { UserManager, WebStorageStateStore } = mod;
 
     const settings = {
-      // 👇 MUY IMPORTANTE: el dominio del Hosted UI
-      authority: COGNITO_DOMAIN,
-
+      authority: COGNITO_DOMAIN,                // Hosted UI domain
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-
-      response_type: "code",                // Authorization Code + PKCE (auto)
+      response_type: "code",                     // Code flow (PKCE auto)
       scope: "openid email profile phone",
-
-      // Persistimos sesión OIDC en localStorage
       userStore: new WebStorageStateStore({ store: window.localStorage }),
-
-      // Ajustes seguros para SPA con Hosted UI
-      automaticSilentRenew: false,          // Hosted UI no soporta silent iframe
-      clockSkew: 5,                          // tolerancia de reloj (segundos)
+      automaticSilentRenew: false,               // Hosted UI no iframe silencioso
+      clockSkew: 5,
     };
 
     return new UserManager(settings);
@@ -72,9 +44,9 @@ async function getUserManager() {
   return _userManagerPromise;
 }
 
-/* ------------------------------------------------------------------ */
-/*   Helpers públicos                                                  */
-/* ------------------------------------------------------------------ */
+// ———————————————————————————————————————————————————————————————
+//  API pública
+// ———————————————————————————————————————————————————————————————
 export async function getUser() {
   const um = await getUserManager();
   return um.getUser();
@@ -91,11 +63,9 @@ export async function logout() {
 }
 
 export function isAuthCallback() {
-  // Code Flow: Cognito vuelve con ?code y ?state
+  // Cognito vuelve con ?code=&state= en la query (o raramente en hash)
   const qs = new URLSearchParams(window.location.search);
   if (qs.has("code") || qs.has("state")) return true;
-
-  // Por si algún proveedor devolviera por hash
   const hs = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   return hs.has("code") || hs.has("state");
 }
@@ -103,33 +73,33 @@ export function isAuthCallback() {
 export async function completeAuth() {
   const um = await getUserManager();
   await um.signinRedirectCallback();
-  // Limpiamos la query para no dejar ?code&state en la barra
+  // Limpia ?code&state de la barra
   window.history.replaceState({}, document.title, REDIRECT_URI);
 }
 
 export async function requireAuth() {
   const user = await getUser();
   if (!user || user.expired) {
-    await login();
-    // Evitar seguir ejecutando el resto del JS tras redirigir
-    return new Promise(() => {});
+    await login();              // redirige al Hosted UI
+    return new Promise(() => {}); // corta la ejecución en esta carga
   }
   return user;
 }
 
-/* ------------------------------------------------------------------ */
-/*   Auto-init opcional: fuerza sesión al entrar                       */
-/*   Si prefieres controlar con botón "Login", comenta este bloque.    */
-/* ------------------------------------------------------------------ */
+// ———————————————————————————————————————————————————————————————
+//  Auto-init: fuerza login SIEMPRE antes de mostrar la app
+//  (deja este bloque tal cual para “no ver nada” hasta iniciar sesión)
+// ———————————————————————————————————————————————————————————————
 (async () => {
   try {
     if (isAuthCallback()) {
-      await completeAuth();
+      await completeAuth();     // procesa el retorno de Cognito
     } else {
-      // Si no quieres forzar login, comenta esta línea:
-      await requireAuth();
+      await requireAuth();      // si no hay sesión, redirige a login
     }
   } catch (err) {
+    // Si hay un fallo de red puntual en la discovery, verás aquí el error.
+    // El usuario puede recargar; el flujo no expone la app sin sesión.
     console.error("Auth init error:", err);
   }
 })();
