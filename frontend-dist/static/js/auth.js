@@ -51,11 +51,11 @@ async function getUserManager() {
       post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
       response_type: "code",
       scope: "openid email profile",
-    
+
       // 👇 Usa el mismo almacén para estado y usuario
       userStore:  new WebStorageStateStore({ store: window.localStorage }),
       stateStore: new WebStorageStateStore({ store: window.localStorage }),
-    
+
       automaticSilentRenew: false,
       clockSkew: 5,
     };
@@ -63,6 +63,16 @@ async function getUserManager() {
   })();
 
   return _userManagerPromise;
+}
+
+// ———————————————————————————————————————————————————————————————
+//  Helpers
+// ———————————————————————————————————————————————————————————————
+function isAuthCallback() {
+  const qs = new URLSearchParams(window.location.search);
+  if (qs.has("code") || qs.has("state")) return true;
+  const hs = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return hs.has("code") || hs.has("state");
 }
 
 // ———————————————————————————————————————————————————————————————
@@ -80,14 +90,21 @@ export async function login() {
 
 export async function logout() {
   const um = await getUserManager();
-  return um.signoutRedirect();
-}
 
-export function isAuthCallback() {
-  const qs = new URLSearchParams(window.location.search);
-  if (qs.has("code") || qs.has("state")) return true;
-  const hs = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  return hs.has("code") || hs.has("state");
+  // Queremos volver a la app con un flag y relanzar login
+  const returnTo = `${REDIRECT_URI}?logged_out=1`;
+
+  try {
+    await um.signoutRedirect({
+      post_logout_redirect_uri: returnTo,
+    });
+  } catch (e) {
+    // Fallback manual si el helper falla
+    const url = `${COGNITO_DOMAIN}/logout?client_id=${encodeURIComponent(
+      CLIENT_ID
+    )}&logout_uri=${encodeURIComponent(returnTo)}`;
+    window.location.href = url;
+  }
 }
 
 export async function completeAuth() {
@@ -108,9 +125,18 @@ export async function requireAuth() {
 
 // ———————————————————————————————————————————————————————————————
 //  Auto-init: fuerza login SIEMPRE antes de mostrar la app
+//  + relanza login si venimos de logout (?logged_out=1)
 // ———————————————————————————————————————————————————————————————
 (async () => {
   try {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("logged_out") === "1") {
+      // limpiamos el flag para evitar bucles
+      window.history.replaceState({}, document.title, REDIRECT_URI);
+      await login(); // abrir Hosted UI de Cognito
+      return;
+    }
+
     if (isAuthCallback()) {
       await completeAuth();     // procesa el retorno de Cognito
     } else {
@@ -121,7 +147,7 @@ export async function requireAuth() {
   }
 })();
 
-// En auth.js
+// Cambios de sesión (para refrescar UI externa)
 export async function onAuthChange(cb) {
   const um = await getUserManager();
   um.events.addUserLoaded(cb);         // cuando hay login o refresh
