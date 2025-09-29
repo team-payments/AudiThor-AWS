@@ -89,22 +89,23 @@ export async function login() {
 }
 
 export async function logout() {
-  const um = await getUserManager();
+  // Limpia cualquier rastro local antes de salir
+  try {
+    const um = await getUserManager();
+    await um.removeUser(); // borra el user de oidc-client-ts
+  } catch {}
+  try { localStorage.clear(); sessionStorage.clear(); } catch {}
 
-  // Queremos volver a la app con un flag y relanzar login
+  // Queremos volver a la app y relanzar login automáticamente
   const returnTo = `${REDIRECT_URI}?logged_out=1`;
 
-  try {
-    await um.signoutRedirect({
-      post_logout_redirect_uri: returnTo,
-    });
-  } catch (e) {
-    // Fallback manual si el helper falla
-    const url = `${COGNITO_DOMAIN}/logout?client_id=${encodeURIComponent(
-      CLIENT_ID
-    )}&logout_uri=${encodeURIComponent(returnTo)}`;
-    window.location.href = url;
-  }
+  // Redirección manual al Hosted UI de Cognito (forma soportada por Cognito)
+  const url =
+    `${COGNITO_DOMAIN}/logout` +
+    `?client_id=${encodeURIComponent(CLIENT_ID)}` +
+    `&logout_uri=${encodeURIComponent(returnTo)}`;
+
+  window.location.href = url;
 }
 
 export async function completeAuth() {
