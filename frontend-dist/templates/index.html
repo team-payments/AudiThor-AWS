@@ -29,6 +29,22 @@
     // window.BACKEND_BASE = "https://alb-miapp-123.us-west-2.elb.amazonaws.com";
   </script>
 </head>
+<script type="module">
+  import { login, logout, getUser } from "../static/js/auth.js";
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const user = await getUser();
+
+    if (user) {
+      document.body.innerHTML += `<p>Bienvenido, ${user.profile.email}</p>
+                                  <button id="logoutBtn">Cerrar sesión</button>`;
+      document.getElementById("logoutBtn").onclick = logout;
+    } else {
+      document.body.innerHTML += `<button id="loginBtn">Iniciar sesión</button>`;
+      document.getElementById("loginBtn").onclick = login;
+    }
+  });
+</script>
 <body class="text-[#204071]">
   <div id="main-app-view" class="h-screen">
     <div class="flex h-full">
