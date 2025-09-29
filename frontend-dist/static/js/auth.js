@@ -120,3 +120,12 @@ export async function requireAuth() {
     console.error("Auth init error:", err);
   }
 })();
+
+// En auth.js
+export async function onAuthChange(cb) {
+  const um = await getUserManager();
+  um.events.addUserLoaded(cb);         // cuando hay login o refresh
+  um.events.addUserUnloaded(cb);       // cuando se borra el user
+  um.events.addAccessTokenExpired(cb); // cuando expira el token
+  um.events.addUserSignedOut(cb);      // cuando hace logout
+}
