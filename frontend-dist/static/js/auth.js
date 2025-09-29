@@ -44,18 +44,21 @@ async function getUserManager() {
     const { UserManager, WebStorageStateStore } = mod;
 
     const settings = {
-      authority: AUTHORITY,                 // issuer con CORS
-      metadata: OIDC_METADATA,              // endpoints reales del Hosted UI
+      authority: AUTHORITY,
+      metadata: OIDC_METADATA,
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-      response_type: "code",                // Code flow (PKCE)
+      response_type: "code",
       scope: "openid email profile phone",
-      userStore: new WebStorageStateStore({ store: window.localStorage }),
-      automaticSilentRenew: false,          // Hosted UI no soporta iframe silencioso
+    
+      // 👇 Usa el mismo almacén para estado y usuario
+      userStore:  new WebStorageStateStore({ store: window.localStorage }),
+      stateStore: new WebStorageStateStore({ store: window.localStorage }),
+    
+      automaticSilentRenew: false,
       clockSkew: 5,
     };
-
     return new UserManager(settings);
   })();
 
