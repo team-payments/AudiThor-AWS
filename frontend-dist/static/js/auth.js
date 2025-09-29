@@ -1,35 +1,45 @@
-// === auth.js (ESM sin bundler; carga UMD de oidc-client-ts) ===
+<!-- static/js/auth.js (ESM, sin bundler) -->
+<script type="module">
+// Carga oidc-client-ts desde CDN para funcionar en S3/CloudFront
+const _oidc = import("https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js");
 
-// Carga el bundle UMD que expone window.oidc (UserManager, etc.)
-const _oidc = new Promise((resolve, reject) => {
-  if (window.oidc) return resolve(window.oidc);
-  const s = document.createElement("script");
-  s.src = "https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js";
-  s.async = true;
-  s.onload = () => (window.oidc ? resolve(window.oidc) : reject(new Error("oidc-client-ts UMD not available")));
-  s.onerror = () => reject(new Error("Failed to load oidc-client-ts script"));
-  document.head.appendChild(s);
-});
-
-// ⚙️ Config Cognito (Hosted UI) — USA TU DOMINIO REAL DEL POOL:
-const COGNITO_DOMAIN = "https://us-west-2atd5cvzi3.auth.us-west-2.amazoncognito.com"; // <- este es el bueno
+// ⚙️ Config Cognito (Hosted UI) — USA SIEMPRE TU SUBDOMINIO DEL HOSTED UI
+const HOSTED_UI_DOMAIN = "https://audithor-spa-client.auth.us-west-2.amazoncognito.com";
 const CLIENT_ID = "2faon57u5n65mliv7ncj1us53";
 const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 
-// Inicializa UserManager
-const _userManagerPromise = _oidc.then(({ UserManager }) => {
+// Construye la URL DE DISCOVERY correcta del Hosted UI (no la del pool)
+const OIDC_METADATA_URL = `${HOSTED_UI_DOMAIN}/.well-known/openid-configuration`;
+
+const _userManagerPromise = _oidc.then(({ UserManager, WebStorageStateStore }) => {
+  console.log("[Auth] Using authority:", HOSTED_UI_DOMAIN);
+  console.log("[Auth] Using metadataUrl:", OIDC_METADATA_URL);
+
   return new UserManager({
-    authority: COGNITO_DOMAIN,                // NO pongas /login ni /oauth2
+    // Fuerza el Hosted UI como autoridad
+    authority: HOSTED_UI_DOMAIN,
+
+    // Y fuerza el documento de discovery para evitar que lo sobreescriba otra cosa
+    metadataUrl: OIDC_METADATA_URL,
+
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-    response_type: "code",                    // Authorization Code + PKCE
+
+    response_type: "code",
     scope: "openid email profile phone",
+
+    // Persistencia en localStorage
+    userStore: new WebStorageStateStore({ store: window.localStorage }),
+
+    // Opcional: desactiva silenciosos si no los usas
+    automaticSilentRenew: false,
+    monitorSession: false,
   });
 });
 
-// ---------- Helpers ----------
+// ------------- Helpers -------------
 export async function getUser() {
   const um = await _userManagerPromise;
   return um.getUser();
@@ -55,27 +65,33 @@ export function isAuthCallback() {
 export async function completeAuth() {
   const um = await _userManagerPromise;
   await um.signinRedirectCallback();
-  window.history.replaceState({}, document.title, REDIRECT_URI); // limpia ?code&state
+  // Limpia ?code&state
+  window.history.replaceState({}, document.title, REDIRECT_URI);
 }
 
 export async function requireAuth() {
   const user = await getUser();
   if (!user || user.expired) {
     await login();
-    return new Promise(() => {}); // corta la ejecución tras redirigir
+    return new Promise(() => {}); // corta ejecución
   }
   return user;
 }
 
-// ---------- Auto-init ----------
+// ------------- Auto-init (opcional) -------------
 (async () => {
   try {
     if (isAuthCallback()) {
       await completeAuth();
     } else {
-      await requireAuth();
+      // Si prefieres que sólo haga login al pulsar un botón, comenta esta línea
+      // await requireAuth();
+
+      // En su lugar, muestra el botón "Login" y que llame a login()
+      console.log("[Auth] Not signed in");
     }
   } catch (e) {
     console.error("Auth init error:", e);
   }
 })();
+</script>
