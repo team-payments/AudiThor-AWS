@@ -1,18 +1,35 @@
-// === /static/js/auth.js (ESM, sin bundler, login forzado) ===
+// === /static/js/auth.js (ESM, sin bundler, login forzado, sin CORS issues) ===
 
 // Cargamos oidc-client-ts como ES module real
 const OIDC_URL = "https://esm.sh/oidc-client-ts@2.4.1";
 
-// 👉 Dominio del Hosted UI de tu pool (NO el endpoint cognito-idp).
-// Lo ves en Cognito → Tu User pool → App integration → Dominio de Cognito
+// ⚙️ Configuración Cognito
+// 1) Dominio del Hosted UI que ya tienes activo
 const COGNITO_DOMAIN = "https://us-west-2atd5cvzi3.auth.us-west-2.amazoncognito.com";
 
-// App client (público, sin secret)
-const CLIENT_ID = "2faon57u5n65mliv7ncj1us53";
+// 2) Issuer del User Pool (Cognito IdP) → lo ves en: Descripción general del pool
+const REGION = "us-west-2";
+const USER_POOL_ID = "us-west-2_ATD5cVZi3"; // <-- confirma que está exactamente así
 
-// Deben coincidir EXACTAS con Allowed callback URLs / sign-out URLs
+// 3) App client (público, sin secret)
+const CLIENT_ID = "2faon57u5n6smli1v7ncg1us53";
+
+// 4) Deben coincidir EXACTAS con Allowed callback URLs / sign-out URLs
 const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
+
+// 5) Authority con CORS (issuer del pool)
+const AUTHORITY = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`;
+
+// 6) Metadata OIDC fija apuntando al Hosted UI para evitar discovery contra el Hosted UI
+const OIDC_METADATA = {
+  issuer: AUTHORITY,
+  authorization_endpoint: `${COGNITO_DOMAIN}/oauth2/authorize`,
+  token_endpoint:         `${COGNITO_DOMAIN}/oauth2/token`,
+  end_session_endpoint:   `${COGNITO_DOMAIN}/logout`,
+  userinfo_endpoint:      `${COGNITO_DOMAIN}/oauth2/userInfo`,
+  jwks_uri:               `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`,
+};
 
 // ———————————————————————————————————————————————————————————————
 //  Carga perezosa de UserManager
@@ -27,14 +44,15 @@ async function getUserManager() {
     const { UserManager, WebStorageStateStore } = mod;
 
     const settings = {
-      authority: COGNITO_DOMAIN,                // Hosted UI domain
+      authority: AUTHORITY,                 // issuer con CORS
+      metadata: OIDC_METADATA,              // endpoints reales del Hosted UI
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-      response_type: "code",                     // Code flow (PKCE auto)
+      response_type: "code",                // Code flow (PKCE)
       scope: "openid email profile phone",
       userStore: new WebStorageStateStore({ store: window.localStorage }),
-      automaticSilentRenew: false,               // Hosted UI no iframe silencioso
+      automaticSilentRenew: false,          // Hosted UI no soporta iframe silencioso
       clockSkew: 5,
     };
 
@@ -63,7 +81,6 @@ export async function logout() {
 }
 
 export function isAuthCallback() {
-  // Cognito vuelve con ?code=&state= en la query (o raramente en hash)
   const qs = new URLSearchParams(window.location.search);
   if (qs.has("code") || qs.has("state")) return true;
   const hs = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -88,7 +105,6 @@ export async function requireAuth() {
 
 // ———————————————————————————————————————————————————————————————
 //  Auto-init: fuerza login SIEMPRE antes de mostrar la app
-//  (deja este bloque tal cual para “no ver nada” hasta iniciar sesión)
 // ———————————————————————————————————————————————————————————————
 (async () => {
   try {
@@ -98,8 +114,6 @@ export async function requireAuth() {
       await requireAuth();      // si no hay sesión, redirige a login
     }
   } catch (err) {
-    // Si hay un fallo de red puntual en la discovery, verás aquí el error.
-    // El usuario puede recargar; el flujo no expone la app sin sesión.
     console.error("Auth init error:", err);
   }
 })();
