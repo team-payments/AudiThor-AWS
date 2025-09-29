@@ -50,7 +50,7 @@ async function getUserManager() {
       redirect_uri: REDIRECT_URI,
       post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
       response_type: "code",
-      scope: "openid email profile phone",
+      scope: "openid email profile",
     
       // 👇 Usa el mismo almacén para estado y usuario
       userStore:  new WebStorageStateStore({ store: window.localStorage }),
