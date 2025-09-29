@@ -5,14 +5,14 @@ const OIDC_URL = "https://esm.sh/oidc-client-ts@2.4.1";
 
 // ⚙️ Configuración Cognito
 // 1) Dominio del Hosted UI que ya tienes activo
-const COGNITO_DOMAIN = "https://us-west-2atd5cvzi3.auth.us-west-2.amazoncognito.com";
+const COGNITO_DOMAIN = "https://us-west-23zjobwexd.auth.us-west-2.amazoncognito.com";
 
 // 2) Issuer del User Pool (Cognito IdP) → lo ves en: Descripción general del pool
 const REGION = "us-west-2";
-const USER_POOL_ID = "us-west-2_ATD5cVZi3"; // <-- confirma que está exactamente así
+const USER_POOL_ID = "us-west-2_3ZjOBWEXD"; // <-- confirma que está exactamente así
 
 // 3) App client (público, sin secret)
-const CLIENT_ID = "2faon57u5n6smli1v7ncg1us53";
+const CLIENT_ID = "5na4dcm4dond1uo5emfk9platr";
 
 // 4) Deben coincidir EXACTAS con Allowed callback URLs / sign-out URLs
 const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
