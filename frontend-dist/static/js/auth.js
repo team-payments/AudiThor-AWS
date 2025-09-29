@@ -1,6 +1,8 @@
 // === auth.js (ESM, sin bundler) ===
 // Carga oidc-client-ts desde CDN para que funcione en S3/CloudFront sin build.
-const _oidc = import("https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js");
+const _oidc = import(
+  "https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js"
+);
 
 // ⚙️ Configuración Cognito (Hosted UI)
 const COGNITO_DOMAIN = "https://audithor-spa-client.auth.us-west-2.amazoncognito.com";
@@ -9,15 +11,17 @@ const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 
 // Inicializa UserManager cuando el módulo de OIDC esté cargado
-const _userManagerPromise = _oidc.then(({ UserManager, WebStorageStateStore }) => {
+const _userManagerPromise = _oidc.then(({ UserManager }) => {
   return new UserManager({
-    authority: COGNITO_DOMAIN,                     // Hosted UI domain
+    authority: COGNITO_DOMAIN,              // Hosted UI domain (sin /login)
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-    response_type: "code",                         // Authorization Code Flow
-    scope: "openid email profile phone",           // scopes recomendados
-    userStore: new WebStorageStateStore({ store: window.localStorage }),
+    response_type: "code",                  // Authorization Code + PKCE
+    scope: "openid email profile phone",    // scopes recomendados
+    // Nota: oidc-client-ts ya usa localStorage por defecto para la sesión
+    // No hace falta WebStorageStateStore en esta versión
+    // (opcional) loadUserInfo: true,
   });
 });
 
@@ -50,7 +54,7 @@ export function isAuthCallback() {
 export async function completeAuth() {
   const um = await _userManagerPromise;
   await um.signinRedirectCallback();
-  // Limpia parámetros de la URL (quita ?code&state) dejando la raíz
+  // Limpia parámetros de la URL (quita ?code&state) dejando la raíz exacta
   window.history.replaceState({}, document.title, REDIRECT_URI);
 }
 
