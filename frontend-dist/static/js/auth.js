@@ -1,75 +1,80 @@
-// === auth.js ===
-import { UserManager, WebStorageStateStore } from "oidc-client-ts";
+// === auth.js (ESM, sin bundler) ===
+// Carga oidc-client-ts desde CDN para que funcione en S3/CloudFront sin build.
+const _oidc = import("https://cdn.jsdelivr.net/npm/oidc-client-ts@2.4.1/dist/browser/oidc-client-ts.min.js");
 
-// ⚠️ Rellena con tus datos reales
-// Configuración de Cognito para SPA (usando Hosted UI)
-const COGNITO_DOMAIN = "https://audithor-spa-client.auth.us-west-2.amazoncognito.com"; 
-// 👆 tu dominio de Hosted UI (exacto como en la consola de Cognito, sin /login al final)
+// ⚙️ Configuración Cognito (Hosted UI)
+const COGNITO_DOMAIN = "https://audithor-spa-client.auth.us-west-2.amazoncognito.com";
+const CLIENT_ID = "2faon57u5n65mliv7ncj1us53";
+const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
+const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";
 
-const CLIENT_ID = "2faon57u5n65mliv7ncj1us53"; 
-// 👆 el App client ID (el que te da Cognito, sin secret porque es SPA/public client)
+// Inicializa UserManager cuando el módulo de OIDC esté cargado
+const _userManagerPromise = _oidc.then(({ UserManager, WebStorageStateStore }) => {
+  return new UserManager({
+    authority: COGNITO_DOMAIN,                     // Hosted UI domain
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
+    response_type: "code",                         // Authorization Code Flow
+    scope: "openid email profile phone",           // scopes recomendados
+    userStore: new WebStorageStateStore({ store: window.localStorage }),
+  });
+});
 
-const REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/";      
-// 👆 exacta, tiene que coincidir con la que pusiste en Allowed callback URLs
+// --------------------- Helpers exportados ---------------------
+export async function getUser() {
+  const um = await _userManagerPromise;
+  return um.getUser();
+}
 
-const POST_LOGOUT_REDIRECT_URI = "https://d38k4y82pqltc.cloudfront.net/"; 
-// 👆 exacta, igual que la que pusiste en Allowed sign-out URLs
+export async function login() {
+  const um = await _userManagerPromise;
+  return um.signinRedirect();
+}
 
-const cognitoAuthConfig = {
-  // Recomendado: usar el dominio de Hosted UI como authority
-  authority: COGNITO_DOMAIN,
-  client_id: CLIENT_ID,
-  redirect_uri: REDIRECT_URI,
-  post_logout_redirect_uri: POST_LOGOUT_REDIRECT_URI,
-  response_type: "code",
-  scope: "openid email phone",
-  userStore: new WebStorageStateStore({ store: window.localStorage }),
-  // Descubrimiento OIDC: el dominio Hosted UI publica /.well-known/openid-configuration
-};
-
-export const userManager = new UserManager(cognitoAuthConfig);
+export async function logout() {
+  const um = await _userManagerPromise;
+  return um.signoutRedirect();
+}
 
 export function isAuthCallback() {
-  // Code Flow: Cognito devuelve ?code=... (&state=...)
+  // Code Flow: Cognito devuelve ?code=... (&state=...) en la query
   const q = new URLSearchParams(window.location.search);
-  return q.has("code") || q.has("state");
+  if (q.has("code") || q.has("state")) return true;
+
+  // (por si algún proveedor retorna por hash)
+  const h = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return h.has("code") || h.has("state");
 }
 
 export async function completeAuth() {
-  await userManager.signinRedirectCallback();
-  // Limpia la query para no dejar el ?code en la barra
-  const url = new URL(window.location.href);
-  url.search = "";
-  window.history.replaceState({}, "", url.toString());
+  const um = await _userManagerPromise;
+  await um.signinRedirectCallback();
+  // Limpia parámetros de la URL (quita ?code&state) dejando la raíz
+  window.history.replaceState({}, document.title, REDIRECT_URI);
 }
 
-export function login() {
-  return userManager.signinRedirect();
-}
-
-export function logout() {
-  return userManager.signoutRedirect();
-}
-
-export function getUser() {
-  return userManager.getUser();
-}
-
-/** Fuerza login si no hay sesión */
 export async function requireAuth() {
   const user = await getUser();
   if (!user || user.expired) {
     await login();
-    return new Promise(() => {}); // evitar continuar ejecutando el resto de JS
+    // Evita que el resto del JS siga ejecutándose en esta carga
+    return new Promise(() => {});
   }
   return user;
 }
 
-// Inicialización automática
+// --------------------- Auto-inicialización opcional ---------------------
+// Si quieres que la SPA requiera sesión siempre al entrar, deja este bloque activo.
+// Si prefieres controlar tú el flujo (p.ej. botón Login), comenta el IIFE.
 (async () => {
-  if (isAuthCallback()) {
-    await completeAuth();
-  } else {
-    await requireAuth();
+  try {
+    if (isAuthCallback()) {
+      await completeAuth();
+    } else {
+      await requireAuth();
+    }
+  } catch (e) {
+    console.error("Auth init error:", e);
   }
 })();
