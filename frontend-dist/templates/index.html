@@ -260,37 +260,37 @@
 
   <!-- Auth (módulo) -->
   <script type="module">
-    import { login, logout, getUser } from "/static/js/auth.js";
+  import { getUser, login, logout, onAuthChange } from "/static/js/auth.js";
 
-    async function refreshUserBar() {
-      const user = await getUser().catch(() => null);
-      const emailEl = document.getElementById("user-email");
-      const btn = document.getElementById("auth-btn");
+  async function refreshUserBar() {
+    const user = await getUser().catch(() => null);
+    const emailEl = document.getElementById("user-email");
+    const btn = document.getElementById("auth-btn");
+    if (!emailEl || !btn) return;
 
-      if (!emailEl || !btn) return;
-
-      if (user && user.profile?.email) {
-        emailEl.textContent = user.profile.email;
-        btn.textContent = "Logout";
-        btn.onclick = (e) => { e.preventDefault(); logout(); };
-      } else {
-        emailEl.textContent = "Not signed in";
-        btn.textContent = "Login";
-        btn.onclick = async (e) => { e.preventDefault(); await login(); };
-      }
+    if (user && !user.expired) {
+      const who =
+        user.profile?.email ||
+        user.profile?.preferred_username ||
+        user.profile?.sub ||
+        "Signed in";
+      emailEl.textContent = who;
+      btn.textContent = "Logout";
+      btn.onclick = (e) => { e.preventDefault(); logout(); };
+    } else {
+      emailEl.textContent = "Not signed in";
+      btn.textContent = "Login";
+      btn.onclick = async (e) => { e.preventDefault(); await login(); };
     }
+  }
 
-    // Si quieres forzar login automático, descomenta:
-    // document.addEventListener("DOMContentLoaded", async () => {
-    //   const user = await getUser().catch(() => null);
-    //   if (!user) await login();
-    // });
-
-    document.addEventListener("DOMContentLoaded", refreshUserBar);
-  </script>
+  // pinto al cargar…
+  document.addEventListener("DOMContentLoaded", refreshUserBar);
+  // …y me repinto cada vez que cambie el estado OIDC (login/logout/expira)
+  onAuthChange(refreshUserBar);
+</script>
 
   <script type="module" src="/static/js/app.js"></script>
-  <script type="module" src="/static/js/auth.js"></script>
 </body>
 </html>
 
