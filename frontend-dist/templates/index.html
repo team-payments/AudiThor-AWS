@@ -29,22 +29,7 @@
     // window.BACKEND_BASE = "https://alb-miapp-123.us-west-2.elb.amazonaws.com";
   </script>
 </head>
-<script type="module">
-  import { login, logout, getUser } from "../static/js/auth.js";
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    const user = await getUser();
-
-    if (user) {
-      document.body.innerHTML += `<p>Bienvenido, ${user.profile.email}</p>
-                                  <button id="logoutBtn">Cerrar sesión</button>`;
-      document.getElementById("logoutBtn").onclick = logout;
-    } else {
-      document.body.innerHTML += `<button id="loginBtn">Iniciar sesión</button>`;
-      document.getElementById("loginBtn").onclick = login;
-    }
-  });
-</script>
 <body class="text-[#204071]">
   <div id="main-app-view" class="h-screen">
     <div class="flex h-full">
@@ -55,6 +40,21 @@
           </svg>
           <h1 class="text-2xl font-bold text-white">AudiThor</h1>
         </div>
+        <script type="module">
+          import { login, logout, getUser } from "../static/js/auth.js";
+
+            document.addEventListener("DOMContentLoaded", async () => {
+            const user = await getUser();
+
+            if (!user) {
+              await login(); // fuerza login inmediato
+            } else {
+              document.body.innerHTML += `<p>Bienvenido, ${user.profile.email}</p>
+                                          <button id="logoutBtn">Cerrar sesión</button>`;
+              document.getElementById("logoutBtn").onclick = logout;
+            }
+          });
+        </script>
         <nav id="sidebar-nav" class="flex-1 mt-4 px-2 space-y-4 overflow-y-auto">
           <div><a href="#" data-view="iam" class="main-nav-link flex items-center px-4 py-2.5 rounded-md bg-[#eb3496]"><span>Identity & Access</span></a></div>
           <div><a href="#" data-view="exposure" class="main-nav-link flex items-center px-4 py-2.5 rounded-md hover:bg-[#1a335a]"><span>Exposure</span></a></div>
