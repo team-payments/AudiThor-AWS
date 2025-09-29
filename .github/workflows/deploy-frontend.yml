@@ -44,30 +44,91 @@ jobs:
           echo "SOURCE_DIR=$SOURCE_DIR" >> $GITHUB_ENV
           ls -la "$SOURCE_DIR" || (echo "No existe $SOURCE_DIR" && exit 1)
 
-      - name: Sync to S3 (to prefix)
+      # 1) Sincronizamos estructura (añade/borra archivos)
+      - name: Sync to S3 (structure + deletes)
         run: |
           aws s3 sync "$SOURCE_DIR" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
             --delete \
             --only-show-errors
           aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" --recursive | tail -n 20
 
-      - name: Set cache headers for HTML
+      # 2) Reemplazamos metadata para asegurar Content-Type y cache por tipo de fichero
+      - name: Set headers for HTML (no cache) + correct MIME
         run: |
           aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
             --recursive --exclude "*" --include "*.html" \
             --metadata-directive REPLACE \
-            --cache-control "no-store, max-age=0" \
-            --content-type "text/html"
+            --cache-control "no-cache" \
+            --content-type "text/html; charset=utf-8"
 
-      - name: Set cache headers for static assets
+      - name: Set headers for JS
+        run: |
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.js" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "application/javascript; charset=utf-8"
+
+      - name: Set headers for CSS
+        run: |
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.css" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "text/css; charset=utf-8"
+
+      - name: Set headers for JSON (incluye sourcemaps)
+        run: |
+          # .json
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.json" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "application/json; charset=utf-8"
+          # .map (normalmente JSON)
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.map" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "application/json; charset=utf-8"
+
+      - name: Set headers for SVG
+        run: |
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.svg" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "image/svg+xml"
+
+      - name: Set headers for images (png/jpg/jpeg/webp/gif/ico)
         run: |
           aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
             --recursive \
             --exclude "*" \
-            --include "*.js" --include "*.css" --include "*.png" --include "*.jpg" \
-            --include "*.jpeg" --include "*.svg" --include "*.webp" --include "*.ico" \
+            --include "*.png" --include "*.jpg" --include "*.jpeg" --include "*.webp" --include "*.gif" \
             --metadata-directive REPLACE \
             --cache-control "public, max-age=31536000, immutable"
+          # ICO explícito por si el inferido falla
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.ico" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "image/x-icon"
+
+      - name: Set headers for fonts
+        run: |
+          # WOFF2
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.woff2" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "font/woff2"
+          # WOFF
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}/" "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+            --recursive --exclude "*" --include "*.woff" \
+            --metadata-directive REPLACE \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "font/woff"
 
       - name: Create CloudFront invalidation and wait
         run: |
