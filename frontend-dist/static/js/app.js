@@ -93,6 +93,9 @@ import { openModalWithEc2Tags, openModalWithLambdaTags, openModalWithLambdaRole 
 // Importar iconos
 import { SIDEBAR_ICONS } from '/static/js/icons.js';
 
+// Auth helpers (oidc-client-ts)
+import { getUser, login, logout, onAuthChange } from '/static/js/auth.js';
+
 // 2. ESTADO GLOBAL
 window.iamApiData = null;
 window.federationApiData = null;
@@ -427,6 +430,33 @@ const handleMainNavClick = (e) => {
     const targetView = link.dataset.view;
     showView(targetView);
 };
+
+// ---------- AUTH UI SYNC ----------
+function qs(id) { return document.getElementById(id); }
+
+async function renderAuthUI() {
+  const $login  = qs('login-btn') || document.querySelector('#sidebar-nav #login-btn');
+  const $logout = qs('logout-btn') || document.querySelector('#sidebar-nav #logout-btn');
+  const $who    = qs('auth-indicator') || document.querySelector('#sidebar-nav #auth-indicator');
+
+  try {
+    const user = await getUser();
+    if (user && !user.expired) {
+      const who = user.profile?.email || user.profile?.preferred_username || user.profile?.sub || 'Signed in';
+      if ($who)   $who.textContent = who;
+      if ($login) $login.classList.add('hidden');
+      if ($logout) $logout.classList.remove('hidden');
+      document.body.classList.add('is-auth');
+    } else {
+      if ($who)   $who.textContent = 'Not signed in';
+      if ($login) $login.classList.remove('hidden');
+      if ($logout) $logout.classList.add('hidden');
+      document.body.classList.remove('is-auth');
+    }
+  } catch (e) {
+    console.warn('renderAuthUI error:', e);
+  }
+}
 
 // ===================================================================
 // === BULK JOB HELPERS (asíncrono + polling con /api/scan/*) ========
@@ -1144,6 +1174,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialView = document.getElementById('iam-view');
     if (initialView) { initialView.classList.remove('hidden'); buildIamView(); }
     minimizeLogPanel();
+
+    // === Auth UI wiring ===
+    const $loginBtn  = document.getElementById('login-btn');
+    const $logoutBtn = document.getElementById('logout-btn');
+    
+    if ($loginBtn)  $loginBtn.addEventListener('click', () => login());
+    if ($logoutBtn) $logoutBtn.addEventListener('click', () => logout());
+    
+    // Pinta estado actual y vuelve a pintar cuando cambie (login/logout/expiración)
+    renderAuthUI();
+    onAuthChange(renderAuthUI);
+    
+    // (Opcional) expón por consola
+    window._auth = { login, logout, renderAuthUI };
     
     log('Application initialized successfully.', 'success');
 
