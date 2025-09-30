@@ -77,8 +77,17 @@ export const buildNetworkPoliciesView = (forceTab = null) => {
     const applySgFiltersAndRender = () => {
         const selectedRegion = document.getElementById('sg-region-filter').value;
         const hideEmpty = document.getElementById('sg-hide-empty-filter').checked;
+        const searchTerm = document.getElementById('sg-text-filter')?.value.toLowerCase().trim() || '';
 
         let filteredSGs = security_groups.filter(sg => selectedRegion === 'all' || sg.Region === selectedRegion);
+
+        if (searchTerm) {
+            filteredSGs = filteredSGs.filter(sg => 
+                sg.GroupName.toLowerCase().includes(searchTerm) ||
+                sg.GroupId.toLowerCase().includes(searchTerm) ||
+                sg.VpcId.toLowerCase().includes(searchTerm)
+            );
+        }
 
         if (hideEmpty) {
             filteredSGs = filteredSGs.filter(sg => {
@@ -91,6 +100,9 @@ export const buildNetworkPoliciesView = (forceTab = null) => {
         }
         
         sgsContainer.innerHTML = renderSGsTable(filteredSGs, all_regions, selectedRegion, allResources, hideEmpty);
+        const textFilterInput = document.getElementById('sg-text-filter');
+        if(textFilterInput) textFilterInput.value = searchTerm;
+
     };
 
     summaryCardsContainer.innerHTML = createNetworkPoliciesSummaryCardsHtml();
@@ -143,11 +155,19 @@ container.addEventListener('change', (e) => {
             break;
         case 'sg-region-filter':
         case 'sg-hide-empty-filter':
+        case 'sg-text-filter': // Para que funcione al hacer clic fuera
             applySgFiltersAndRender();
             break;
         case 'vpc-diagram-hide-empty-filter':
             applyVpcDiagramFiltersAndRender();
             break;
+    }
+});
+
+container.addEventListener('input', (e) => {
+    // Este listener se encarga del filtrado en tiempo real para la caja de búsqueda
+    if (e.target.id === 'sg-text-filter') {
+        applySgFiltersAndRender();
     }
 });
 
@@ -393,11 +413,15 @@ const renderSGsTable = (sgs, allRegions, selectedRegion = 'all', allResources, h
           <input id="sg-hide-empty-filter" type="checkbox" ${isChecked} class="h-4 w-4 rounded border-gray-300 text-[#eb3496] focus:ring-[#eb3496]">
           <label for="sg-hide-empty-filter" class="ml-2 text-sm font-medium text-gray-700">Hide SGs with no resources</label>
         </div>
+        <div class="flex items-center gap-2">
+            <label for="sg-text-filter" class="text-sm font-medium text-gray-700">Search:</label>
+            <input type="text" id="sg-text-filter" placeholder="Filter by Name, ID, VPC..." class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#eb3496] focus:border-[#eb3496] block p-1.5 w-64">
+        </div>
       </div>`;
 
     if (!sgs || sgs.length === 0) return `<div class="bg-white p-6 rounded-xl border border-gray-100">${filterControl}<p class="text-center text-gray-500 py-4">No Security Groups matching the selected filters were found.</p></div>`;
     
-    let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">VPC ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Associated Resources</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+    let table = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group Name</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Associated Resources</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
     
     sgs.sort((a,b) => a.Region.localeCompare(b.Region)).forEach(sg => {
         const ec2Count = allResources.ec2.filter(i => i.Region === sg.Region && i.SecurityGroups.includes(sg.GroupId)).length;
