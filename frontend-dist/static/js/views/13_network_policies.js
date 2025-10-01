@@ -441,10 +441,10 @@ const renderSGsTable = (sgs, allRegions, selectedRegion = 'all', allResources, h
         table += `<tr class="hover:bg-gray-50">
             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${sg.Region}</td>
             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${sg.GroupId}</td>
-            <td class="px-4 py-4 text-sm text-gray-600 break-all">${sg.GroupName}</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 break-all">${sg.GroupName}</td>
             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${sg.VpcId}</td>
             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-center">${countCellHtml}</td>
-            <td class="px-4 py-4 text-sm text-gray-600 break-all">${sg.Description}</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 break-all">${sg.Description}</td>
             <td class="px-4 py-4 whitespace-nowrap text-sm">${actionButton}</td>
         </tr>`;
     });

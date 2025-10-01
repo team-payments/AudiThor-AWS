@@ -166,6 +166,7 @@ const renderEc2InstancesTable = (instances, allRegions, selectedState = 'all', s
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instance ID</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">VPC ID</th>' +
+                '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Security Groups</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IAM Role</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>' +
                 '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public IP</th>' +
@@ -177,6 +178,13 @@ const renderEc2InstancesTable = (instances, allRegions, selectedState = 'all', s
     instances.forEach((i) => {
         const originalIndex = window.computeApiData.results.ec2_instances.findIndex(orig => orig.ARN === i.ARN);
         const tagCount = Object.keys(i.Tags).length;
+        const sgCount = i.SecurityGroups ? i.SecurityGroups.length : 0;
+        let sgHtml = '-';
+        if (sgCount > 0) {
+            sgHtml = i.SecurityGroups.map(sgId => 
+                `<div class="bg-gray-100 text-gray-800 text-xs font-mono px-2 py-0.5 rounded mb-1 whitespace-nowrap">${sgId}</div>`
+            ).join('');
+        }
         let tagsHtml = '-';
         if (tagCount > 0) {
             tagsHtml = `<button 
@@ -201,6 +209,7 @@ const renderEc2InstancesTable = (instances, allRegions, selectedState = 'all', s
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${i.Region}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${i.InstanceId}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-600">${i.VpcId || 'N/A'}</td>
+                    <td class="px-4 py-4 text-sm">${sgHtml}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-600">${i.IamInstanceProfile}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm">${createStatusBadge(i.State)}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${i.PublicIpAddress || '-'}</td>
