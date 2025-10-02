@@ -59,6 +59,7 @@
             padding: 30px;
             height: 150px;
             color: white;
+            text-align: center;
         }
 
         .header::before {
@@ -116,6 +117,7 @@
 
         .header-box p {
             color: white; 
+            text-align: center;
         }
         
         .company-name {
@@ -124,6 +126,7 @@
             color: white;
             margin: 0 0 8px 0;
             letter-spacing: 2px;
+            text-align: center;
         }
         
         .subtitle {
@@ -131,6 +134,7 @@
             color: white;
             margin: 0;
             font-weight: 500;
+            text-align: center;
         }
         
         h1 {
@@ -643,7 +647,54 @@
             border-radius: 2px;
             border: 1px solid #e2e8f0;
         }
+        .legend-details-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 8px;
+        }
 
+        .legend-detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .legend-item strong {
+            font-size: 11px;
+            font-weight: 700;
+            color: #204071;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .legend-color.severity-critical { background-color: #dc2626; }
+        .legend-color.severity-high { background-color: #f59e0b; }
+        .legend-color.severity-medium { background-color: #eab308; }
+        .legend-color.severity-low { background-color: #3b82f6; }
+
+        .legend-explanation {
+            font-size: 9px;
+            color: #475569;
+            line-height: 1.4;
+            margin: 0;
+            padding-left: 20px; /* Alinea el texto con el título */
+            text-align: left;
+        }
         /* Estilos para Architecture Diagram */
         .architecture-section {
             margin: 30px 0;
@@ -789,14 +840,36 @@
             <div class="stacked-chart">
                 {{STACKED_CHART_DATA}}
             </div>
-            <div class="chart-legend">
-                <div class="legend-row">
-                    <span class="legend-item"><span class="legend-color severity-critical"></span>Critical</span>
-                    <span class="legend-item"><span class="legend-color severity-high"></span>High</span>
-                    <span class="legend-item"><span class="legend-color severity-medium"></span>Medium</span>
-                    <span class="legend-item"><span class="legend-color severity-low"></span>Low</span>
+                <div class="legend-details-container">
+                    <div class="legend-detail-item">
+                        <div class="legend-item">
+                            <span class="legend-color severity-critical"></span>
+                            <strong>Critical</strong>
+                        </div>
+                        <p class="legend-explanation">Vulnerabilities that could lead to a full system compromise or data breach with minimal effort.</p>
+                    </div>
+                    <div class="legend-detail-item">
+                        <div class="legend-item">
+                            <span class="legend-color severity-high"></span>
+                            <strong>High</strong>
+                        </div>
+                        <p class="legend-explanation">Flaws that could result in significant data exposure or privilege escalation.</p>
+                    </div>
+                    <div class="legend-detail-item">
+                        <div class="legend-item">
+                            <span class="legend-color severity-medium"></span>
+                            <strong>Medium</strong>
+                        </div>
+                        <p class="legend-explanation">Weaknesses that expose sensitive information or are difficult to exploit in isolation.</p>
+                    </div>
+                    <div class="legend-detail-item">
+                        <div class="legend-item">
+                            <span class="legend-color severity-low"></span>
+                            <strong>Low</strong>
+                        </div>
+                        <p class="legend-explanation">Low-impact issues, such as deviations from best practices that are not directly exploitable.</p>
+                    </div>
                 </div>
-            </div>
         </div>
     </div>
 
