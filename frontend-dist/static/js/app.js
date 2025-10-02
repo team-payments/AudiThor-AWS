@@ -45,6 +45,8 @@ async function fetchWithBackoff(url, opts = {}, {
 }
 
 // 1. IMPORTACIONES
+import { refreshHealthyStatus } from './views/17_healthy_status.js';
+
 import { 
     log, 
     copyToClipboard, 
