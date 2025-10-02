@@ -98,6 +98,89 @@ import { SIDEBAR_ICONS } from '/static/js/icons.js';
 // Auth helpers (oidc-client-ts)
 import { getUser, login, logout, onAuthChange } from '/static/js/auth.js';
 
+// --- SLIM JSON HELPERS (recorta el payload para evitar 413) ---
+const SLIM_ARRAY_LIMIT = 500; // tope por colección (ajústalo si hace falta)
+const DROP_KEYS = new Set([
+  // nombres de campos típicamente enormes:
+  'events', 'Records', 'records', 'logEvents', 'trail_events',
+  'raw', 'raw_events', 'rawLogs', 'payload', 'body',
+  'paths', 'traceroute', 'sslscan', 'packets', 'captures',
+  'FindingDetails', 'evidence', 'debug', 'logs'
+]);
+
+// elimina metadata y deja solo .results (o el propio objeto si no hay .results)
+const onlyResults = (section) => {
+  if (!section) return null;
+  if (section.results !== undefined) return section.results;
+  // si viene “plano” por import legacy
+  return section;
+};
+
+// recursivo: corta arrays, quita campos “gordos” y strings gigantes
+const slimDeep = (val) => {
+  if (val == null) return val;
+
+  if (Array.isArray(val)) {
+    const cut = val.length > SLIM_ARRAY_LIMIT ? val.slice(0, SLIM_ARRAY_LIMIT) : val;
+    return cut.map(slimDeep);
+  }
+
+  if (typeof val === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (DROP_KEYS.has(k)) continue;                 // quita claves pesadas conocidas
+      if (typeof v === 'string' && v.length > 20000)  // descarta blobs enormes
+        continue;
+      out[k] = slimDeep(v);
+    }
+    return out;
+  }
+
+  return val;
+};
+
+// construye el objeto mínimo para el endpoint de healthy status
+const buildSlimHealthyPayload = () => {
+  const base = {
+    iam:             onlyResults(window.iamApiData),
+    federation:      onlyResults(window.federationApiData),
+    accessAnalyzer:  onlyResults(window.accessAnalyzerApiData),
+    securityhub:     onlyResults(window.securityHubApiData),
+    exposure:        onlyResults(window.exposureApiData),
+    guardduty:       onlyResults(window.guarddutyApiData),
+    waf:             onlyResults(window.wafApiData),
+    cloudtrail:      onlyResults(window.cloudtrailApiData),
+    cloudwatch:      onlyResults(window.cloudwatchApiData),
+    inspector:       onlyResults(window.inspectorApiData),
+    acm:             onlyResults(window.acmApiData),
+    compute:         onlyResults(window.computeApiData),
+    ecr:             onlyResults(window.ecrApiData),
+    databases:       onlyResults(window.databasesApiData),
+    networkPolicies: onlyResults(window.networkPoliciesApiData),
+    connectivity:    onlyResults(window.connectivityApiData),
+    configSHDeep:    onlyResults(window.configSHApiData),
+    configSH:        onlyResults(window.configSHStatusApiData),
+    kms:             onlyResults(window.kmsApiData),
+    secretsManager:  onlyResults(window.secretsManagerApiData),
+    codepipeline:    onlyResults(window.codepipelineApiData),
+    playground:      onlyResults(window.playgroundApiData) // suele traer traceroute/sslscan
+  };
+
+  // 1) quita secciones vacías
+  Object.keys(base).forEach(k => { if (!base[k]) delete base[k]; });
+
+  // 2) recorta profundamente
+  const slimmed = slimDeep(base);
+
+  // 3) logea tamaño para control
+  try {
+    const sizeMB = (new Blob([JSON.stringify(slimmed)]).size / (1024*1024)).toFixed(2);
+    log(`Healthy payload size (slim): ${sizeMB} MB`, 'info');
+  } catch {}
+
+  return slimmed;
+};
+
 // 2. ESTADO GLOBAL
 window.iamApiData = null;
 window.federationApiData = null;
@@ -940,33 +1023,15 @@ const handleJsonImport = (event) => {
 const displayHealthyStatus = (selectedRegion) => { log('Displaying healthy status...', 'info'); };
 
 const runAndDisplayHealthyStatus = async () => {
-    if (!window.iamApiData) { log('No audit data available for healthy status analysis.', 'info'); return; }
+    if (!window.iamApiData) {
+        log('No audit data available for healthy status analysis.', 'info');
+        return;
+    }
     log('Running healthy status analysis...', 'info');
+
     try {
-        const auditData = {
-            iam: window.iamApiData,
-            federation: window.federationApiData,
-            accessAnalyzer: window.accessAnalyzerApiData,
-            securityhub: window.securityHubApiData,
-            exposure: window.exposureApiData,
-            guardduty: window.guarddutyApiData,
-            waf: window.wafApiData,
-            cloudtrail: window.cloudtrailApiData,
-            cloudwatch: window.cloudwatchApiData,
-            inspector: window.inspectorApiData,
-            acm: window.acmApiData,
-            compute: window.computeApiData,
-            ecr: window.ecrApiData,
-            databases: window.databasesApiData,
-            networkPolicies: window.networkPoliciesApiData,
-            configSH: window.configSHApiData,
-            configSHStatus: window.configSHStatusApiData,
-            config_sh: window.configSHStatusApiData,
-            kms: window.kmsApiData,
-            secretsManager: window.secretsManagerApiData,
-            connectivity: window.connectivityApiData,
-            codepipeline: window.codepipelineApiData
-        };
+        // 🚀 Usamos el payload reducido
+        const auditData = buildSlimHealthyPayload();
 
         const url = requireApi(API.HEALTHY_STATUS, 'Missing API.HEALTHY_STATUS');
         const response = await fetch(url, {
@@ -979,13 +1044,19 @@ const runAndDisplayHealthyStatus = async () => {
 
         const findings = await response.json();
         window.lastHealthyStatusFindings = findings;
-        console.log("%cAPP.JS [Paso 3]: ¡DATOS RECIBIDOS! runAndDisplayHealthyStatus() ha terminado. 'window.lastHealthyStatusFindings' ahora tiene " + window.lastHealthyStatusFindings.length + " elementos.", "color: green; font-weight: bold;");
-        
+
+        console.log(
+            "%cAPP.JS [Paso 3]: ¡DATOS RECIBIDOS! runAndDisplayHealthyStatus() ha terminado. " +
+            `'window.lastHealthyStatusFindings' ahora tiene ${window.lastHealthyStatusFindings.length} elementos.`,
+            "color: green; font-weight: bold;"
+        );
+
         log(`Healthy status analysis completed. Found ${findings.length} findings.`, 'success');
-        
-        refreshHealthyStatus(findings);      // ← resetea filtros + render inmediato
+
+        // ✅ Ahora sí renderiza sin necesidad de pulsar "Reset All Filters"
+        refreshHealthyStatus(findings);
         populateGeminiRegionFilter(findings);
-        
+
     } catch (error) {
         log(`Error in healthy status analysis: ${error.message}`, 'error');
         console.error('Healthy status error:', error);
