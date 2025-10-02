@@ -462,6 +462,7 @@ const setupFindingsReportEvents = () => {
 
 // REEMPLAZA LA FUNCIÓN ENTERA
 const populateFindingsReportData = () => {
+    console.log("%cHEALTHY_STATUS.JS [Paso 5]: Entrando en la pestaña 'Generate Findings Report'. Vamos a leer los datos...", "color: purple; font-weight: bold;");
     const regionFilter = document.getElementById('report-region-filter');
     const severityFilter = document.getElementById('report-severity-filter');
     const sectionFilter = document.getElementById('report-section-filter');

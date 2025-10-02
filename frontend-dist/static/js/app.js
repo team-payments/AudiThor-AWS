@@ -843,8 +843,9 @@ const handleJsonImport = (event) => {
     log(`Loading file: ${file.name}...`, 'info');
     const reader = new FileReader();
 
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
+            console.log("%cAPP.JS [Paso 1]: Fichero JSON leído y parseado correctamente.", "color: blue; font-weight: bold;");
             const importedData = JSON.parse(e.target.result);
             if (!importedData.metadata || !importedData.results) throw new Error("The JSON file does not have the expected structure. (metadata/results).");
 
@@ -908,7 +909,9 @@ const handleJsonImport = (event) => {
             }
 
             buildAndRenderAllViews();
-            runAndDisplayHealthyStatus();
+            console.log("%cAPP.JS [Paso 2]: Llamando a runAndDisplayHealthyStatus()... La ejecución NO esperará.", "color: orange; font-weight: bold;");
+            await runAndDisplayHealthyStatus();
+            console.log("%cAPP.JS [Paso 4]: La ejecución continuó INMEDIATAMENTE después de llamar a runAndDisplayHealthyStatus.", "color: red; font-weight: bold;");
 
             log('Activating the Identity & Access view post-import...', 'info');
             showView('iam');
@@ -974,6 +977,7 @@ const runAndDisplayHealthyStatus = async () => {
 
         const findings = await response.json();
         window.lastHealthyStatusFindings = findings;
+        console.log("%cAPP.JS [Paso 3]: ¡DATOS RECIBIDOS! runAndDisplayHealthyStatus() ha terminado. 'window.lastHealthyStatusFindings' ahora tiene " + window.lastHealthyStatusFindings.length + " elementos.", "color: green; font-weight: bold;");
         
         log(`Healthy status analysis completed. Found ${findings.length} findings.`, 'success');
         
