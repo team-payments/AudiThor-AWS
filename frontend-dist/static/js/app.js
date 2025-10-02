@@ -843,7 +843,7 @@ const handleJsonImport = (event) => {
     log(`Loading file: ${file.name}...`, 'info');
     const reader = new FileReader();
 
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
         try {
             console.log("%cAPP.JS [Paso 1]: Fichero JSON leído y parseado correctamente.", "color: blue; font-weight: bold;");
             const importedData = JSON.parse(e.target.result);
@@ -910,7 +910,7 @@ const handleJsonImport = (event) => {
 
             buildAndRenderAllViews();
             console.log("%cAPP.JS [Paso 2]: Llamando a runAndDisplayHealthyStatus()... La ejecución NO esperará.", "color: orange; font-weight: bold;");
-            await runAndDisplayHealthyStatus();
+            runAndDisplayHealthyStatus();
             console.log("%cAPP.JS [Paso 4]: La ejecución continuó INMEDIATAMENTE después de llamar a runAndDisplayHealthyStatus.", "color: red; font-weight: bold;");
 
             log('Activating the Identity & Access view post-import...', 'info');
