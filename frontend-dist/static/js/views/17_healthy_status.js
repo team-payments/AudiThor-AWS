@@ -189,6 +189,26 @@ export const buildHealthyStatusView = () => {
     buildFindingsReportView();
 };
 
+// === HOOK para refrescar Healthy Status tras un escaneo o import ===
+export const refreshHealthyStatus = (findings = []) => {
+  // 1) Guarda los findings en la variable global
+  window.lastHealthyStatusFindings = Array.isArray(findings) ? findings : [];
+
+  // 2) Rellena los selects (regiones/secciones)
+  populateHealthyStatusFilter(window.lastHealthyStatusFindings);
+
+  // 3) Dibuja con filtros en “All” y contador coherente
+  // (aplica la misma pipeline que cuando pulsas "Reset All Filters")
+  const countDisplayId = 'findings-count-display';
+  const total = window.lastHealthyStatusFindings.length;
+  // fuerza “All” en los selects y aplica filtros
+  ['healthy-status-region-filter','healthy-status-severity-filter','healthy-status-section-filter','healthy-status-impact-filter']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = 'all'; });
+  // aplica filtros y render
+  const maybeApply = (window.applyFilters || (typeof applyFilters === 'function' && applyFilters));
+  if (maybeApply) maybeApply();
+};
+
 // --- FILTER SETUP ---
 const setupFilterEventListeners = () => {
     const regionFilter = document.getElementById('healthy-status-region-filter');

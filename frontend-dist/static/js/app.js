@@ -981,9 +981,7 @@ const runAndDisplayHealthyStatus = async () => {
         
         log(`Healthy status analysis completed. Found ${findings.length} findings.`, 'success');
         
-        const { renderHealthyStatusFindings, populateHealthyStatusFilter } = await import('/static/js/views/17_healthy_status.js');
-        renderHealthyStatusFindings(findings);
-        populateHealthyStatusFilter(findings);
+        refreshHealthyStatus(findings);      // ← resetea filtros + render inmediato
         populateGeminiRegionFilter(findings);
         
     } catch (error) {
