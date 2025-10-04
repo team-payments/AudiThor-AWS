@@ -901,6 +901,7 @@ const exportResultsToJson = () => {
             },
             connectivity: window.connectivityApiData?.results || null,
             codepipeline: window.codepipelineApiData?.results || null,
+            healthy_status_results: window.healthyStatusApiData?.results || null,
             trailAlerts: window.trailAlertsData || null,
             audiThorScopeData: window.scopedResources,
             audiThorAuditorNotes: window.auditorNotes || []
