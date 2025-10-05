@@ -448,6 +448,8 @@ const setupFindingsReportEvents = () => {
     document.getElementById('deselect-all-findings')?.addEventListener('click', deselectAllFindings);
     document.getElementById('generate-custom-pdf')?.addEventListener('click', generateCustomPDF);
     document.getElementById('reset-finding-edits')?.addEventListener('click', resetFindingEdits);
+    document.getElementById('generate-custom-json')?.addEventListener('click', generateCustomJSON);
+
 
 
     // Pasa los findings iniciales a la función de renderizado
@@ -1216,6 +1218,7 @@ export const buildFindingsReportView = () => {
                 <button id="deselect-all-findings" class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">Deselect All</button>
                 <button id="reset-finding-edits" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Reset Edits</button>
                 <button id="generate-custom-pdf" class="px-4 py-2 bg-[#204071] text-white rounded-lg hover:bg-[#1a365d]">Generate PDF Report</button>
+                <button id="generate-custom-json" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Export to JSON</button>
             </div>
         </div>
     `;
@@ -2755,4 +2758,78 @@ const renderVpcDiagramForPdf = (vpcs, subnets, instances, lambdas, rdsInstances,
 
     diagramHtml += '</div>';
     return diagramHtml;
+};
+
+// En 17_healthy_status.js, añade esta nueva función
+const generateCustomJSON = () => {
+    // 1. Obtener los datos iniciales (igual que en generateCustomPDF)
+    const auditedCompany = document.getElementById('audited-company')?.value.trim();
+    if (!auditedCompany) {
+        alert('Please fill in the client company name.');
+        return;
+    }
+    const selectedFindings = getSelectedFindings();
+    if (selectedFindings.length === 0) {
+        alert('Please select at least one finding to include in the report.');
+        return;
+    }
+
+    // 2. Extraer el resto de la información de las variables globales (window.*)
+    // Esta lógica la puedes copiar y adaptar de la función `processTemplate`
+    
+    // -- Lógica para el Account ID (copiada de processTemplate)
+    let awsAccountId = window.iamApiData?.metadata?.accountId || window.federationApiData?.metadata?.accountId || window.lastAwsAccountId || 'N/A';
+    
+    // -- Lógica para el inventario en scope (copiada y adaptada de processTemplate)
+    // ¡IMPORTANTE! Tienes una lógica muy buena para crear `unifiedScopedItems` dentro de `processTemplate`.
+    // Deberías extraer esa lógica a su propia función para no repetir código, pero para empezar, puedes copiarla aquí.
+    const scopedResources = window.scopedResources || {};
+    const unifiedScopedItems = []; // <-- Aquí iría el código que procesa los ARNs y los convierte en objetos legibles.
+    Object.keys(scopedResources).forEach(arn => {
+        // ... (código para rellenar unifiedScopedItems)
+    });
+
+    // -- Datos para el diagrama de arquitectura
+    const architectureData = {
+        vpcs: window.networkPoliciesApiData?.results?.vpcs || [],
+        subnets: window.networkPoliciesApiData?.results?.subnets || [],
+        ec2_instances: window.computeApiData?.results?.ec2_instances || [],
+        // ... (añade el resto de recursos que usa tu diagrama)
+    };
+    
+    // 3. Construir el objeto final del informe
+    const reportData = {
+        reportMetadata: {
+            clientName: auditedCompany,
+            awsAccountId: awsAccountId,
+            reportDate: new Date().toISOString(),
+            totalFindings: selectedFindings.length,
+            scopedAssetsCount: unifiedScopedItems.length
+        },
+        findingsSummary: {
+            critical: selectedFindings.filter(f => f.severity === 'Crítico').length,
+            high: selectedFindings.filter(f => f.severity === 'Alto').length,
+            medium: selectedFindings.filter(f => f.severity === 'Medio').length,
+            low: selectedFindings.filter(f => f.severity === 'Bajo').length
+        },
+        scopedInventory: unifiedScopedItems, // El inventario detallado
+        auditorNotes: window.auditorNotes || [], // Las notas del auditor
+        detailedFindings: selectedFindings, // La lista completa de findings seleccionados/filtrados
+        architectureDiagramData: architectureData // Los datos para pintar el diagrama
+    };
+
+    // 4. Descargar el objeto como un fichero JSON
+    downloadObjectAsJson(reportData, `AudiThor-Report-Data-${auditedCompany.replace(/[^a-zA-Z0-9]/g, '-')}.json`);
+};
+
+// En 17_healthy_status.js, añade esta función de utilidad
+const downloadObjectAsJson = (exportObj, exportName) => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", exportName);
+    document.body.appendChild(downloadAnchorNode); // Requerido para Firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    log(`Report data successfully exported to ${exportName}`, 'success');
 };
