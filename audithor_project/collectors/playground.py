@@ -390,24 +390,37 @@ def pg_consolidate_ports(port_tuples):
         output_parts.append(f"Port(s) {', '.join(sorted_ports)} ({proto})")
     return " | ".join(output_parts)
 
+def _get_nacl_for_subnet(ec2_client, subnet_id):
+    """
+    Función auxiliar para obtener el ID de la Network ACL para una subred determinada.
+    """
+    try:
+        # Primero, buscar una asociación explícita
+        acl_response = ec2_client.describe_network_acls(Filters=[{'Name': 'association.subnet-id', 'Values': [subnet_id]}])
+        if acl_response['NetworkAcls']:
+            return acl_response['NetworkAcls'][0]['NetworkAclId']
+        
+        # Si no hay asociación, obtener la NACL por defecto de la VPC
+        subnet_response = ec2_client.describe_subnets(SubnetIds=[subnet_id])
+        if not subnet_response['Subnets']:
+            return None
+        vpc_id = subnet_response['Subnets'][0]['VpcId']
+        default_acl_response = ec2_client.describe_network_acls(Filters=[{'Name': 'vpc-id', 'Values': [vpc_id]}, {'Name': 'default', 'Values': ['true']}])
+        if default_acl_response['NetworkAcls']:
+            return default_acl_response['NetworkAcls'][0]['NetworkAclId']
+            
+    except (ClientError, IndexError):
+        # Devolver None si alguna llamada a la API o acceso a la lista falla
+        return None
+    return None
+
+
+
+
 def analyze_network_path_data(session, source_arn, target_arn):
     """
-    Analyzes the network path between two AWS resources within the same VPC.
-
-    This function checks security groups, network ACLs, and route tables to determine
-    if a connection is possible and on which ports/protocols.
-
-    Args:
-        session (boto3.Session): The boto3 session.
-        source_arn (str): The ARN of the source resource.
-        target_arn (str): The ARN of the target resource.
-
-    Returns:
-        dict: A dictionary with the analysis status, reason, and result tables.
-
-    Example:
-        >>> result = analyze_network_path_data(session, 'arn:aws:ec2:...', 'arn:aws:rds:...')
-        >>> print(result['status'])
+    Analiza la ruta de red entre dos recursos de AWS dentro de la misma VPC.
+    (Versión actualizada que muestra detalles también en caso de fallo).
     """
     source = pg_get_resource_network_details(session, source_arn)
     target = pg_get_resource_network_details(session, target_arn)
@@ -417,8 +430,20 @@ def analyze_network_path_data(session, source_arn, target_arn):
 
     ec2 = session.client('ec2', region_name=source_arn.split(':')[3])
     route_ok, route_rule = pg_check_route_table(ec2, source['subnet_id'], target['private_ip'])
+    
+    # Si no hay ruta, poblamos los detalles y salimos directamente
     if not route_ok:
-        return {'status': 'UNREACHABLE', 'reason': f"No route found from source subnet to target IP '{target['private_ip']}'."}
+        result = {'status': 'UNREACHABLE', 'reason': f"No route found from source subnet to target IP '{target['private_ip']}'.", 'tables': [], 'detail_tables': {}}
+        involved_ids = set([("rtb", route_rule.get('RouteTableId'))])
+        involved_ids.update([("sg", sg_id) for sg_id in source['security_group_ids']])
+        involved_ids.update([("sg", sg_id) for sg_id in target['security_group_ids']])
+        
+        for type, res_id in sorted(list(involved_ids)):
+            if res_id and res_id != 'N/A':
+                 if type == "sg": result['detail_tables'][res_id] = pg_format_sg_rules(ec2, res_id)
+                 elif type == "rtb": result['detail_tables'][res_id] = pg_format_route_table(ec2, res_id)
+        return result
+
 
     result = {'status': 'UNREACHABLE', 'reason': 'No SG rules allow the connection.', 'perms': [], 'tables': [], 'detail_tables': {}}
     source_sgs = ec2.describe_security_groups(GroupIds=source['security_group_ids'])['SecurityGroups']
@@ -459,27 +484,54 @@ def analyze_network_path_data(session, source_arn, target_arn):
                     result['status'] = 'REACHABLE'
                     result['perms'].append({'perm_tuple': (ingress_proto, i_from, ingress.get('ToPort', -1)), 'source_sg_rule': egress, 'source_sg_id': sg_out['GroupId'], 'target_sg_rule': ingress, 'target_sg_id': sg_in['GroupId'], 'source_nacl_rule': nacl_out_rule, 'target_nacl_rule': nacl_in_rule, 'route_rule': route_rule})
 
+    # --- INICIO DE LA SECCIÓN MODIFICADA ---
+    involved_ids = set()
+
     if result['status'] == 'REACHABLE':
         result['reason'] = ''
         grouped_paths = defaultdict(list)
-        involved_ids = set()
         for p in result['perms']:
             sig = (p['source_sg_id'], p['target_sg_id'], p['source_nacl_rule']['AclId'], p['target_nacl_rule']['AclId'], str(p['route_rule']))
             grouped_paths[sig].append(p['perm_tuple'])
-            involved_ids.update([("sg", p['source_sg_id']), ("sg", p['target_sg_id']), ("nacl", p['source_nacl_rule']['AclId']), ("nacl", p['target_nacl_rule']['AclId']), ("rtb", p['route_rule']['RouteTableId'])])
+            # Popular IDs desde la ruta exitosa
+            involved_ids.update([
+                ("sg", p['source_sg_id']), 
+                ("sg", p['target_sg_id']), 
+                ("nacl", p['source_nacl_rule']['AclId']), 
+                ("nacl", p['target_nacl_rule']['AclId']), 
+                ("rtb", p['route_rule']['RouteTableId'])
+            ])
         
         for sig, perms in grouped_paths.items():
             path_info = next(p for p in result['perms'] if p['perm_tuple'] in perms)
             result['tables'].append(pg_build_decision_table(path_info, pg_consolidate_ports(perms)))
 
-        for type, res_id in sorted(list(involved_ids)):
-            if res_id not in result['detail_tables']:
-                if type == "sg": result['detail_tables'][res_id] = pg_format_sg_rules(ec2, res_id)
-                elif type == "nacl": result['detail_tables'][res_id] = pg_format_nacl_rules(ec2, res_id)
-                elif type == "rtb": result['detail_tables'][res_id] = pg_format_route_table(ec2, res_id)
+    else: # status es UNREACHABLE
+        # Recopilar proactivamente todos los recursos potencialmente involucrados
+        involved_ids.update([("sg", sg_id) for sg_id in source['security_group_ids']])
+        involved_ids.update([("sg", sg_id) for sg_id in target['security_group_ids']])
+        
+        if route_rule.get('RouteTableId') and route_rule['RouteTableId'] != 'N/A':
+            involved_ids.add(("rtb", route_rule['RouteTableId']))
+        
+        source_nacl_id = _get_nacl_for_subnet(ec2, source['subnet_id'])
+        if source_nacl_id:
+            involved_ids.add(("nacl", source_nacl_id))
+
+        target_nacl_id = _get_nacl_for_subnet(ec2, target['subnet_id'])
+        if target_nacl_id:
+            involved_ids.add(("nacl", target_nacl_id))
+
+    # Poblar incondicionalmente las tablas de detalles a partir de los IDs recopilados
+    for type, res_id in sorted(list(involved_ids)):
+        if res_id and res_id not in result['detail_tables']:
+            if type == "sg": result['detail_tables'][res_id] = pg_format_sg_rules(ec2, res_id)
+            elif type == "nacl": result['detail_tables'][res_id] = pg_format_nacl_rules(ec2, res_id)
+            elif type == "rtb": result['detail_tables'][res_id] = pg_format_route_table(ec2, res_id)
                 
     del result['perms']
     return result
+
 
 def run_sslscan_on_targets(targets_str):
     """
@@ -615,3 +667,4 @@ def simulate_lambda_permissions(session, function_name, region, actions, context
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
             raise ValueError(f"Lambda function '{function_name}' not found.")
         raise Exception(f"Simulation failed: {str(e)}")
+    
