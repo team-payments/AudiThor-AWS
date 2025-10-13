@@ -112,23 +112,18 @@ def pg_format_nacl_rules(ec2_client, nacl_id):
 def pg_format_route_table(ec2_client, rtb_id):
     """
     Fetches and formats the routes of a Route Table into a text table.
-
-    Args:
-        ec2_client (boto3.client): The EC2 client to use for API calls.
-        rtb_id (str): The ID of the Route Table to format.
-
-    Returns:
-        str: A formatted string containing the table of routes.
-
-    Example:
-        >>> table = pg_format_route_table(ec2_client, 'rtb-12345678')
-        >>> print(table)
+    (Esta versión es compatible con IPv4 e IPv6)
     """
     rt = ec2_client.describe_route_tables(RouteTableIds=[rtb_id])['RouteTables'][0]
     rows = []
     for route in rt['Routes']:
-        target = next((v for k, v in route.items() if k != 'DestinationCidrBlock' and (k.endswith('Id') or k.endswith('id'))), 'local')
-        rows.append([route['DestinationCidrBlock'], target, route['State']])
+        # SOLUCIÓN: Usar .get() para obtener de forma segura el destino, sea IPv4 o IPv6
+        destination = route.get('DestinationCidrBlock') or route.get('DestinationIpv6CidrBlock', 'N/A')
+        
+        # El resto de la lógica para encontrar el target es seguro
+        target = next((v for k, v in route.items() if 'Destination' not in k and (k.endswith('Id') or k.endswith('id'))), 'local')
+        rows.append([destination, target, route.get('State', 'N/A')])
+        
     return _format_to_table(['Destination', 'Target', 'State'], rows, f"Details for Route Table: {rtb_id}")
 
 
@@ -292,18 +287,10 @@ def pg_check_nacl_fully(ec2_client, subnet_id, direction, remote_ip, protocol, p
     implicit_deny = {'RuleNumber': '*', 'RuleAction': 'deny', 'AclId': acl['NetworkAclId'], 'CidrBlock': '0.0.0.0/0'}
     return False, implicit_deny
 
-
 def pg_check_route_table(ec2_client, source_subnet_id, dest_ip):
     """
     Checks the route table for a subnet to find a route for a destination IP.
-
-    Args:
-        ec2_client (boto3.client): The EC2 client.
-        source_subnet_id (str): The ID of the source subnet.
-        dest_ip (str): The destination IP address.
-
-    Returns:
-        tuple: (bool, dict) indicating if a route was found and its details.
+    (Esta versión es compatible con IPv4 e IPv6)
     """
     try:
         response = ec2_client.describe_route_tables(Filters=[{'Name': 'association.subnet-id', 'Values': [source_subnet_id]}])
@@ -312,15 +299,37 @@ def pg_check_route_table(ec2_client, source_subnet_id, dest_ip):
             response = ec2_client.describe_route_tables(Filters=[{'Name': 'vpc-id', 'Values': [vpc_id]}, {'Name': 'association.main', 'Values': ['true']}])
         rt = response['RouteTables'][0]
 
-        best_route = max([r for r in rt['Routes'] if ipaddress.ip_address(dest_ip) in ipaddress.ip_network(r['DestinationCidrBlock'])], key=lambda r: ipaddress.ip_network(r['DestinationCidrBlock']).prefixlen, default=None)
+        matching_routes = []
+        dest_addr = ipaddress.ip_address(dest_ip)
+        
+        for r in rt['Routes']:
+            # SOLUCIÓN: Obtener el CIDR de forma segura (IPv4 o IPv6)
+            cidr = r.get('DestinationCidrBlock') or r.get('DestinationIpv6CidrBlock')
+            if not cidr:
+                continue
+
+            try:
+                # Comprobar si la IP de destino pertenece a la red de la ruta
+                if dest_addr in ipaddress.ip_network(cidr):
+                    matching_routes.append(r)
+            except TypeError:
+                # Esto evita errores si se compara una IP v4 con una red v6 o viceversa
+                continue
+
+        if not matching_routes:
+            return False, {'RouteTableId': rt.get('RouteTableId', 'N/A'), 'Target': 'No Route Found'}
+        
+        # Encontrar la ruta más específica (prefijo de red más largo)
+        best_route = max(matching_routes, key=lambda r: ipaddress.ip_network(r.get('DestinationCidrBlock') or r.get('DestinationIpv6CidrBlock')).prefixlen)
 
         if best_route:
             target = next((v for k, v in best_route.items() if k.endswith('Id')), 'local')
-            return True, {'RouteTableId': rt['RouteTableId'], 'Destination': best_route['DestinationCidrBlock'], 'Target': target}
+            destination_cidr = best_route.get('DestinationCidrBlock') or best_route.get('DestinationIpv6CidrBlock')
+            return True, {'RouteTableId': rt['RouteTableId'], 'Destination': destination_cidr, 'Target': target}
+            
     except (ClientError, IndexError):
         pass
     return False, {'RouteTableId': 'N/A', 'Target': 'No Route Found'}
-
 
 def pg_build_decision_table(path_info, consolidated_ports):
     """
