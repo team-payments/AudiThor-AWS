@@ -807,6 +807,7 @@ const openEditFindingModal = (findingIndex, findings) => {
     const finding = findings[findingIndex];
     if (!finding) return;
     
+    window.originalFindingState = JSON.parse(JSON.stringify(finding));
     const modal = document.createElement('div');
     modal.id = 'edit-finding-modal';
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
@@ -921,40 +922,69 @@ const openEditFindingModal = (findingIndex, findings) => {
 
 window.closeEditFindingModal = () => {
     const modal = document.getElementById('edit-finding-modal');
+    
+    // Si guardamos un estado original, significa que hubo una edición cancelada
+    if (window.originalFindingState) {
+        // Buscamos el índice del hallazgo en la lista editable
+        const editableIndex = window.editableFindings.findIndex(f => 
+            f.rule_id === window.originalFindingState.rule_id
+        );
+        
+        // Si lo encontramos, lo restauramos con la copia guardada
+        if (editableIndex !== -1) {
+            window.editableFindings[editableIndex] = window.originalFindingState;
+        }
+
+        // Limpiamos la variable global y refrescamos la vista
+        delete window.originalFindingState;
+        applyReportFilters();
+    }
+    
     if (modal) modal.remove();
 };
 
-// REEMPLAZA LA FUNCIÓN ENTERA
 window.saveFindingChanges = (findingIndex) => {
-    const name = document.getElementById('edit-finding-name')?.value.trim();
-    const description = document.getElementById('edit-finding-description')?.value.trim();
-    const remediation = document.getElementById('edit-finding-remediation')?.value.trim();
-    const severity = document.getElementById('edit-finding-severity')?.value;
+    const name = document.getElementById('edit-finding-name')?.value.trim(); //
+    const description = document.getElementById('edit-finding-description')?.value.trim(); //
+    const remediation = document.getElementById('edit-finding-remediation')?.value.trim(); //
+    const severity = document.getElementById('edit-finding-severity')?.value; //
     
-    const currentlyDisplayedFindings = getCurrentlyDisplayedFindings();
-    const findingToEdit = currentlyDisplayedFindings[findingIndex];
+    const currentlyDisplayedFindings = getCurrentlyDisplayedFindings(); //
+    const findingToEdit = currentlyDisplayedFindings[findingIndex]; //
     
-    if (!findingToEdit) return;
-    
-    // ¡CAMBIO CLAVE! Buscamos el hallazgo en la lista editable para modificarlo.
-    const editableIndex = window.editableFindings.findIndex(f => 
-        f.rule_id === findingToEdit.rule_id && 
-        f.name === findingToEdit.name && 
-        f.section === findingToEdit.section
-    );
-    
-    if (editableIndex !== -1) {
-        window.editableFindings[editableIndex] = {
-            ...window.editableFindings[editableIndex], // Mantiene los recursos
-            name,
-            description,
-            remediation,
-            severity
-        };
+    if (!findingToEdit) { //
+        // AÑADIDO: Si el hallazgo a editar no se encuentra, limpiamos la copia de seguridad.
+        if (window.originalFindingState) {
+            delete window.originalFindingState;
+        }
+        return;
     }
     
-    applyReportFilters();
-    closeEditFindingModal();
+    // Buscamos el hallazgo en la lista editable para modificarlo.
+    const editableIndex = window.editableFindings.findIndex(f =>  //
+        f.rule_id === findingToEdit.rule_id &&  //
+        f.name === findingToEdit.name &&  //
+        f.section === findingToEdit.section //
+    );
+    
+    if (editableIndex !== -1) { //
+        window.editableFindings[editableIndex] = { //
+            ...window.editableFindings[editableIndex], // Mantiene los recursos //
+            name, //
+            description, //
+            remediation, //
+            severity //
+        };
+    }
+
+    // AÑADIDO: Limpiamos la copia de seguridad del estado original,
+    // ya que los cambios se han guardado con éxito.
+    if (window.originalFindingState) {
+        delete window.originalFindingState;
+    }
+    
+    applyReportFilters(); //
+    closeEditFindingModal(); //
 };
 
 const generateCustomPDFReport = async (reportData) => {
