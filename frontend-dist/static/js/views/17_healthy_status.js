@@ -588,24 +588,27 @@ const populateFindingsReportData = () => {
     }
 };
 
+// En 17_healthy_status.js -> REEMPLAZA ESTA FUNCIÓN ENTERA
 const renderFindingsSelectionList = (findings) => {
-    const container = document.getElementById('findings-selection-list');
-    if (!container) return;
+    const container = document.getElementById('findings-selection-list'); //
+    if (!container) return; //
     
-    if (findings.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center py-4">No findings available for the selected filters.</p>';
-        return;
+    if (findings.length === 0) { //
+        container.innerHTML = '<p class="text-gray-500 text-center py-4">No findings available for the selected filters.</p>'; //
+        return; //
     }
     
-    const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 };
-    const sortedFindings = [...findings].sort((a, b) => 
-        (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99)
+    const severityOrder = { 'Crítico': 1, 'Alto': 2, 'Medio': 3, 'Bajo': 4, 'Informativo': 5 }; //
+    // Usamos la variable local 'findings' que se nos pasa para el renderizado inicial
+    const sortedFindings = [...findings].sort((a, b) =>  //
+        (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99) //
     );
     
-    container.innerHTML = sortedFindings.map((finding, index) => {
-        const severityClass = getSeverityClass(finding.severity);
-        const resourceCount = (finding.affected_resources || []).length;
+    container.innerHTML = sortedFindings.map((finding, index) => { //
+        const severityClass = getSeverityClass(finding.severity); //
+        const resourceCount = (finding.affected_resources || []).length; //
         
+        // El HTML que se genera es el mismo
         return `
             <div class="finding-item border border-gray-200 rounded-lg p-4 hover:bg-gray-50" data-finding-index="${index}">
                 <div class="flex items-start space-x-3">
@@ -627,25 +630,32 @@ const renderFindingsSelectionList = (findings) => {
                     </button>
                 </div>
             </div>
-        `;
-    }).join('');
+        `; //
+    }).join(''); //
     
+    // --- INICIO DE LA CORRECCIÓN CLAVE ---
     // Agregar event listeners para los botones de editar
-    container.querySelectorAll('.edit-finding-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const findingIndex = parseInt(e.currentTarget.getAttribute('data-finding-index'));
-            openEditFindingModal(findingIndex, sortedFindings); // Pasar los findings filtrados
+    container.querySelectorAll('.edit-finding-btn').forEach(btn => { //
+        btn.addEventListener('click', (e) => { //
+            const findingIndex = parseInt(e.currentTarget.getAttribute('data-finding-index')); //
+            
+            // CORRECCIÓN: En lugar de usar la variable 'sortedFindings' (que puede estar desactualizada),
+            // llamamos a 'getCurrentlyDisplayedFindings()' para obtener los datos más frescos en este preciso instante.
+            const currentFindings = getCurrentlyDisplayedFindings();
+            
+            openEditFindingModal(findingIndex, currentFindings); //
         });
     });
+    // --- FIN DE LA CORRECCIÓN CLAVE ---
 
-    // Agregar event listeners para los checkboxes
-    container.querySelectorAll('.finding-checkbox').forEach((checkbox, idx) => {
-        checkbox.addEventListener('change', (e) => {
-            const index = parseInt(e.target.id.replace('finding-', ''));
-            if (e.target.checked) {
-                window.reportCheckboxStates.add(index);
-            } else {
-                window.reportCheckboxStates.delete(index);
+    // Agregar event listeners para los checkboxes (esta parte no cambia)
+    container.querySelectorAll('.finding-checkbox').forEach((checkbox, idx) => { //
+        checkbox.addEventListener('change', (e) => { //
+            const index = parseInt(e.target.id.replace('finding-', '')); //
+            if (e.target.checked) { //
+                window.reportCheckboxStates.add(index); //
+            } else { //
+                window.reportCheckboxStates.delete(index); //
             }
         });
     });
