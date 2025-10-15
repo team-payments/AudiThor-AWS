@@ -81,7 +81,7 @@ import { buildNetworkPoliciesView, openModalWithVpcTags } from '/static/js/views
 import { buildConnectivityView } from '/static/js/views/14_connectivity.js';
 import { buildConfigSHView } from '/static/js/views/15_config_sh.js';
 import { buildCodePipelineView } from '/static/js/views/18_codepipeline.js';
-import { buildFinopsView } from '/static/js/views/19_finops.js';
+import { buildFinopsView } from '/static/js/views/20_finops.js';
 import { buildPlaygroundView } from '/static/js/views/16_playground.js';
 import { buildHealthyStatusView, buildGeminiReportView, buildScopedInventoryView, buildAuditorNotesView } from '/static/js/views/17_healthy_status.js';
 
