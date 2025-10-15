@@ -21,7 +21,7 @@ export const buildFinopsView = () => {
 
 // --- LÓGICA DE ESCANEO ---
 const runFinopsScan = async () => {
-    log('Iniciando escaneo de FinOps...', 'info');
+    log('Starting FinOps scan...', 'info');
     const btn = document.getElementById('run-finops-scan-btn');
     const btnText = btn.querySelector('span');
     const spinner = btn.querySelector('div');
@@ -35,10 +35,10 @@ const runFinopsScan = async () => {
     const sessionToken = document.getElementById('session-token-input').value.trim();
 
     if (!accessKey || !secretKey) {
-        alert('Por favor, introduce las credenciales de AWS primero.');
+        alert('Please enter the AWS credentials first.');
         btn.disabled = false;
         spinner.classList.add('hidden');
-        btnText.textContent = 'Ejecutar Análisis FinOps';
+        btnText.textContent = 'Run FinOps Analysis';
         return;
     }
 
@@ -53,19 +53,19 @@ const runFinopsScan = async () => {
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Error en el escaneo de FinOps');
+        if (!response.ok) throw new Error(data.error || 'FinOps scan error');
 
         window.finopsApiData = data;
-        log('Escaneo de FinOps completado.', 'success');
+        log('FinOps scan completed.', 'success');
         buildFinopsView(); // Vuelve a renderizar la vista con los nuevos datos
 
     } catch (error) {
-        log(`Error en el escaneo de FinOps: ${error.message}`, 'error');
+        log(`FinOps scan error: ${error.message}`, 'error');
         alert(`Error: ${error.message}`);
     } finally {
         btn.disabled = false;
         spinner.classList.add('hidden');
-        btnText.textContent = 'Ejecutar Análisis FinOps';
+        btnText.textContent = 'Run FinOps Analysis';
     }
 };
 
@@ -74,19 +74,20 @@ const runFinopsScan = async () => {
 const renderInitialState = () => `
     <header class="flex justify-between items-center mb-6">
         <div>
-            <h2 class="text-2xl font-bold text-[#204071]">FinOps - Identificación de Desperdicio</h2>
-            <p class="text-sm text-gray-500">Encuentra recursos no utilizados para reducir tu factura de AWS.</p>
+            <h2 class="text-2xl font-bold text-[#204071]">FinOps - Waste Identification</h2>
+            <p class="text-sm text-gray-500">Find unused resources to reduce your AWS bill.</p>
         </div>
     </header>
     <div class="text-center py-16 bg-white rounded-lg border border-gray-200">
         <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mx-auto h-12 w-12 text-gray-400" viewBox="0 0 16 16">
-            <path d="M4 3.06h2.726c1.22 0 2.12.575 2.325 1.724H4v1.051h5.051C8.855 7.001 8 7.558 6.788 7.558H4v1.317L8.437 14h2.11L6.095 8.884h.855c1.258 0 2.156.58 2.328 1.724h4.904V9.02H8.964c-.212-1.22.5-1.872 1.956-1.872h.855l.432 2.32H16v-1.05h-2.113c-.208-1.148-.925-1.724-2.328-1.724H8.964V4.784h2.11L14.47 14h1.53L12.447 3.06z"/>
+            <path d="M5 6.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.138-1.496A6.6 6.6 0 0 1 7.964 4.5c.666 0 1.303.097 1.893.273a.5.5 0 0 0 .286-.958A7.6 7.6 0 0 0 7.964 3.5c-.734 0-1.441.103-2.102.292a.5.5 0 1 0 .276.962"/>
+            <path fill-rule="evenodd" d="M7.964 1.527c-2.977 0-5.571 1.704-6.32 4.125h-.55A1 1 0 0 0 .11 6.824l.254 1.46a1.5 1.5 0 0 0 1.478 1.243h.263c.3.513.688.978 1.145 1.382l-.729 2.477a.5.5 0 0 0 .48.641h2a.5.5 0 0 0 .471-.332l.482-1.351c.635.173 1.31.267 2.011.267.707 0 1.388-.095 2.028-.272l.543 1.372a.5.5 0 0 0 .465.316h2a.5.5 0 0 0 .478-.645l-.761-2.506C13.81 9.895 14.5 8.559 14.5 7.069q0-.218-.02-.431c.261-.11.508-.266.705-.444.315.306.815.306.815-.417 0 .223-.5.223-.461-.026a1 1 0 0 0 .09-.255.7.7 0 0 0-.202-.645.58.58 0 0 0-.707-.098.74.74 0 0 0-.375.562c-.024.243.082.48.32.654a2 2 0 0 1-.259.153c-.534-2.664-3.284-4.595-6.442-4.595M2.516 6.26c.455-2.066 2.667-3.733 5.448-3.733 3.146 0 5.536 2.114 5.536 4.542 0 1.254-.624 2.41-1.67 3.248a.5.5 0 0 0-.165.535l.66 2.175h-.985l-.59-1.487a.5.5 0 0 0-.629-.288c-.661.23-1.39.359-2.157.359a6.6 6.6 0 0 1-2.157-.359.5.5 0 0 0-.635.304l-.525 1.471h-.979l.633-2.15a.5.5 0 0 0-.17-.534 4.65 4.65 0 0 1-1.284-1.541.5.5 0 0 0-.446-.275h-.56a.5.5 0 0 1-.492-.414l-.254-1.46h.933a.5.5 0 0 0 .488-.393m12.621-.857a.6.6 0 0 1-.098.21l-.044-.025c-.146-.09-.157-.175-.152-.223a.24.24 0 0 1 .117-.173c.049-.027.08-.021.113.012a.2.2 0 0 1 .064.199"/>
         </svg>
-        <h3 class="mt-2 text-lg font-medium text-[#204071]">Listo para Optimizar</h3>
-        <p class="mt-1 text-sm text-gray-500">Ejecuta el análisis para encontrar oportunidades de ahorro.</p>
+        <h3 class="mt-2 text-lg font-medium text-[#204071]">Ready to Optimize</h3>
+        <p class="mt-1 text-sm text-gray-500">Run the analysis to find savings opportunities.</p>
         <div class="mt-6">
             <button id="run-finops-scan-btn" class="bg-[#eb3496] text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-[#d42c86] transition flex items-center justify-center space-x-2 mx-auto">
-                <span>Ejecutar Análisis FinOps</span>
+                <span>Run FinOps Analysis</span>
                 <div class="spinner hidden"></div>
             </button>
         </div>
@@ -105,20 +106,20 @@ const renderFinopsDashboard = (results) => {
     return `
         <header class="flex justify-between items-center mb-6">
             <div>
-                <h2 class="text-2xl font-bold text-[#204071]">Dashboard de Ahorros Potenciales</h2>
-                <p class="text-sm text-gray-500">Ahorro total estimado: <span class="font-bold text-green-600 text-lg">$${totalSavings}/mes</span></p>
+                <h2 class="text-2xl font-bold text-[#204071]">Potential Savings Dashboard</h2>
+                <p class="text-sm text-gray-500">Estimated Total Savings: <span class="font-bold text-green-600 text-lg">$${totalSavings}/mes</span></p>
             </div>
             <button onclick="document.getElementById('run-finops-scan-btn').click()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition">
-                Volver a Analizar
+                Scan again
             </button>
         </header>
         <div class="space-y-6">
-            ${renderFindingCard('Volúmenes EBS sin adjuntar', unattached_volumes, ['ID de Volumen', 'Región', 'Tamaño (GB)'], ['VolumeId', 'Region', 'Size'])}
-            ${renderFindingCard('IPs Elásticas no asociadas', unassociated_eips, ['IP Pública', 'Región', 'ID de Alocación'], ['PublicIp', 'Region', 'AllocationId'])}
-            ${renderFindingCard('Balanceadores de Carga inactivos', idle_load_balancers, ['Nombre del LB', 'Región', 'Tipo'], ['LoadBalancerName', 'Region', 'Type'])}
+            ${renderFindingCard('Unattached EBS Volumes', unattached_volumes, ['Volume ID', 'Region', 'Size (GB)'], ['VolumeId', 'Region', 'Size'])}
+            ${renderFindingCard('Unassociated Elastic IPs', unassociated_eips, ['Public IP', 'Region', 'Allocation ID'], ['PublicIp', 'Region', 'AllocationId'])}
+            ${renderFindingCard('Inactive Load Balancers', idle_load_balancers, ['LB Name', 'Region', 'Type'], ['LoadBalancerName', 'Region', 'Type'])}
         </div>
         <div class="mt-6 text-xs text-center text-gray-500">
-            * Los costes son estimaciones basadas en precios de us-east-1 y pueden variar. Sirven como guía de magnitud del ahorro.
+            * Costs are estimates based on us-east-1 pricing and may vary. They serve as a guide to the magnitude of potential savings.
         </div>
     `;
 };
@@ -137,7 +138,7 @@ const renderFindingCard = (title, items, headers, dataKeys) => {
                     </div>
                     <div>
                         <h3 class="font-bold text-lg text-gray-800">${title}</h3>
-                        <p class="text-sm text-green-600 font-medium">¡Perfecto! No se encontraron recursos de este tipo.</p>
+                        <p class="text-sm text-green-600 font-medium">No resources of this type were found.</p>
                     </div>
                 </div>
             </div>
@@ -149,16 +150,16 @@ const renderFindingCard = (title, items, headers, dataKeys) => {
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-bold text-lg text-[#204071]">${title}</h3>
-                    <p class="text-sm text-gray-500">${totalCount} recurso(s) encontrado(s).</p>
+                    <p class="text-sm text-gray-500">${totalCount} resource(s) found.</p>
                 </div>
                 <div>
-                    <p class="text-xl font-bold text-red-600">$${totalSavings}/mes</p>
-                    <p class="text-xs text-gray-500 text-right">ahorro estimado</p>
+                    <p class="text-xl font-bold text-red-600">$${totalSavings}/month</p>
+                    <p class="text-xs text-gray-500 text-right">Estimated savings</p>
                 </div>
             </div>
             <div class="mt-4">
                 <button onclick="document.getElementById('${cardId}-details').classList.toggle('hidden')" class="text-sm text-blue-600 hover:underline font-medium">
-                    Ver/Ocultar Detalles
+                    Show/Hide Details
                 </button>
             </div>
             <div id="${cardId}-details" class="mt-4 hidden overflow-x-auto">
