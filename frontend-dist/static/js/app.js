@@ -86,7 +86,7 @@ import { buildPlaygroundView } from '/static/js/views/16_playground.js';
 import { buildHealthyStatusView, buildGeminiReportView, buildScopedInventoryView, buildAuditorNotesView } from '/static/js/views/17_healthy_status.js';
 
 // Importar funciones para onclick
-import { openModalWithTlsDetails } from '/static/js/views/02_exposure.js';
+import { openModalWithTlsDetails, openModalWithResourceMap } from '/static/js/views/02_exposure.js';
 import { openModalWithEcrPolicy } from '/static/js/views/04_ecr.js';
 import { openModalWithKmsPolicy, openModalWithSecretDetails } from '/static/js/views/12_kms_secrets.js';
 import { showCloudtrailEventDetails } from '/static/js/views/06_cloudtrail.js';
@@ -1473,6 +1473,7 @@ window.deleteAuditorNote = deleteAuditorNote;
 window.activateElementSelector = activateElementSelector;
 window.openModalWithVpcTags = openModalWithVpcTags;
 window.setResourceScope = setResourceScope;
+window.openModalWithResourceMap = openModalWithResourceMap;
 
 // === Delegación global para botones de Scope ===
 document.addEventListener('click', (e) => {

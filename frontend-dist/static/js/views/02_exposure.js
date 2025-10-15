@@ -354,6 +354,104 @@ export const openModalWithTlsDetails = (lbIndex, listenerIndex) => {
     modal.classList.remove('hidden');
 };
 
+export const openModalWithResourceMap = (lbIndex) => {
+    const modal = document.getElementById('details-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+
+    const allLbs = Object.values(window.exposureApiData.results.details['ALB/NLB Public'] || {}).flat();
+    const lb = allLbs[lbIndex];
+
+    if (!modal || !lb) {
+        console.error("No se pudo encontrar el modal o los datos del balanceador.");
+        return;
+    }
+
+    modalTitle.textContent = `Resource Map for: ${lb.name}`;
+    
+    // Llamamos a una nueva función que generará el HTML del diagrama
+    modalContent.innerHTML = renderResourceMapDiagram(lb);
+    
+    modal.classList.remove('hidden');
+};
+
+const renderResourceMapDiagram = (lb) => {
+    // Inspirado en el estilo de network_policies.js
+    let diagramHtml = '<div class="flex items-start space-x-4 p-4 overflow-x-auto bg-gray-50 rounded-lg">';
+
+    // Columna 1: Listeners
+    let listenersHtml = `<div class="flex-shrink-0 w-48 space-y-3">
+        <h4 class="font-bold text-gray-700">Listeners (${lb.listeners.length})</h4>`;
+    if (lb.listeners.length > 0) {
+        lb.listeners.forEach(listener => {
+            listenersHtml += `
+                <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                    <p class="font-semibold text-sm text-[#204071]">${listener.protocol} : ${listener.port}</p>
+                    <p class="text-xs text-gray-500">${listener.rules ? listener.rules.length : '1'} rule(s)</p>
+                </div>`;
+        });
+    } else {
+        listenersHtml += `<div class="bg-white border border-gray-200 rounded-lg p-3 text-center text-xs text-gray-500">No listeners</div>`;
+    }
+    listenersHtml += '</div>';
+
+    // Columna 2: Rules (simplificado, asumiendo una regla por listener para este ejemplo)
+    let rulesHtml = `<div class="flex-shrink-0 w-64 space-y-3 pt-10">`; // pt-10 para alinear
+    lb.listeners.forEach(listener => {
+        // Asumimos que la información de la regla y el target group está en el listener
+        // En una implementación real, aquí iterarías sobre listener.rules
+        rulesHtml += `
+            <div class="relative flex items-center">
+                <div class="text-gray-400 absolute -left-6 top-1/2 -translate-y-1/2">⟶</div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex-grow">
+                    <p class="font-semibold text-xs text-gray-500">Priority: default</p>
+                    <p class="font-semibold text-sm text-[#204071]">Forward to: <span class="font-mono">${listener.targetGroupName || 'N/A'}</span></p>
+                    <p class="text-xs text-gray-500 mt-1">Conditions: If no other rule applies</p>
+                </div>
+            </div>`;
+    });
+    rulesHtml += `</div>`;
+
+    // Columna 3: Target Groups
+    let targetGroupsHtml = `<div class="flex-shrink-0 w-64 space-y-3">
+        <h4 class="font-bold text-gray-700">Target Groups</h4>`;
+    lb.listeners.forEach(listener => {
+        const targetsCount = listener.targets ? listener.targets.length : 0;
+        targetGroupsHtml += `
+            <div class="relative flex items-center">
+                <div class="text-gray-400 absolute -left-6 top-1/2 -translate-y-1/2">⟶</div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex-grow">
+                    <p class="font-semibold text-sm text-[#204071] break-all">
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 inline-block mr-1"><path d="M2 3a1 1 0 011-1h3.5a1 1 0 011 1v1.5a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm2.5 7.5a1 1 0 011-1h3.5a1 1 0 011 1v1.5a1 1 0 01-1 1H5.5a1 1 0 01-1-1v-1.5zM2 12a1 1 0 011-1h3.5a1 1 0 011 1v1.5a1 1 0 01-1 1H3a1 1 0 01-1-1v-1.5z"></path></svg>
+                        ${listener.targetGroupName || 'N/A'}
+                    </p>
+                    <p class="text-xs text-gray-500">${targetsCount} targets</p>
+                    </div>
+            </div>`;
+    });
+    targetGroupsHtml += `</div>`;
+    
+    // Columna 4: Targets
+    let targetsHtml = `<div class="flex-shrink-0 w-48 space-y-3 pt-10">`;
+    lb.listeners.forEach(listener => {
+        targetsHtml += `<div class="relative flex items-center h-full">
+            <div class="text-gray-400 absolute -left-6 top-1/2 -translate-y-1/2">⟶</div>
+            <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm w-full">`;
+        if (listener.targets && listener.targets.length > 0) {
+            listener.targets.forEach(target => {
+                 targetsHtml += `<div class="text-sm font-mono text-gray-800">${target.Id}</div>`;
+            });
+        } else {
+            targetsHtml += `<p class="text-center text-xs text-gray-500">No targets</p>`;
+        }
+        targetsHtml += `</div></div>`;
+    });
+    targetsHtml += '</div>';
+
+    diagramHtml += listenersHtml + rulesHtml + targetGroupsHtml + targetsHtml + '</div>';
+    return diagramHtml;
+};
+
 const renderPublicLoadBalancersTable = (loadBalancersByRegion) => {
     const allLbs = Object.values(loadBalancersByRegion || {}).flat();
     if (allLbs.length === 0) {
@@ -383,7 +481,19 @@ const renderPublicLoadBalancersTable = (loadBalancersByRegion) => {
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${listener.policyName}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm">${statusBadge}</td>
                                 <td class="px-4 py-4 text-center">
-                                    <button onclick="openModalWithTlsDetails(${lbIndex}, ${listenerIndex})" class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">View Details</button>
+                                    <div class="flex space-x-2">
+                                        <button 
+                                            onclick="openModalWithTlsDetails(${lbIndex}, ${listenerIndex})" 
+                                            class="bg-gray-600 text-white ...">
+                                            TLS Details
+                                        </button>
+                                        
+                                        <button 
+                                            onclick="openModalWithResourceMap(${lbIndex})" 
+                                            class="bg-[#204071] text-white ...">
+                                            Resource Map
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>`;
             });
