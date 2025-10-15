@@ -2,21 +2,60 @@
  * 20_finops.js
  * Contiene la lógica para construir y renderizar la vista de FinOps.
  */
-import { log } from '../utils.js';
+import { log, handleTabClick } from '../utils.js';
 
 // --- FUNCIÓN PRINCIPAL DE LA VISTA (EXPORTADA) ---
 export const buildFinopsView = () => {
     const container = document.getElementById('finops-view');
     if (!container) return;
 
-    // Si no hay datos, muestra la pantalla inicial con el botón para escanear.
     if (!window.finopsApiData) {
         container.innerHTML = renderInitialState();
         document.getElementById('run-finops-scan-btn').addEventListener('click', runFinopsScan);
     } else {
-        // Si hay datos, renderiza los resultados.
-        container.innerHTML = renderFinopsDashboard(window.finopsApiData.results);
+        // Nuevo: Renderiza la estructura de pestañas
+        container.innerHTML = renderFinopsTabs();
+        // Llena cada pestaña con su contenido
+        renderWasteDashboard(window.finopsApiData.results);
+        renderModernizationDashboard(window.finopsApiData.results);
+        
+        // Activa la funcionalidad de las pestañas
+        const tabsNav = container.querySelector('#finops-tabs');
+        if (tabsNav) tabsNav.addEventListener('click', handleTabClick(tabsNav, '.finops-tab-content'));
     }
+};
+
+const renderFinopsTabs = () => {
+    const totalSavings = (/* ... tu cálculo de totalSavings existente ... */).toFixed(2);
+
+    return `
+        <header class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-[#204071]">Dashboard de Optimización FinOps</h2>
+                <p class="text-sm text-gray-500">Ahorro Cuantificable Estimado: <span class="font-bold text-green-600 text-lg">$${totalSavings}/mes</span></p>
+            </div>
+            <button id="rescan-finops-btn" onclick="runFinopsScan()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition flex items-center justify-center space-x-2">
+                <span>Volver a Escanear</span>
+                <div class="spinner hidden"></div>
+            </button>
+        </header>
+        
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-6" id="finops-tabs">
+                <a href="#" data-tab="finops-waste-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Identificación de Desperdicio</a>
+                <a href="#" data-tab="finops-modernization-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Modernización y Eficiencia</a>
+            </nav>
+        </div>
+
+        <div id="finops-tab-content-container">
+            <div id="finops-waste-content" class="finops-tab-content"></div>
+            <div id="finops-modernization-content" class="finops-tab-content hidden"></div>
+        </div>
+
+        <div class="mt-6 text-xs text-center text-gray-500">
+            * Los costes son estimaciones basadas en precios de us-east-1 y pueden variar.
+        </div>
+    `;
 };
 
 // --- LÓGICA DE ESCANEO ---
@@ -102,7 +141,7 @@ const renderInitialState = () => `
     </div>
 `;
 
-const renderFinopsDashboard = (results) => {
+const renderWasteDashboard = (results) => {
     const { unattached_volumes, unassociated_eips, idle_load_balancers } = results;
 
     const totalSavings = (
@@ -133,9 +172,14 @@ const renderFinopsDashboard = (results) => {
     `;
 };
 
-const renderFindingCard = (title, items, headers, dataKeys) => {
+const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'EstimatedMonthlyCost' }) => {
     const totalCount = items.length;
-    const totalSavings = items.reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0).toFixed(2);
+    // Solo sumar ahorros si son numéricos
+    const totalSavings = items.reduce((sum, item) => {
+        const savings = item[savingsKey];
+        return sum + (typeof savings === 'number' ? savings : 0);
+    }, 0).toFixed(2);
+    
     const cardId = title.toLowerCase().replace(/\s/g, '-');
 
     if (totalCount === 0) {
@@ -147,7 +191,7 @@ const renderFindingCard = (title, items, headers, dataKeys) => {
                     </div>
                     <div>
                         <h3 class="font-bold text-lg text-gray-800">${title}</h3>
-                        <p class="text-sm text-green-600 font-medium">No resources of this type were found.</p>
+                        <p class="text-sm text-green-600 font-medium">¡Perfecto! No se encontraron recursos de este tipo.</p>
                     </div>
                 </div>
             </div>
@@ -159,16 +203,17 @@ const renderFindingCard = (title, items, headers, dataKeys) => {
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-bold text-lg text-[#204071]">${title}</h3>
-                    <p class="text-sm text-gray-500">${totalCount} resource(s) found.</p>
+                    <p class="text-sm text-gray-500">${totalCount} recurso(s) encontrado(s).</p>
                 </div>
+                ${totalSavings > 0 ? `
                 <div>
-                    <p class="text-xl font-bold text-red-600">$${totalSavings}/month</p>
-                    <p class="text-xs text-gray-500 text-right">Estimated savings</p>
-                </div>
+                    <p class="text-xl font-bold text-green-600">$${totalSavings}/mes</p>
+                    <p class="text-xs text-gray-500 text-right">ahorro estimado</p>
+                </div>` : ''}
             </div>
             <div class="mt-4">
                 <button onclick="document.getElementById('${cardId}-details').classList.toggle('hidden')" class="text-sm text-blue-600 hover:underline font-medium">
-                    Show/Hide Details
+                    Ver/Ocultar Detalles
                 </button>
             </div>
             <div id="${cardId}-details" class="mt-4 hidden overflow-x-auto">
@@ -176,19 +221,35 @@ const renderFindingCard = (title, items, headers, dataKeys) => {
                     <thead class="bg-gray-50">
                         <tr>
                             ${headers.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">${h}</th>`).join('')}
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estimated Monthly Cost</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Recomendación / Ahorro</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         ${items.map(item => `
                             <tr class="hover:bg-gray-50">
                                 ${dataKeys.map(key => `<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-mono">${item[key]}</td>`).join('')}
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-red-600 font-mono">$${item.EstimatedMonthlyCost.toFixed(2)}</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">
+                                    <p class="font-medium">${item.Recommendation}</p>
+                                    ${typeof item[savingsKey] === 'number' ? `<p class="text-green-600 font-mono">$${item[savingsKey].toFixed(2)}/mes</p>` : `<p class="text-blue-600">${item[savingsKey]}</p>`}
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             </div>
+        </div>
+    `;
+};
+
+const renderModernizationDashboard = (results) => {
+    const container = document.getElementById('finops-modernization-content');
+    if (!container) return;
+    const { outdated_instances, gp2_volumes, s3_opportunities } = results;
+    container.innerHTML = `
+        <div class="space-y-6">
+            ${renderFindingCard({ title: 'Volúmenes EBS (gp2)', items: gp2_volumes, headers: ['ID de Volumen', 'Región', 'Tamaño (GB)'], dataKeys: ['VolumeId', 'Region', 'Size'], savingsKey: 'EstimatedMonthlySavings' })}
+            ${renderFindingCard({ title: 'Instancias EC2 Obsoletas', items: outdated_instances, headers: ['ID de Instancia', 'Región', 'Tipo Actual'], dataKeys: ['InstanceId', 'Region', 'InstanceType'], savingsKey: 'EstimatedSavings' })}
+            ${renderFindingCard({ title: 'Optimización de S3', items: s3_opportunities, headers: ['Nombre del Bucket'], dataKeys: ['BucketName'], savingsKey: 'EstimatedSavings' })}
         </div>
     `;
 };
