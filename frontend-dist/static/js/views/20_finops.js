@@ -151,33 +151,24 @@ const renderInitialState = () => `
     </div>
 `;
 
-const renderWasteDashboard = (results) => {
-    const { unattached_volumes, unassociated_eips, idle_load_balancers } = results;
+// EN 20_finops.js, REEMPLAZA ESTA FUNCIÓN ENTERA
 
-    const totalSavings = (
-        unattached_volumes.reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
-        unassociated_eips.reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
-        idle_load_balancers.reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0)
-    ).toFixed(2);
+const renderWasteDashboard = (results) => {
+    // 1. Apunta al contenedor correcto
+    const container = document.getElementById('finops-waste-content');
+    if (!container) return;
     
-    return `
-        <header class="flex justify-between items-center mb-6">
-            <div>
-                <h2 class="text-2xl font-bold text-[#204071]">Potential Savings Dashboard</h2>
-                <p class="text-sm text-gray-500">Estimated Total Savings: <span class="font-bold text-green-600 text-lg">$${totalSavings}/month</span></p>
-            </div>
-            <button id="rescan-finops-btn" onclick="runFinopsScan()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition flex items-center justify-center space-x-2">
-                <span>Scan again</span>
-                <div class="spinner hidden"></div>
-            </button>
-        </header>
+    // 2. CÓDIGO DEFENSIVO: Si `results` no existe, usa un objeto vacío {}.
+    //    Si una clave como `unattached_volumes` no existe, usa un array vacío [].
+    //    ESTO EVITA EL ERROR "Cannot read properties of undefined".
+    const { unattached_volumes = [], unassociated_eips = [], idle_load_balancers = [] } = results || {};
+    
+    // 3. Renderiza SOLO las tarjetas, sin cabeceras duplicadas.
+    container.innerHTML = `
         <div class="space-y-6">
-            ${renderFindingCard('Unattached EBS Volumes', unattached_volumes, ['Volume ID', 'Region', 'Size (GB)'], ['VolumeId', 'Region', 'Size'])}
-            ${renderFindingCard('Unassociated Elastic IPs', unassociated_eips, ['Public IP', 'Region', 'Allocation ID'], ['PublicIp', 'Region', 'AllocationId'])}
-            ${renderFindingCard('Inactive Load Balancers', idle_load_balancers, ['LB Name', 'Region', 'Type'], ['LoadBalancerName', 'Region', 'Type'])}
-        </div>
-        <div class="mt-6 text-xs text-center text-gray-500">
-            * Costs are estimates based on us-east-1 pricing and may vary. They serve as a guide to the magnitude of potential savings.
+            ${renderFindingCard({ title: 'Unattached EBS Volumes', items: unattached_volumes, headers: ['Volume ID', 'Region', 'Size (GB)'], dataKeys: ['VolumeId', 'Region', 'Size'] })}
+            ${renderFindingCard({ title: 'Unassociated Elastic IPs', items: unassociated_eips, headers: ['Public IP', 'Region', 'Allocation ID'], dataKeys: ['PublicIp', 'Region', 'AllocationId'] })}
+            ${renderFindingCard({ title: 'Inactive Load Balancers', items: idle_load_balancers, headers: ['LB Name', 'Region', 'Type'], dataKeys: ['LoadBalancerName', 'Region', 'Type'] })}
         </div>
     `;
 };
