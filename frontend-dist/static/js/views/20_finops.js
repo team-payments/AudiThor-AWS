@@ -25,8 +25,21 @@ export const buildFinopsView = () => {
     }
 };
 
+// EN 20_finops.js, REEMPLAZA ESTA FUNCIÓN ENTERA
+
 const renderFinopsTabs = () => {
-    const totalSavings = (/* ... tu cálculo de totalSavings existente ... */).toFixed(2);
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Obtenemos los resultados del objeto global para hacer el cálculo
+    const results = window.finopsApiData.results;
+    
+    // Calculamos el ahorro total sumando todas las fuentes cuantificables
+    const totalSavings = (
+        (results.unattached_volumes || []).reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
+        (results.unassociated_eips || []).reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
+        (results.idle_load_balancers || []).reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
+        (results.gp2_volumes || []).reduce((sum, item) => sum + item.EstimatedMonthlySavings, 0)
+    ).toFixed(2);
+    // --- FIN DE LA CORRECCIÓN ---
 
     return `
         <header class="flex justify-between items-center mb-6">
