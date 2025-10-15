@@ -22,7 +22,12 @@ export const buildFinopsView = () => {
 // --- LÓGICA DE ESCANEO ---
 const runFinopsScan = async () => {
     log('Starting FinOps scan...', 'info');
-    const btn = document.getElementById('run-finops-scan-btn');
+    const btn = document.getElementById('run-finops-scan-btn') || document.getElementById('rescan-finops-btn');
+    if (!btn) {
+        log('Could not find a scan button to update.', 'error');
+        return; // Salir si no se encuentra ningún botón
+    }
+
     const btnText = btn.querySelector('span');
     const spinner = btn.querySelector('div');
 
@@ -63,9 +68,12 @@ const runFinopsScan = async () => {
         log(`FinOps scan error: ${error.message}`, 'error');
         alert(`Error: ${error.message}`);
     } finally {
-        btn.disabled = false;
-        spinner.classList.add('hidden');
-        btnText.textContent = 'Run FinOps Analysis';
+        if (btn) { // Comprobar que el botón existe
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            // Restaurar el texto correcto según qué botón era
+            btnText.textContent = (btn.id === 'rescan-finops-btn') ? 'Scan again' : 'Run FinOps Analysis';
+        }
     }
 };
 
@@ -109,8 +117,9 @@ const renderFinopsDashboard = (results) => {
                 <h2 class="text-2xl font-bold text-[#204071]">Potential Savings Dashboard</h2>
                 <p class="text-sm text-gray-500">Estimated Total Savings: <span class="font-bold text-green-600 text-lg">$${totalSavings}/month</span></p>
             </div>
-            <button onclick="runFinopsScan()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition">
-                Scan again
+            <button id="rescan-finops-btn" onclick="runFinopsScan()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition flex items-center justify-center space-x-2">
+                <span>Scan again</span>
+                <div class="spinner hidden"></div>
             </button>
         </header>
         <div class="space-y-6">
