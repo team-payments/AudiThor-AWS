@@ -28,7 +28,7 @@ const runFinopsScan = async () => {
 
     btn.disabled = true;
     spinner.classList.remove('hidden');
-    btnText.textContent = 'Analizando Desperdicio...';
+    btnText.textContent = 'Analyzing Waste...';
 
     const accessKey = document.getElementById('access-key-input').value.trim();
     const secretKey = document.getElementById('secret-key-input').value.trim();
@@ -107,9 +107,9 @@ const renderFinopsDashboard = (results) => {
         <header class="flex justify-between items-center mb-6">
             <div>
                 <h2 class="text-2xl font-bold text-[#204071]">Potential Savings Dashboard</h2>
-                <p class="text-sm text-gray-500">Estimated Total Savings: <span class="font-bold text-green-600 text-lg">$${totalSavings}/mes</span></p>
+                <p class="text-sm text-gray-500">Estimated Total Savings: <span class="font-bold text-green-600 text-lg">$${totalSavings}/month</span></p>
             </div>
-            <button onclick="document.getElementById('run-finops-scan-btn').click()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition">
+            <button onclick="runFinopsScan()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition">
                 Scan again
             </button>
         </header>
@@ -167,7 +167,7 @@ const renderFindingCard = (title, items, headers, dataKeys) => {
                     <thead class="bg-gray-50">
                         <tr>
                             ${headers.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">${h}</th>`).join('')}
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Coste/Mes Est.</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estimated Monthly Cost</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
