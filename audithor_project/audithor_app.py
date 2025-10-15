@@ -24,7 +24,7 @@ from collectors import secrets_manager
 from collectors import (
     utils, iam, securityhub, exposure, guardduty, waf, cloudtrail,
     cloudwatch, inspector, kms, acm, compute, databases,
-    network_policies, connectivity, config_sh, playground, ecr, codepipeline
+    network_policies, connectivity, config_sh, playground, ecr, codepipeline, finops
 )
 
 # ==============================================================================
@@ -558,6 +558,16 @@ def run_codepipeline_audit():
         return _ok({"metadata": _metadata(session), "results": codepipeline_results})
     except Exception as e:
         return _fail(f"Unexpected error while collecting CodePipeline data: {str(e)}", 500)
+    
+@app.route('/api/run-finops-audit', methods=['POST'])
+def run_finops_audit():
+    session, error = utils.get_session(request.get_json())
+    if error: return _fail(error, 401)
+    try:
+        finops_results = finops.collect_finops_data(session)
+        return _ok({"metadata": _metadata(session), "results": finops_results})
+    except Exception as e:
+        return _fail(f"Unexpected error while collecting FinOps data: {str(e)}", 500)
 
 @app.route('/api/get-user-assumable-roles', methods=['POST'])
 def get_user_assumable_roles_endpoint():
