@@ -473,29 +473,25 @@ const renderPublicLoadBalancersTable = (loadBalancersByRegion) => {
                 const statusBadge = listener.isOutdated
                     ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Outdated</span>'
                     : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Secure</span>';
+                
+                tableHtml += `<tr 
+                                class="hover:bg-blue-50 cursor-pointer" 
+                                onclick="openModalWithResourceMap(${lbIndex})">
 
-                tableHtml += `<tr class="hover:bg-gray-50">
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${lb.region}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${lb.name}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${listener.port} (${listener.protocol})</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${listener.policyName}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm">${statusBadge}</td>
                                 <td class="px-4 py-4 text-center">
-                                    <div class="flex space-x-2">
-                                        <button 
-                                            onclick="openModalWithTlsDetails(${lbIndex}, ${listenerIndex})" 
-                                            class="bg-gray-600 text-white ...">
-                                            TLS Details
-                                        </button>
-                                        
-                                        <button 
-                                            onclick="openModalWithResourceMap(${lbIndex})" 
-                                            class="bg-[#204071] text-white ...">
-                                            Resource Map
-                                        </button>
-                                    </div>
+                                    <button 
+                                        onclick="event.stopPropagation(); openModalWithTlsDetails(${lbIndex}, ${listenerIndex})" 
+                                        class="bg-[#204071] text-white px-3 py-1 text-xs font-bold rounded-md hover:bg-[#1a335a] transition">
+                                        Details
+                                    </button>
                                 </td>
                             </tr>`;
+
             });
         } else {
             tableHtml += `<tr class="hover:bg-gray-50">
