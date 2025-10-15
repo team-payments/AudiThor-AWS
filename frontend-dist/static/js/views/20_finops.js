@@ -27,36 +27,33 @@ export const buildFinopsView = () => {
 
 // EN 20_finops.js, REEMPLAZA ESTA FUNCIÓN ENTERA
 
+// REEMPLAZA ESTA FUNCIÓN ENTERA
 const renderFinopsTabs = () => {
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Obtenemos los resultados del objeto global para hacer el cálculo
-    const results = window.finopsApiData.results;
+    const results = window.finopsApiData.results || {};
     
-    // Calculamos el ahorro total sumando todas las fuentes cuantificables
     const totalSavings = (
         (results.unattached_volumes || []).reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
         (results.unassociated_eips || []).reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
         (results.idle_load_balancers || []).reduce((sum, item) => sum + item.EstimatedMonthlyCost, 0) +
         (results.gp2_volumes || []).reduce((sum, item) => sum + item.EstimatedMonthlySavings, 0)
     ).toFixed(2);
-    // --- FIN DE LA CORRECCIÓN ---
 
     return `
         <header class="flex justify-between items-center mb-6">
             <div>
-                <h2 class="text-2xl font-bold text-[#204071]">Dashboard de Optimización FinOps</h2>
-                <p class="text-sm text-gray-500">Ahorro Cuantificable Estimado: <span class="font-bold text-green-600 text-lg">$${totalSavings}/mes</span></p>
+                <h2 class="text-2xl font-bold text-[#204071]">FinOps Optimization Dashboard</h2>
+                <p class="text-sm text-gray-500">Estimated Quantifiable Savings: <span class="font-bold text-green-600 text-lg">$${totalSavings}/month</span></p>
             </div>
             <button id="rescan-finops-btn" onclick="runFinopsScan()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition flex items-center justify-center space-x-2">
-                <span>Volver a Escanear</span>
+                <span>Scan Again</span>
                 <div class="spinner hidden"></div>
             </button>
         </header>
         
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex space-x-6" id="finops-tabs">
-                <a href="#" data-tab="finops-waste-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Identificación de Desperdicio</a>
-                <a href="#" data-tab="finops-modernization-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Modernización y Eficiencia</a>
+                <a href="#" data-tab="finops-waste-content" class="tab-link py-3 px-1 border-b-2 border-[#eb3496] text-[#eb3496] font-semibold text-sm">Waste Identification</a>
+                <a href="#" data-tab="finops-modernization-content" class="tab-link py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">Modernization & Efficiency</a>
             </nav>
         </div>
 
@@ -66,7 +63,7 @@ const renderFinopsTabs = () => {
         </div>
 
         <div class="mt-6 text-xs text-center text-gray-500">
-            * Los costes son estimaciones basadas en precios de us-east-1 y pueden variar.
+            * Costs are estimates based on us-east-1 pricing and may vary.
         </div>
     `;
 };
@@ -185,9 +182,9 @@ const renderWasteDashboard = (results) => {
     `;
 };
 
+// REEMPLAZA ESTA FUNCIÓN ENTERA
 const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'EstimatedMonthlyCost' }) => {
     const totalCount = items.length;
-    // Solo sumar ahorros si son numéricos
     const totalSavings = items.reduce((sum, item) => {
         const savings = item[savingsKey];
         return sum + (typeof savings === 'number' ? savings : 0);
@@ -204,7 +201,7 @@ const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'Esti
                     </div>
                     <div>
                         <h3 class="font-bold text-lg text-gray-800">${title}</h3>
-                        <p class="text-sm text-green-600 font-medium">¡Perfecto! No se encontraron recursos de este tipo.</p>
+                        <p class="text-sm text-green-600 font-medium">All good! No resources of this type were found.</p>
                     </div>
                 </div>
             </div>
@@ -216,17 +213,17 @@ const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'Esti
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-bold text-lg text-[#204071]">${title}</h3>
-                    <p class="text-sm text-gray-500">${totalCount} recurso(s) encontrado(s).</p>
+                    <p class="text-sm text-gray-500">${totalCount} resource(s) found.</p>
                 </div>
                 ${totalSavings > 0 ? `
                 <div>
-                    <p class="text-xl font-bold text-green-600">$${totalSavings}/mes</p>
-                    <p class="text-xs text-gray-500 text-right">ahorro estimado</p>
+                    <p class="text-xl font-bold text-green-600">$${totalSavings}/month</p>
+                    <p class="text-xs text-gray-500 text-right">estimated savings</p>
                 </div>` : ''}
             </div>
             <div class="mt-4">
                 <button onclick="document.getElementById('${cardId}-details').classList.toggle('hidden')" class="text-sm text-blue-600 hover:underline font-medium">
-                    Ver/Ocultar Detalles
+                    Show/Hide Details
                 </button>
             </div>
             <div id="${cardId}-details" class="mt-4 hidden overflow-x-auto">
@@ -234,7 +231,7 @@ const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'Esti
                     <thead class="bg-gray-50">
                         <tr>
                             ${headers.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">${h}</th>`).join('')}
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Recomendación / Ahorro</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Recommendation / Savings</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -243,7 +240,7 @@ const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'Esti
                                 ${dataKeys.map(key => `<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-mono">${item[key]}</td>`).join('')}
                                 <td class="px-4 py-3 text-sm text-gray-700">
                                     <p class="font-medium">${item.Recommendation}</p>
-                                    ${typeof item[savingsKey] === 'number' ? `<p class="text-green-600 font-mono">$${item[savingsKey].toFixed(2)}/mes</p>` : `<p class="text-blue-600">${item[savingsKey]}</p>`}
+                                    ${typeof item[savingsKey] === 'number' ? `<p class="text-green-600 font-mono">$${item[savingsKey].toFixed(2)}/month</p>` : `<p class="text-blue-600">${item[savingsKey]}</p>`}
                                 </td>
                             </tr>
                         `).join('')}
@@ -254,15 +251,19 @@ const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'Esti
     `;
 };
 
+// REEMPLAZA ESTA FUNCIÓN ENTERA
 const renderModernizationDashboard = (results) => {
     const container = document.getElementById('finops-modernization-content');
     if (!container) return;
-    const { outdated_instances, gp2_volumes, s3_opportunities } = results;
+
+    // Código defensivo: si los resultados no existen, usa arrays vacíos para evitar errores
+    const { outdated_instances = [], gp2_volumes = [], s3_opportunities = [] } = results || {};
+
     container.innerHTML = `
         <div class="space-y-6">
-            ${renderFindingCard({ title: 'Volúmenes EBS (gp2)', items: gp2_volumes, headers: ['ID de Volumen', 'Región', 'Tamaño (GB)'], dataKeys: ['VolumeId', 'Region', 'Size'], savingsKey: 'EstimatedMonthlySavings' })}
-            ${renderFindingCard({ title: 'Instancias EC2 Obsoletas', items: outdated_instances, headers: ['ID de Instancia', 'Región', 'Tipo Actual'], dataKeys: ['InstanceId', 'Region', 'InstanceType'], savingsKey: 'EstimatedSavings' })}
-            ${renderFindingCard({ title: 'Optimización de S3', items: s3_opportunities, headers: ['Nombre del Bucket'], dataKeys: ['BucketName'], savingsKey: 'EstimatedSavings' })}
+            ${renderFindingCard({ title: 'EBS Volumes (gp2)', items: gp2_volumes, headers: ['Volume ID', 'Region', 'Size (GB)'], dataKeys: ['VolumeId', 'Region', 'Size'], savingsKey: 'EstimatedMonthlySavings' })}
+            ${renderFindingCard({ title: 'Outdated EC2 Instances', items: outdated_instances, headers: ['Instance ID', 'Region', 'Current Type'], dataKeys: ['InstanceId', 'Region', 'InstanceType'], savingsKey: 'EstimatedSavings' })}
+            ${renderFindingCard({ title: 'S3 Storage Optimization', items: s3_opportunities, headers: ['Bucket Name'], dataKeys: ['BucketName'], savingsKey: 'EstimatedSavings' })}
         </div>
     `;
 };
