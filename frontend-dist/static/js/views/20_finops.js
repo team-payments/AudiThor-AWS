@@ -183,3 +183,5 @@ const renderFindingCard = (title, items, headers, dataKeys) => {
         </div>
     `;
 };
+
+window.runFinopsScan = runFinopsScan;
