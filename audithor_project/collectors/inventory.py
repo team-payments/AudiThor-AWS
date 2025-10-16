@@ -35,6 +35,16 @@ def count_resources_in_region(session, region):
         paginator_lambda = lambda_client.get_paginator('list_functions')
         for page in paginator_lambda.paginate():
             counts['lambda_functions'] += len(page.get('Functions', []))
+
+        paginator_vpc = ec2.get_paginator('describe_vpcs')
+        for page in paginator_vpc.paginate():
+            counts['vpcs'] += len(page.get('Vpcs', []))
+
+        # --- AÑADIR DynamoDB Tables ---
+        dynamodb = session.client('dynamodb', region_name=region)
+        paginator_dynamo = dynamodb.get_paginator('list_tables')
+        for page in paginator_dynamo.paginate():
+            counts['dynamodb_tables'] += len(page.get('TableNames', []))
             
     except ClientError as e:
         if "OptInRequired" not in str(e):
@@ -57,6 +67,9 @@ def collect_inventory_summary(session):
         'iam_users': {'total': 0, 'by_region': {}},
         'iam_roles': {'total': 0, 'by_region': {}},
         'iam_policies': {'total': 0, 'by_region': {}},
+        'vpcs': {'total': 0, 'by_region': {}},
+        'dynamodb_tables': {'total': 0, 'by_region': {}},
+        'route53_hosted_zones': {'total': 0, 'by_region': {}}, # Es global
     }
 
     # Recursos Globales (IAM y S3)
@@ -78,6 +91,14 @@ def collect_inventory_summary(session):
         summary['iam_roles']['by_region']['Global'] = iam_roles_count
         summary['iam_policies']['total'] = iam_policies_count
         summary['iam_policies']['by_region']['Global'] = iam_policies_count
+
+        route53 = session.client('route53')
+        paginator_r53 = route53.get_paginator('list_hosted_zones')
+        r53_count = 0
+        for page in paginator_r53.paginate():
+            r53_count += len(page.get('HostedZones', []))
+        summary['route53_hosted_zones']['total'] = r53_count
+        summary['route53_hosted_zones']['by_region']['Global'] = r53_count
 
     except ClientError as e:
         print(f"[Inventory] Error counting global resources: {e}")

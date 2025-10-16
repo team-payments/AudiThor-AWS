@@ -34,6 +34,9 @@ const renderInventoryTable = (results) => {
         'iam_users': "IAM Users",
         'iam_roles': "IAM Roles",
         'iam_policies': "IAM Customer-Managed Policies",
+        'vpcs': "VPCs",
+        'dynamodb_tables': "DynamoDB Tables",
+        'route53_hosted_zones': "Route 53 Hosted Zones",
     };
 
     const summary = results || {};
@@ -57,13 +60,26 @@ const renderInventoryTable = (results) => {
         tableRowsHtml += row;
     }
 
-    const allRegions = new Set();
+    const regionCounts = {};
     for (const key in summary) {
         if (summary[key] && summary[key].by_region) {
-            Object.keys(summary[key].by_region).forEach(region => allRegions.add(region));
+            for (const region in summary[key].by_region) {
+                if (!regionCounts[region]) {
+                    regionCounts[region] = 0;
+                }
+                regionCounts[region] += summary[key].by_region[region];
+            }
         }
     }
-    const sortedRegionsHeaders = Array.from(allRegions).sort();
+
+    const activeRegions = Object.keys(regionCounts).filter(region =>
+        region === 'Global' || regionCounts[region] > 0
+    );
+    const sortedRegionsHeaders = activeRegions.sort((a, b) => {
+        if (a === 'Global') return -1; // 'Global' siempre primero
+        if (b === 'Global') return 1;
+        return a.localeCompare(b); // Orden alfabético para el resto
+    });
 
     return `
         <header class="flex justify-between items-center mb-6">
