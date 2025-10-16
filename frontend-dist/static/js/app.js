@@ -1007,7 +1007,7 @@ const handleJsonImport = (event) => {
             console.log("%cAPP.JS [Paso 4]: La ejecución continuó INMEDIATAMENTE después de llamar a runAndDisplayHealthyStatus.", "color: red; font-weight: bold;");
 
             log('Activating the Identity & Access view post-import...', 'info');
-            showView('iam');
+            showView('inventory');
 
         } catch (error) {
             log(`Error importing the JSON file: ${error.message}`, 'error');

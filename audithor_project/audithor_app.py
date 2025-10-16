@@ -966,6 +966,7 @@ def _run_full_audit(session):
         "secretsManager":    lambda: {"results": secrets_manager.collect_secrets_manager_data(session)},
         "connectivity":      lambda: {"results": connectivity.collect_connectivity_data(session)},
         "codepipeline":      lambda: {"results": codepipeline.collect_codepipeline_data(session)},
+        "inventory":         lambda: {"results": inventory.collect_inventory_summary(session)},
     }
 
     total = len(tasks)
@@ -1004,6 +1005,7 @@ def _run_full_audit(session):
         "secretsManager": partial["secretsManager"],
         "connectivity": partial["connectivity"],
         "codepipeline": partial["codepipeline"],
+        "inventory": partial["inventory"],
     }
     return final
 
