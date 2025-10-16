@@ -42,24 +42,7 @@ const renderInventoryTable = (results) => {
     const summary = results || {};
     let tableRowsHtml = '';
 
-    for (const key in resourceNames) {
-        const item = summary[key];
-        if (!item) continue;
-
-        let row = `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${resourceNames[key]}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono font-bold">${item.total}</td>
-        `;
-        
-        const sortedRegions = Object.keys(item.by_region).sort();
-        sortedRegions.forEach(region => {
-            row += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${item.by_region[region] || 0}</td>`;
-        });
-        row += `</tr>`;
-        tableRowsHtml += row;
-    }
-
+    // 1. Calcula la lista maestra de cabeceras de regiones activas
     const regionCounts = {};
     for (const key in summary) {
         if (summary[key] && summary[key].by_region) {
@@ -81,6 +64,27 @@ const renderInventoryTable = (results) => {
         return a.localeCompare(b); // Orden alfabético para el resto
     });
 
+    // 2. Construye las filas (tbody) usando esa misma lista de cabeceras
+    for (const key in resourceNames) {
+        const item = summary[key];
+        if (!item) continue;
+
+        // Itera sobre la lista de cabeceras para generar las celdas de datos regionales
+        const regionalCells = sortedRegionsHeaders.map(region => {
+            const count = (item.by_region && item.by_region[region]) ? item.by_region[region] : 0;
+            return `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${count}</td>`;
+        }).join('');
+
+        tableRowsHtml += `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${resourceNames[key]}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono font-bold">${item.total}</td>
+                ${regionalCells}
+            </tr>
+        `;
+    }
+
+    // 3. Devuelve el HTML final de la tabla completa
     return `
         <header class="flex justify-between items-center mb-6">
             <div>
