@@ -698,6 +698,7 @@ const runAnalysisFromInputs = async () => {
         window.secretsManagerApiData    = wrap('secretsManager');
         window.codepipelineApiData      = wrap('codepipeline');
         window.inventoryApiData         = wrap('inventory');
+        window.finopsApiData            = wrap('finops');
         window.playgroundApiData        = root?.playground ? { metadata: metaSource || {}, results: root.playground?.traceroute || null, sslscan: root.playground?.sslscan || null } : null;
         window.trailAlertsData          = root?.trailAlerts || null;
 
@@ -743,7 +744,9 @@ const runAnalysisFromInputs = async () => {
                 secrets_manager:     fetch(R.secrets_manager,   { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                 connectivity:        fetch(R.connectivity,      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                 codepipeline:        fetch(R.codepipeline,      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                inventory:           fetch(R.inventory,         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                inventory:           fetch(R.inventory,         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                finops:              fetch(R.finops,            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+
             };
             
             const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
@@ -786,7 +789,8 @@ const runAnalysisFromInputs = async () => {
                     secretsManager: results.secrets_manager,
                     connectivity: results.connectivity,
                     codepipeline: results.codepipeline,
-                    inventory: results.inventory
+                    inventory: results.inventory,
+                    finops: results.finops
                 }
             };
 
@@ -809,6 +813,7 @@ const runAnalysisFromInputs = async () => {
     try {
         log('All data has been received.', 'success');
         buildAndRenderAllViews();
+        rerenderCurrentView();
         await runAndDisplayHealthyStatus();
 
         // Mostrar IAM y marcar activo en sidebar

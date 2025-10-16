@@ -967,6 +967,8 @@ def _run_full_audit(session):
         "connectivity":      lambda: {"results": connectivity.collect_connectivity_data(session)},
         "codepipeline":      lambda: {"results": codepipeline.collect_codepipeline_data(session)},
         "inventory":         lambda: {"results": inventory.collect_inventory_summary(session)},
+        "finops":            lambda: {"results": finops.collect_finops_data(session)},
+
     }
 
     total = len(tasks)
@@ -1006,6 +1008,7 @@ def _run_full_audit(session):
         "connectivity": partial["connectivity"],
         "codepipeline": partial["codepipeline"],
         "inventory": partial["inventory"],
+        "finops": partial["finops"],
     }
     return final
 

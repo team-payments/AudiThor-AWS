@@ -9,17 +9,21 @@ export const buildFinopsView = () => {
     const container = document.getElementById('finops-view');
     if (!container) return;
 
-    // If no data exists, show the initial state with the scan button.
-    if (!window.finopsApiData) {
-        container.innerHTML = renderInitialState();
-        document.getElementById('run-finops-scan-btn').addEventListener('click', runFinopsScan);
+    // Si no hay datos, muestra un mensaje para que el usuario ejecute el escaneo principal.
+    if (!window.finopsApiData || !window.finopsApiData.results) {
+        container.innerHTML = `
+            <header class="mb-6">
+                <h2 class="text-2xl font-bold text-[#204071]">FinOps Optimization</h2>
+            </header>
+            <div class="bg-white p-6 rounded-xl border border-gray-100">
+                <p class="text-center text-gray-500">No FinOps data found. Run a "Scan Account" to populate this section.</p>
+            </div>`;
     } else {
-        // If data exists, render the tabbed dashboard.
+        // Si hay datos, renderiza el dashboard con pestañas.
         container.innerHTML = renderFinopsTabs();
         renderWasteDashboard(window.finopsApiData.results);
         renderModernizationDashboard(window.finopsApiData.results);
         
-        // Activate tab functionality.
         const tabsNav = container.querySelector('#finops-tabs');
         if (tabsNav) {
             tabsNav.addEventListener('click', handleTabClick(tabsNav, '.finops-tab-content'));
@@ -45,9 +49,8 @@ const renderFinopsTabs = () => {
                 <h2 class="text-2xl font-bold text-[#204071]">FinOps Optimization Dashboard</h2>
                 <p class="text-sm text-gray-500">Estimated Quantifiable Savings: <span class="font-bold text-green-600 text-lg">$${totalSavings}/month</span></p>
             </div>
-            <button id="rescan-finops-btn" onclick="runFinopsScan()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition flex items-center justify-center space-x-2">
-                <span>Scan Again</span>
-                <div class="spinner hidden"></div>
+            <button onclick="document.getElementById('run-analysis-button').click()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition">
+                Rescan Account
             </button>
         </header>
         
@@ -171,90 +174,3 @@ const renderFindingCard = ({ title, items, headers, dataKeys, savingsKey = 'Esti
         </div>
     `;
 };
-
-// --- Renders the initial welcome screen ---
-// EN 20_finops.js, REEMPLAZA ESTA FUNCIÓN ENTERA
-
-const renderInitialState = () => `
-    <header class="flex justify-between items-center mb-6">
-        <div>
-            <h2 class="text-2xl font-bold text-[#204071]">FinOps - Waste Identification</h2>
-            <p class="text-sm text-gray-500">Find unused resources to reduce your AWS bill.</p>
-        </div>
-    </header>
-    <div class="text-center py-16 bg-white rounded-lg border border-gray-200">
-        
-        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mx-auto h-12 w-12 text-gray-400" viewBox="0 0 16 16">
-            <path d="M5 6.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.138-1.496A6.6 6.6 0 0 1 7.964 4.5c.666 0 1.303.097 1.893.273a.5.5 0 0 0 .286-.958A7.6 7.6 0 0 0 7.964 3.5c-.734 0-1.441.103-2.102.292a.5.5 0 1 0 .276.962"/>
-            <path fill-rule="evenodd" d="M7.964 1.527c-2.977 0-5.571 1.704-6.32 4.125h-.55A1 1 0 0 0 .11 6.824l.254 1.46a1.5 1.5 0 0 0 1.478 1.243h.263c.3.513.688.978 1.145 1.382l-.729 2.477a.5.5 0 0 0 .48.641h2a.5.5 0 0 0 .471-.332l.482-1.351c.635.173 1.31.267 2.011.267.707 0 1.388-.095 2.028-.272l.543 1.372a.5.5 0 0 0 .465.316h2a.5.5 0 0 0 .478-.645l-.761-2.506C13.81 9.895 14.5 8.559 14.5 7.069q0-.218-.02-.431c.261-.11.508-.266.705-.444.315.306.815.306.815-.417 0 .223-.5.223-.461-.026a1 1 0 0 0 .09-.255.7.7 0 0 0-.202-.645.58.58 0 0 0-.707-.098.74.74 0 0 0-.375.562c-.024.243.082.48.32.654a2 2 0 0 1-.259.153c-.534-2.664-3.284-4.595-6.442-4.595M2.516 6.26c.455-2.066 2.667-3.733 5.448-3.733 3.146 0 5.536 2.114 5.536 4.542 0 1.254-.624 2.41-1.67 3.248a.5.5 0 0 0-.165.535l.66 2.175h-.985l-.59-1.487a.5.5 0 0 0-.629-.288c-.661.23-1.39.359-2.157.359a6.6 6.6 0 0 1-2.157-.359.5.5 0 0 0-.635.304l-.525 1.471h-.979l.633-2.15a.5.5 0 0 0-.17-.534 4.65 4.65 0 0 1-1.284-1.541.5.5 0 0 0-.446-.275h-.56a.5.5 0 0 1-.492-.414l-.254-1.46h.933a.5.5 0 0 0 .488-.393m12.621-.857a.6.6 0 0 1-.098.21l-.044-.025c-.146-.09-.157-.175-.152-.223a.24.24 0 0 1 .117-.173c.049-.027.08-.021.113.012a.2.2 0 0 1 .064.199"/>
-        </svg>
-        <h3 class="mt-2 text-lg font-medium text-[#204071]">Ready to Optimize</h3>
-        <p class="mt-1 text-sm text-gray-500">Run the analysis to find savings opportunities.</p>
-        <div class="mt-6">
-            <button id="run-finops-scan-btn" class="bg-[#eb3496] text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-[#d42c86] transition flex items-center justify-center space-x-2 mx-auto">
-                <span>Run FinOps Analysis</span>
-                <div class="spinner hidden"></div>
-            </button>
-        </div>
-    </div>
-`;
-
-// --- Handles the API call and UI state for scanning ---
-const runFinopsScan = async () => {
-    log('Starting FinOps scan...', 'info');
-    const btn = document.getElementById('run-finops-scan-btn') || document.getElementById('rescan-finops-btn');
-    if (!btn) {
-        log('Could not find a scan button to update.', 'error');
-        return;
-    }
-
-    const btnText = btn.querySelector('span');
-    const spinner = btn.querySelector('div');
-
-    btn.disabled = true;
-    spinner.classList.remove('hidden');
-    btnText.textContent = 'Analyzing...';
-
-    const accessKey = document.getElementById('access-key-input').value.trim();
-    const secretKey = document.getElementById('secret-key-input').value.trim();
-    const sessionToken = document.getElementById('session-token-input').value.trim();
-
-    if (!accessKey || !secretKey) {
-        alert('Please enter AWS credentials first.');
-        btn.disabled = false;
-        spinner.classList.add('hidden');
-        btnText.textContent = 'Run FinOps Analysis';
-        return;
-    }
-
-    const payload = { access_key: accessKey, secret_key: secretKey };
-    if (sessionToken) payload.session_token = sessionToken;
-
-    try {
-        const response = await fetch('/api/run-finops-audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'FinOps scan error');
-
-        window.finopsApiData = data;
-        log('FinOps scan completed.', 'success');
-        buildFinopsView();
-
-    } catch (error) {
-        log(`FinOps scan error: ${error.message}`, 'error');
-        alert(`Error: ${error.message}`);
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            spinner.classList.add('hidden');
-            btnText.textContent = (btn.id === 'rescan-finops-btn') ? 'Scan Again' : 'Run FinOps Analysis';
-        }
-    }
-};
-
-// Expose the scan function globally for the inline onclick handler.
-window.runFinopsScan = runFinopsScan;
