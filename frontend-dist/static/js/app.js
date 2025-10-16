@@ -82,6 +82,7 @@ import { buildConnectivityView } from '/static/js/views/14_connectivity.js';
 import { buildConfigSHView } from '/static/js/views/15_config_sh.js';
 import { buildCodePipelineView } from '/static/js/views/18_codepipeline.js';
 import { buildFinopsView } from '/static/js/views/20_finops.js';
+import { buildInventoryView } from '/static/js/views/21_inventory.js';
 import { buildPlaygroundView } from '/static/js/views/16_playground.js';
 import { buildHealthyStatusView, buildGeminiReportView, buildScopedInventoryView, buildAuditorNotesView } from '/static/js/views/17_healthy_status.js';
 
@@ -206,6 +207,7 @@ window.configSHStatusApiData = null;
 window.kmsApiData = null;
 window.secretsManagerApiData = null;
 window.finopsApiData = null;
+window.inventoryApiData = null;
 window.allAvailableRegions = [];
 window.lastCloudtrailLookupResults = [];
 window.lastHealthyStatusFindings = [];
@@ -235,6 +237,7 @@ const VIEW_BUILDERS = {
   'config-sh': buildConfigSHView,
   'codepipeline': buildCodePipelineView,
   'finops': buildFinopsView,
+  'inventory': buildInventoryView,
   'playground': buildPlaygroundView,
   'healthy-status': () => { buildScopedInventoryView(); buildAuditorNotesView(); }
 };

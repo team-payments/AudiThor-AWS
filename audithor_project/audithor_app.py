@@ -24,7 +24,7 @@ from collectors import secrets_manager
 from collectors import (
     utils, iam, securityhub, exposure, guardduty, waf, cloudtrail,
     cloudwatch, inspector, kms, acm, compute, databases,
-    network_policies, connectivity, config_sh, playground, ecr, codepipeline, finops
+    network_policies, connectivity, config_sh, playground, ecr, codepipeline, finops, inventory
 )
 
 # ==============================================================================
@@ -1056,6 +1056,17 @@ def health_root():
 @app.get("/api/health")
 def health_api():
     return jsonify(ok=True, path="/api/health"), 200
+
+
+@app.route('/api/run-inventory-audit', methods=['POST'])
+def run_inventory_audit():
+    session, error = utils.get_session(request.get_json())
+    if error: return _fail(error, 401)
+    try:
+        inventory_results = inventory.collect_inventory_summary(session)
+        return _ok({"metadata": _metadata(session), "results": inventory_results})
+    except Exception as e:
+        return _fail(f"Unexpected error while collecting inventory data: {str(e)}", 500)
 
 # ==============================================================================
 # EJECUCIÓN SERVIDOR (solo local; en ECS usarás gunicorn)
