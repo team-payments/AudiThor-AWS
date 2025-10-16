@@ -6,14 +6,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 def count_resources_in_region(session, region):
     """Cuenta recursos principales en una sola región."""
+    # CORRECCIÓN: Se añaden los contadores para vpcs y dynamodb_tables
     counts = {
         'ec2_instances': 0, 'rds_instances': 0,
         'load_balancers': 0, 'lambda_functions': 0,
+        'vpcs': 0, 'dynamodb_tables': 0,
     }
     try:
         print(f"[Inventory] Counting resources in {region}...")
-        # EC2
         ec2 = session.client('ec2', region_name=region)
+        
+        # EC2
         paginator_ec2 = ec2.get_paginator('describe_instances')
         for page in paginator_ec2.paginate(Filters=[{'Name': 'instance-state-name', 'Values': ['pending', 'running', 'stopping', 'stopped']}]):
             counts['ec2_instances'] += sum(len(r.get('Instances', [])) for r in page.get('Reservations', []))
@@ -35,23 +38,22 @@ def count_resources_in_region(session, region):
         paginator_lambda = lambda_client.get_paginator('list_functions')
         for page in paginator_lambda.paginate():
             counts['lambda_functions'] += len(page.get('Functions', []))
-
+        
+        # VPCs
         paginator_vpc = ec2.get_paginator('describe_vpcs')
         for page in paginator_vpc.paginate():
             counts['vpcs'] += len(page.get('Vpcs', []))
 
-        # --- AÑADIR DynamoDB Tables ---
+        # DynamoDB Tables
         dynamodb = session.client('dynamodb', region_name=region)
         paginator_dynamo = dynamodb.get_paginator('list_tables')
         for page in paginator_dynamo.paginate():
             counts['dynamodb_tables'] += len(page.get('TableNames', []))
             
     except ClientError as e:
-        if "OptInRequired" not in str(e):
+        if "OptInRequired" not in str(e) and "AccessDenied" not in str(e):
             print(f"[Inventory] Error in region {region}: {e}")
     return (region, counts)
-
-# EN collectors/inventory.py, REEMPLAZA ESTA FUNCIÓN ENTERA
 
 def collect_inventory_summary(session):
     """
