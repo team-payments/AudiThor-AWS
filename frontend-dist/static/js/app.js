@@ -1251,11 +1251,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupModalControls();
 
     // Vistas vacías
-    views.forEach(view => { if (view.id !== 'iam-view') view.innerHTML = createInitialEmptyState(); });
+    views.forEach(view => { view.innerHTML = createInitialEmptyState(); });
 
     // Vista inicial
-    const initialView = document.getElementById('iam-view');
-    if (initialView) { initialView.classList.remove('hidden'); buildIamView(); }
+    showView('inventory');
     minimizeLogPanel();
 
     // === Auth UI wiring ===

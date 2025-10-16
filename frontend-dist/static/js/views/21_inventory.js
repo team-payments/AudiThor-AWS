@@ -82,14 +82,67 @@ const renderInitialState = () => `
     </div>
 `;
 
-const renderInventoryTable = (results) => {
-    const summary = results.summary_table || [];
+// EN 21_inventory.js, REEMPLAZA ESTA FUNCIÓN ENTERA
 
+const renderInventoryTable = (results) => {
+    // Mapeo de claves técnicas a nombres amigables
+    const resourceNames = {
+        'ec2_instances': "EC2 Instances",
+        'rds_instances': "RDS Instances",
+        's3_buckets': "S3 Buckets",
+        'load_balancers': "Load Balancers (ALB/NLB)",
+        'lambda_functions': "Lambda Functions",
+        'iam_users': "IAM Users",
+        'iam_roles': "IAM Roles",
+        'iam_policies': "IAM Customer-Managed Policies",
+    };
+
+    // 1. Descubrir todas las regiones únicas que tienen al menos un recurso.
+    const allRegions = new Set();
+    for (const key in results) {
+        if (results[key] && results[key].by_region) {
+            Object.keys(results[key].by_region).forEach(region => allRegions.add(region));
+        }
+    }
+    const sortedRegions = Array.from(allRegions).sort();
+
+    // 2. Construir las cabeceras de la tabla (dinámicas)
+    let tableHeadersHtml = `
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource Type</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+    `;
+    sortedRegions.forEach(region => {
+        tableHeadersHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${region}</th>`;
+    });
+
+    // 3. Construir las filas de la tabla
+    let tableRowsHtml = '';
+    for (const key in resourceNames) {
+        const item = results[key];
+        if (!item) continue;
+
+        let row = `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${resourceNames[key]}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono font-bold">${item.total}</td>
+        `;
+        
+        // Para cada región en el encabezado, buscamos el conteo. Si no existe, ponemos 0.
+        sortedRegions.forEach(region => {
+            const count = item.by_region[region] || 0;
+            row += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${count}</td>`;
+        });
+
+        row += `</tr>`;
+        tableRowsHtml += row;
+    }
+
+    // 4. Devolver la tabla completa
     return `
         <header class="flex justify-between items-center mb-6">
             <div>
                 <h2 class="text-2xl font-bold text-[#204071]">Resource Inventory Summary</h2>
-                <p class="text-sm text-gray-500">Total count of key resources across all regions.</p>
+                <p class="text-sm text-gray-500">Total count of key resources and breakdown by region.</p>
             </div>
             <button onclick="document.getElementById('run-inventory-scan-btn').click()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition">
                 Rescan
@@ -99,17 +152,11 @@ const renderInventoryTable = (results) => {
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource Type</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                        ${tableHeadersHtml}
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    ${summary.map(item => `
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.Resource}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${item.Count}</td>
-                        </tr>
-                    `).join('')}
+                    ${tableRowsHtml}
                 </tbody>
             </table>
         </div>

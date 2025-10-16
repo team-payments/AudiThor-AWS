@@ -39,53 +39,62 @@ def count_resources_in_region(session, region):
     except ClientError as e:
         if "OptInRequired" not in str(e):
             print(f"[Inventory] Error in region {region}: {e}")
-    return counts
+    return (region, counts)
+
+# EN collectors/inventory.py, REEMPLAZA ESTA FUNCIÓN ENTERA
 
 def collect_inventory_summary(session):
     """
-    Realiza un recuento de alto nivel de los recursos de AWS en todas las regiones.
+    Realiza un recuento de alto nivel de los recursos de AWS, agrupados por región.
     """
+    # Nueva estructura para almacenar totales y desglose por región
     summary = {
-        'ec2_instances': 0, 'rds_instances': 0,
-        's3_buckets': 0, 'load_balancers': 0,
-        'lambda_functions': 0, 'iam_users': 0,
-        'iam_roles': 0, 'iam_policies': 0,
+        'ec2_instances': {'total': 0, 'by_region': {}},
+        'rds_instances': {'total': 0, 'by_region': {}},
+        's3_buckets': {'total': 0, 'by_region': {}}, # S3 es global, pero mantenemos la estructura
+        'load_balancers': {'total': 0, 'by_region': {}},
+        'lambda_functions': {'total': 0, 'by_region': {}},
+        'iam_users': {'total': 0, 'by_region': {}},
+        'iam_roles': {'total': 0, 'by_region': {}},
+        'iam_policies': {'total': 0, 'by_region': {}},
     }
 
     # Recursos Globales (IAM y S3)
     try:
         print("[Inventory] Counting global resources...")
-        # S3
         s3 = session.client('s3')
-        summary['s3_buckets'] = len(s3.list_buckets().get('Buckets', []))
+        s3_count = len(s3.list_buckets().get('Buckets', []))
+        summary['s3_buckets']['total'] = s3_count
+        summary['s3_buckets']['by_region']['Global'] = s3_count
 
-        # IAM
         iam = session.client('iam')
-        summary['iam_users'] = len(iam.list_users().get('Users', []))
-        summary['iam_roles'] = len(iam.list_roles().get('Roles', []))
-        summary['iam_policies'] = len(iam.list_policies(Scope='Local').get('Policies', [])) # Solo políticas custom
+        iam_users_count = len(iam.list_users().get('Users', []))
+        iam_roles_count = len(iam.list_roles().get('Roles', []))
+        iam_policies_count = len(iam.list_policies(Scope='Local').get('Policies', []))
+        
+        summary['iam_users']['total'] = iam_users_count
+        summary['iam_users']['by_region']['Global'] = iam_users_count
+        summary['iam_roles']['total'] = iam_roles_count
+        summary['iam_roles']['by_region']['Global'] = iam_roles_count
+        summary['iam_policies']['total'] = iam_policies_count
+        summary['iam_policies']['by_region']['Global'] = iam_policies_count
+
     except ClientError as e:
         print(f"[Inventory] Error counting global resources: {e}")
 
-    # Recursos Regionales (en paralelo para mayor velocidad)
+    # Recursos Regionales (en paralelo)
     all_regions = get_all_aws_regions(session)
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(count_resources_in_region, session, region) for region in all_regions]
+        futures = {executor.submit(count_resources_in_region, session, region): region for region in all_regions}
         for future in futures:
-            regional_counts = future.result()
-            for key, value in regional_counts.items():
-                summary[key] += value
-    
-    # Convertir el diccionario a un formato de lista para la tabla del frontend
-    table_data = [
-        {"Resource": "EC2 Instances", "Count": summary['ec2_instances']},
-        {"Resource": "RDS Instances", "Count": summary['rds_instances']},
-        {"Resource": "S3 Buckets", "Count": summary['s3_buckets']},
-        {"Resource": "Load Balancers (ALB/NLB)", "Count": summary['load_balancers']},
-        {"Resource": "Lambda Functions", "Count": summary['lambda_functions']},
-        {"Resource": "IAM Users", "Count": summary['iam_users']},
-        {"Resource": "IAM Roles", "Count": summary['iam_roles']},
-        {"Resource": "IAM Customer-Managed Policies", "Count": summary['iam_policies']},
-    ]
+            region_name = futures[future]
+            try:
+                _region, regional_counts = future.result()
+                for key, value in regional_counts.items():
+                    if value > 0:
+                        summary[key]['total'] += value
+                        summary[key]['by_region'][region_name] = value
+            except Exception as exc:
+                print(f'[Inventory] Region {region_name} generated an exception: {exc}')
 
-    return {"summary_table": table_data}
+    return summary # Devolvemos la estructura completa al frontend
