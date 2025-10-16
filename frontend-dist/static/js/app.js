@@ -742,7 +742,8 @@ const runAnalysisFromInputs = async () => {
                 kms:                 fetch(R.kms,               { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                 secrets_manager:     fetch(R.secrets_manager,   { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                 connectivity:        fetch(R.connectivity,      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                codepipeline:        fetch(R.codepipeline,      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                codepipeline:        fetch(R.codepipeline,      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                inventory:           fetch(R.inventory,         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             };
             
             const promises = Object.entries(apiCalls).map(async ([key, promise]) => {
@@ -784,7 +785,8 @@ const runAnalysisFromInputs = async () => {
                     kms: results.kms,
                     secretsManager: results.secrets_manager,
                     connectivity: results.connectivity,
-                    codepipeline: results.codepipeline
+                    codepipeline: results.codepipeline,
+                    inventory: results.inventory
                 }
             };
 
@@ -811,7 +813,7 @@ const runAnalysisFromInputs = async () => {
 
         // Mostrar IAM y marcar activo en sidebar
         log('Activating the Identity & Access view post-scan...', 'info');
-        showView('iam');
+        //showView('iam');
     } catch (error) {
         const errorMsg = `Render error: ${error.message || 'Unknown'}`;
         console.error(error);
