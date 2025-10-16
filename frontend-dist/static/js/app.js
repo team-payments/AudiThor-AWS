@@ -697,6 +697,7 @@ const runAnalysisFromInputs = async () => {
         window.kmsApiData               = wrap('kms');
         window.secretsManagerApiData    = wrap('secretsManager');
         window.codepipelineApiData      = wrap('codepipeline');
+        window.inventoryApiData         = wrap('inventory');
         window.playgroundApiData        = root?.playground ? { metadata: metaSource || {}, results: root.playground?.traceroute || null, sslscan: root.playground?.sslscan || null } : null;
         window.trailAlertsData          = root?.trailAlerts || null;
 
@@ -910,6 +911,7 @@ const exportResultsToJson = () => {
             healthy_status_results: window.healthyStatusApiData?.results || null,
             trailAlerts: window.trailAlertsData || null,
             finops: window.finopsApiData?.results || null,
+            inventory: window.inventoryApiData?.results || null,
             audiThorScopeData: window.scopedResources,
             audiThorAuditorNotes: window.auditorNotes || []
         }
@@ -969,6 +971,7 @@ const handleJsonImport = (event) => {
             window.connectivityApiData = results.connectivity ? { metadata, results: results.connectivity } : null;
             window.codepipelineApiData = results.codepipeline ? { metadata, results: results.codepipeline } : null;
             window.finopsApiData = results.finops ? { metadata, results: results.finops } : null;
+            window.inventoryApiData = results.inventory ? { metadata, results: results.inventory } : null;
             const playgroundImportData = results.playground || {};
             window.playgroundApiData = { metadata, results: playgroundImportData.traceroute || null, sslscan: playgroundImportData.sslscan || null };
             
