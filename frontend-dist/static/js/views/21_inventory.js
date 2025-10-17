@@ -95,9 +95,24 @@ const renderInventoryTable = (results) => {
         if (!item) continue;
 
         // Itera sobre la lista de cabeceras para generar las celdas de datos regionales
+
         const regionalCells = sortedRegionsHeaders.map(region => {
             const count = (item.by_region && item.by_region[region]) ? item.by_region[region] : 0;
-            return `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${count}</td>`;
+
+            // --- Lógica para el mapa de calor ---
+            let cellClasses = 'text-center'; // Centramos el número para mejor visualización
+
+            if (count === 0) {
+                cellClasses += ' text-gray-400';
+            } else if (count > 0 && count < 10) {
+                cellClasses += ' bg-sky-100 text-sky-800';
+            } else if (count >= 10 && count < 50) {
+                cellClasses += ' bg-sky-300 text-sky-900 font-semibold';
+            } else if (count >= 50) {
+                cellClasses += ' bg-sky-500 text-white font-bold';
+            }
+
+            return `<td class="px-6 py-4 whitespace-nowrap text-sm font-mono ${cellClasses}">${count}</td>`;
         }).join('');
 
         tableRowsHtml += `
