@@ -1377,6 +1377,57 @@ def check_waf_classic_in_use(audit_data):
     # Si el bucle termina sin encontrar ninguna ACL clásica, no hay hallazgos.
     return []
 
+# --- NUEVAS FUNCIONES DE CHEQUEO PARA FINOPS ---
+
+def check_finops_unattached_ebs_volumes(audit_data):
+    """Extrae los volúmenes EBS sin adjuntar de los resultados de FinOps."""
+    failing_resources = []
+    volumes = audit_data.get("finops", {}).get("unattached_volumes", [])
+    for vol in volumes:
+        failing_resources.append({"resource": vol.get("VolumeId"), "region": vol.get("Region")})
+    return failing_resources
+
+def check_finops_unassociated_eips(audit_data):
+    """Extrae las IPs Elásticas no asociadas de los resultados de FinOps."""
+    failing_resources = []
+    eips = audit_data.get("finops", {}).get("unassociated_eips", [])
+    for eip in eips:
+        failing_resources.append({"resource": eip.get("PublicIp"), "region": eip.get("Region")})
+    return failing_resources
+
+def check_finops_idle_load_balancers(audit_data):
+    """Extrae los balanceadores de carga inactivos de los resultados de FinOps."""
+    failing_resources = []
+    lbs = audit_data.get("finops", {}).get("idle_load_balancers", [])
+    for lb in lbs:
+        failing_resources.append({"resource": lb.get("LoadBalancerName"), "region": lb.get("Region")})
+    return failing_resources
+
+def check_finops_outdated_ec2_instances(audit_data):
+    """Extrae las instancias EC2 obsoletas de los resultados de FinOps."""
+    failing_resources = []
+    instances = audit_data.get("finops", {}).get("outdated_instances", [])
+    for inst in instances:
+        resource_id = f"{inst.get('InstanceId')} ({inst.get('InstanceType')})"
+        failing_resources.append({"resource": resource_id, "region": inst.get("Region")})
+    return failing_resources
+
+def check_finops_gp2_ebs_volumes(audit_data):
+    """Extrae los volúmenes EBS gp2 de los resultados de FinOps."""
+    failing_resources = []
+    volumes = audit_data.get("finops", {}).get("gp2_volumes", [])
+    for vol in volumes:
+        failing_resources.append({"resource": vol.get("VolumeId"), "region": vol.get("Region")})
+    return failing_resources
+
+def check_finops_s3_opportunities(audit_data):
+    """Extrae las oportunidades de optimización de S3 de los resultados de FinOps."""
+    failing_resources = []
+    buckets = audit_data.get("finops", {}).get("s3_opportunities", [])
+    for bucket in buckets:
+        failing_resources.append({"resource": bucket.get("BucketName"), "region": "Global"})
+    return failing_resources
+
 # ------------------------------------------------------------------------------
 # 3. Master Rule List
 # ------------------------------------------------------------------------------
@@ -1970,5 +2021,66 @@ RULES_TO_CHECK = [
         "remediation": "Immediately remove all hardcoded credentials from Lambda environment variables and replace them with secure alternatives: 1) Use AWS Secrets Manager to store sensitive credentials and retrieve them programmatically in your function code. 2) Use AWS Systems Manager Parameter Store for configuration values and secrets. 3) Use IAM roles and policies to grant the Lambda function only the permissions it needs to access other AWS services. 4) For database connections, use IAM database authentication when possible. 5) Implement credential rotation policies and monitor access to sensitive resources. 6) Review your CI/CD pipeline to ensure secrets are not accidentally committed to source code.",
         "pci_requirement": "PCI DSS 8.3.2",
         "check_function": check_lambda_hardcoded_credentials
+    },
+    # --- NUEVAS REGLAS DE FINOPS ---
+    {
+        "rule_id": "FINOPS_001",
+        "section": "FinOps",
+        "name": "Unattached EBS Volume Detected",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An EBS volume exists that is not attached to any EC2 instance. These volumes incur storage costs while not being actively used, representing direct financial waste.",
+        "remediation": "Review the unattached volume. If it contains necessary data, attach it to an instance or create a snapshot for backup. If the volume is no longer needed, delete it to stop incurring costs.",
+        "pci_requirement": "N/A",
+        "check_function": check_finops_unattached_ebs_volumes
+    },
+    {
+        "rule_id": "FINOPS_002",
+        "section": "FinOps",
+        "name": "Unassociated Elastic IP Detected",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "An Elastic IP address exists that is not associated with any running resource. AWS charges an hourly fee for unassociated EIPs to discourage waste.",
+        "remediation": "Review the unassociated Elastic IP. If it is still needed for a future resource, associate it with a running instance or network interface. If it is no longer required, release it to stop the hourly charges.",
+        "pci_requirement": "N/A",
+        "check_function": check_finops_unassociated_eips
+    },
+    {
+        "rule_id": "FINOPS_003",
+        "section": "FinOps",
+        "name": "Idle Load Balancer Detected",
+        "severity": SEVERITY["MEDIUM"],
+        "description": "A Load Balancer (ALB/NLB) has been detected with no registered backend targets. You are paying an hourly fee for this resource even though it is not serving any traffic.",
+        "remediation": "Verify if the load balancer is still required. If it was for a temporary environment or a deprecated application, delete it to stop incurring costs.",
+        "pci_requirement": "N/A",
+        "check_function": check_finops_idle_load_balancers
+    },
+    {
+        "rule_id": "FINOPS_004",
+        "section": "FinOps",
+        "name": "Outdated EC2 Instance Generation",
+        "severity": SEVERITY["LOW"],
+        "description": "An EC2 instance is running on an older generation instance family (e.g., t2, m4). Newer generation instances offer significantly better price-performance, providing more power for a lower cost.",
+        "remediation": "Plan a migration to a newer generation instance family. For example, a t2 instance can be upgraded to a t3 or t4g instance. This can typically be done by stopping the instance, changing its type, and starting it again (a maintenance window is required).",
+        "pci_requirement": "N/A",
+        "check_function": check_finops_outdated_ec2_instances
+    },
+    {
+        "rule_id": "FINOPS_005",
+        "section": "FinOps",
+        "name": "EBS Volume using older gp2 type",
+        "severity": SEVERITY["LOW"],
+        "description": "An EBS volume is using the gp2 type. The newer gp3 type is approximately 20% cheaper and provides better baseline performance and the ability to provision IOPS and throughput independently of size.",
+        "remediation": "Modify the EBS volume and change its type from gp2 to gp3. This operation can be done live without detaching the volume or stopping the instance, and it typically has no performance impact during the modification.",
+        "pci_requirement": "N/A",
+        "check_function": check_finops_gp2_ebs_volumes
+    },
+    {
+        "rule_id": "FINOPS_006",
+        "section": "FinOps",
+        "name": "S3 Bucket without Lifecycle Policy",
+        "severity": SEVERITY["INFO"],
+        "description": "An S3 bucket has been identified without a lifecycle configuration. Using lifecycle policies, especially S3 Intelligent-Tiering, can automatically reduce storage costs by moving objects to cheaper storage tiers based on access patterns.",
+        "remediation": "Review the bucket's usage pattern. For most use cases with variable or unknown access patterns, create a lifecycle rule to transition all objects to the 'Intelligent-Tiering' storage class. This provides automatic cost savings with no performance impact.",
+        "pci_requirement": "N/A",
+        "check_function": check_finops_s3_opportunities
     }
 ]
