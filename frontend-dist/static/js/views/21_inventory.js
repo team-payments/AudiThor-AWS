@@ -82,7 +82,7 @@ const renderInventoryTable = (results) => {
     const sortedRegionsHeaders = activeRegions.sort((a, b) => {
         if (a === 'Global') return -1; // 'Global' siempre primero
         if (b === 'Global') return 1;
-        return a.localeCompare(b); // Orden alfabético para el resto
+        return regionCounts[b] - regionCounts[a];
     });
 
     // 2. Construye las filas (tbody) usando esa misma lista de cabeceras
