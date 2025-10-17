@@ -120,4 +120,43 @@ def collect_inventory_summary(session):
             except Exception as exc:
                 print(f'[Inventory] Region {region_name} generated an exception: {exc}')
 
+    print("[Inventory] Filtering regions with only a default VPC...")
+
+    # Lista de claves de recursos que son regionales (excluyendo los globales)
+    regional_resource_keys = [
+        'ec2_instances', 'rds_instances', 'load_balancers', 
+        'lambda_functions', 'vpcs', 'dynamodb_tables'
+    ]
+
+    # Primero, obtenemos un conjunto de todas las regiones encontradas
+    all_found_regions = set()
+    for key in regional_resource_keys:
+        all_found_regions.update(summary[key]['by_region'].keys())
+
+    regions_to_filter = []
+    for region in all_found_regions:
+        vpc_count = summary['vpcs']['by_region'].get(region, 0)
+
+        # Sumar el resto de recursos en esa región
+        other_resources_count = 0
+        for key in regional_resource_keys:
+            if key != 'vpcs':
+                other_resources_count += summary[key]['by_region'].get(region, 0)
+
+        # Condición: Si hay 1 VPC y CERO otros recursos, la marcamos para filtrar
+        if vpc_count == 1 and other_resources_count == 0:
+            regions_to_filter.append(region)
+
+    # Ahora, eliminamos las regiones marcadas del resumen final
+    if regions_to_filter:
+        print(f"[Inventory] Found regions to filter: {', '.join(regions_to_filter)}")
+        for region in regions_to_filter:
+            for key in summary: # Iteramos sobre todas las claves del summary
+                if region in summary[key]['by_region']:
+                    # Restamos la cuenta del total y eliminamos la entrada de la región
+                    count_to_remove = summary[key]['by_region'][region]
+                    summary[key]['total'] -= count_to_remove
+                    del summary[key]['by_region'][region]
+    # --- FIN: Bloque de filtrado ---
+
     return summary # Devolvemos la estructura completa al frontend
