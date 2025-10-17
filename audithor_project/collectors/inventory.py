@@ -11,6 +11,9 @@ def count_resources_in_region(session, region):
         'ec2_instances': 0, 'rds_instances': 0,
         'load_balancers': 0, 'lambda_functions': 0,
         'vpcs': 0, 'dynamodb_tables': 0,
+        'ecs_clusters': 0,
+        'eks_clusters': 0,
+        'documentdb_clusters': 0,
     }
     try:
         print(f"[Inventory] Counting resources in {region}...")
@@ -49,6 +52,24 @@ def count_resources_in_region(session, region):
         paginator_dynamo = dynamodb.get_paginator('list_tables')
         for page in paginator_dynamo.paginate():
             counts['dynamodb_tables'] += len(page.get('TableNames', []))
+
+        # ECS Clusters
+        ecs = session.client('ecs', region_name=region)
+        paginator_ecs = ecs.get_paginator('list_clusters')
+        for page in paginator_ecs.paginate():
+            counts['ecs_clusters'] += len(page.get('clusterArns', []))
+
+        # EKS Clusters
+        eks = session.client('eks', region_name=region)
+        paginator_eks = eks.get_paginator('list_clusters')
+        for page in paginator_eks.paginate():
+            counts['eks_clusters'] += len(page.get('clusters', []))
+
+        # DocumentDB Clusters
+        docdb = session.client('docdb', region_name=region)
+        paginator_docdb = docdb.get_paginator('describe_db_clusters')
+        for page in paginator_docdb.paginate():
+            counts['documentdb_clusters'] += len(page.get('DBClusters', []))
             
     except ClientError as e:
         if "OptInRequired" not in str(e) and "AccessDenied" not in str(e):
@@ -69,6 +90,10 @@ def collect_inventory_summary(session):
         'iam_users': {'total': 0, 'by_region': {}},
         'iam_roles': {'total': 0, 'by_region': {}},
         'iam_policies': {'total': 0, 'by_region': {}},
+        'ecs_clusters': {'total': 0, 'by_region': {}},
+        'eks_clusters': {'total': 0, 'by_region': {}},
+        'cloudfront_distributions': {'total': 0, 'by_region': {}}, # Es global
+        'documentdb_clusters': {'total': 0, 'by_region': {}},
         'vpcs': {'total': 0, 'by_region': {}},
         'dynamodb_tables': {'total': 0, 'by_region': {}},
         'route53_hosted_zones': {'total': 0, 'by_region': {}}, # Es global
@@ -101,6 +126,17 @@ def collect_inventory_summary(session):
             r53_count += len(page.get('HostedZones', []))
         summary['route53_hosted_zones']['total'] = r53_count
         summary['route53_hosted_zones']['by_region']['Global'] = r53_count
+
+        cloudfront = session.client('cloudfront')
+        paginator_cf = cloudfront.get_paginator('list_distributions')
+        cf_count = 0
+        for page in paginator_cf.paginate():
+            if 'DistributionList' in page and 'Items' in page['DistributionList']:
+                cf_count += len(page['DistributionList']['Items'])
+        summary['cloudfront_distributions']['total'] = cf_count
+        summary['cloudfront_distributions']['by_region']['Global'] = cf_count
+
+
 
     except ClientError as e:
         print(f"[Inventory] Error counting global resources: {e}")

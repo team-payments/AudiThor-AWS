@@ -58,6 +58,10 @@ const renderInventoryTable = (results) => {
         'vpcs': "VPCs",
         'dynamodb_tables': "DynamoDB Tables",
         'route53_hosted_zones': "Route 53 Hosted Zones",
+        'ecs_clusters': "ECS Clusters",
+        'eks_clusters': "EKS Clusters",
+        'cloudfront_distributions': "CloudFront Distributions",
+        'documentdb_clusters': "DocumentDB Clusters",
     };
 
     const summary = results || {};
