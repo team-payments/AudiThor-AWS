@@ -103,13 +103,13 @@ const renderInventoryTable = (results) => {
             let cellClasses = 'text-center'; // Centramos el número para mejor visualización
 
             if (count === 0) {
-                cellClasses += ' text-gray-400';
+                cellClasses += ' text-gray-400'; // Color gris para los ceros
             } else if (count > 0 && count < 10) {
-                cellClasses += ' bg-sky-100 text-sky-800';
+                cellClasses += ' bg-fuchsia-100 text-fuchsia-800'; // Tono rosa pálido
             } else if (count >= 10 && count < 50) {
-                cellClasses += ' bg-sky-300 text-sky-900 font-semibold';
+                cellClasses += ' bg-fuchsia-300 text-fuchsia-900 font-semibold'; // Tono fucsia intermedio
             } else if (count >= 50) {
-                cellClasses += ' bg-sky-500 text-white font-bold';
+                cellClasses += ' bg-fuchsia-600 text-white font-bold'; // Tono fucsia intenso y vibrante
             }
 
             return `<td class="px-6 py-4 whitespace-nowrap text-sm font-mono ${cellClasses}">${count}</td>`;
