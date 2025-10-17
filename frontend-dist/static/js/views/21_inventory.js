@@ -100,16 +100,16 @@ const renderInventoryTable = (results) => {
             const count = (item.by_region && item.by_region[region]) ? item.by_region[region] : 0;
 
             // --- Lógica para el mapa de calor ---
+            
             let cellClasses = 'text-center'; // Centramos el número para mejor visualización
-
             if (count === 0) {
                 cellClasses += ' text-gray-400'; // Color gris para los ceros
             } else if (count > 0 && count < 10) {
-                cellClasses += ' bg-fuchsia-100 text-fuchsia-800'; // Tono rosa pálido
+                cellClasses += ' bg-sky-100 text-sky-800'; // Color suave para pocos recursos
             } else if (count >= 10 && count < 50) {
-                cellClasses += ' bg-fuchsia-300 text-fuchsia-900 font-semibold'; // Tono fucsia intermedio
+                cellClasses += ' bg-sky-300 text-sky-900 font-semibold'; // Color intermedio
             } else if (count >= 50) {
-                cellClasses += ' bg-fuchsia-600 text-white font-bold'; // Tono fucsia intenso y vibrante
+                cellClasses += ' bg-sky-500 text-white font-bold'; // Color intenso para muchos recursos
             }
 
             return `<td class="px-6 py-4 whitespace-nowrap text-sm font-mono ${cellClasses}">${count}</td>`;
