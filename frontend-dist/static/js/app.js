@@ -165,6 +165,7 @@ const buildSlimHealthyPayload = () => {
     kms:             onlyResults(window.kmsApiData),
     secretsManager:  onlyResults(window.secretsManagerApiData),
     codepipeline:    onlyResults(window.codepipelineApiData),
+    finops:          onlyResults(window.finopsApiData),
     playground:      onlyResults(window.playgroundApiData) // suele traer traceroute/sslscan
   };
 
