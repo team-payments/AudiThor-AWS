@@ -202,6 +202,7 @@ const renderSecurityAnalysisTable = (repositories) => {
     let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Repository</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Repository ARN</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Access</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vulnerability Scanning</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image Signing</th>' +
@@ -242,6 +243,7 @@ const renderSecurityAnalysisTable = (repositories) => {
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${repo.Region}</td>
                 <td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${repo.RepositoryName}</td>
+                <td class="px-4 py-4 align-top text-xs font-mono text-gray-500 break-all">${repo.RepositoryArn}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${publicBadge}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${scanBadge}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${signingBadge}</td>
@@ -274,6 +276,7 @@ const renderComprehensiveRepositoriesTable = (repositories) => {
     let tableHtml = '<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Repository</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Repository ARN</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Encryption</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lifecycle Policy</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Signing Profile</th>' +
@@ -315,6 +318,7 @@ const renderComprehensiveRepositoriesTable = (repositories) => {
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm text-gray-600">${repo.Region}</td>
                 <td class="px-4 py-4 align-top text-sm font-medium text-gray-800 break-words">${repo.RepositoryName}</td>
+                <td class="px-4 py-4 align-top text-xs font-mono text-gray-500 break-all">${repo.RepositoryArn}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm font-mono text-gray-600">${repo.EncryptionType}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${lifecyclePolicyStatus}</td>
                 <td class="px-4 py-4 align-top whitespace-nowrap text-sm">${signingProfile}</td>
