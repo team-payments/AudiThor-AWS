@@ -868,11 +868,13 @@ const createInitialEmptyState = () => `<div class="text-center py-16 bg-white ro
 </div>`;
 
 // EXPORT/IMPORT
-const exportResultsToJson = () => {
+const exportResultsToJson = async () => {
     if (!window.iamApiData) {
         alert("Aviso: Debes ejecutar un análisis primero antes de exportar los resultados.");
         return;
     }
+    
+    // 1. Recopilar datos (esto es idéntico a tu código actual)
     let scanType = "fast";
     if (window.configSHApiData || (window.inspectorApiData && window.inspectorApiData.results.findings && window.inspectorApiData.results.findings.length > 0)) {
         scanType = "deep";
@@ -928,15 +930,50 @@ const exportResultsToJson = () => {
     const filename = `${accountId}_${accountAlias}_${scanType}.json`;
     const jsonString = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 
-    log(`Results successfully exported to the file: ${filename}`, 'success');
+    // --- INICIO DE LA NUEVA LÓGICA ---
+
+    // 2. Usar la File System Access API (si está disponible)
+    // Esto abre el diálogo "Guardar Como..."
+    if (window.showSaveFilePicker) {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [{
+                    description: 'JSON Files',
+                    accept: { 'application/json': ['.json'] },
+                }],
+            });
+            
+            // Escribir en el fichero (sobrescribiéndolo si ya existe)
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            log(`Results successfully saved to: ${handle.name}`, 'success');
+            
+        } catch (err) {
+            // El usuario canceló el diálogo
+            if (err.name === 'AbortError') {
+                log('File save canceled by user.', 'info');
+            } else {
+                log(`Error saving file: ${err.message}`, 'error');
+                console.error(err);
+            }
+        }
+    } else {
+        // 3. Fallback (tu método antiguo) para navegadores que no lo soportan
+        log('File System Access API not supported. Using legacy download.', 'warning');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        log(`Results exported to file: ${filename}. (Legacy mode)`, 'success');
+    }
+    // --- FIN DE LA NUEVA LÓGICA ---
 };
 
 const handleJsonImport = (event) => {
