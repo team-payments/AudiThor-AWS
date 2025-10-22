@@ -918,7 +918,13 @@ const exportResultsToJson = async () => {
             },
             connectivity: window.connectivityApiData?.results || null,
             codepipeline: window.codepipelineApiData?.results || null,
-            healthy_status_results: window.healthyStatusApiData?.results || null,
+            // healthy_status_results: window.healthyStatusApiData?.results || null,
+            // Guarda los hallazgos originales (para el botón "Reset")
+            healthyStatusFindings_Original: window.lastHealthyStatusFindings || null,
+            // Guarda los hallazgos editados (tu trabajo)
+            healthyStatusFindings_Edited: (window.editableFindings && window.editableFindings.length > 0)
+                                            ? window.editableFindings
+                                            : (window.lastHealthyStatusFindings || null),
             trailAlerts: window.trailAlertsData || null,
             finops: window.finopsApiData?.results || null,
             inventory: window.inventoryApiData?.results || null,
@@ -1020,6 +1026,23 @@ const handleJsonImport = (event) => {
             const playgroundImportData = results.playground || {};
             window.playgroundApiData = { metadata, results: playgroundImportData.traceroute || null, sslscan: playgroundImportData.sslscan || null };
             
+
+            if (results.healthyStatusFindings_Original) {
+                // Carga los originales para que "Reset Edits" funcione
+                window.lastHealthyStatusFindings = results.healthyStatusFindings_Original;
+                // Carga tus ediciones para que se muestren
+                window.editableFindings = results.healthyStatusFindings_Edited || results.healthyStatusFindings_Original;
+            } else if (results.healthyStatusFindings) { 
+                // Fallback por si usamos un JSON guardado con la lógica anterior
+                window.lastHealthyStatusFindings = results.healthyStatusFindings;
+                window.editableFindings = results.healthyStatusFindings;
+            } else {
+                // Si el JSON es muy antiguo y no tiene nada
+                window.lastHealthyStatusFindings = null;
+                window.editableFindings = null;
+            }
+
+
             window.trailAlertsData = results.trailAlerts || null;
             if (window.trailAlertsData) {
                 const alertsCount = window.trailAlertsData.results?.alerts?.length || 0;
