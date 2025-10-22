@@ -1727,6 +1727,20 @@ export const buildScopedInventoryView = () => {
                     });
                 }
                 break;
+            
+            case 'ecr':
+            const repo = window.ecrApiData?.results?.repositories.find(r => r.RepositoryArn === arn);
+            if (repo) {
+                unifiedScopedItems.push({
+                    type: 'ECR Repository',
+                    region: repo.Region,
+                    identifier: repo.RepositoryName,
+                    details: `Scan: ${repo.ScanOnPush ? 'On' : 'Off'}, Public: ${repo.IsPublic ? 'YES' : 'NO'}`, // O los detalles que prefieras
+                    comment: comment,
+                    arn: arn
+                });
+            }
+            break;
 
             case 'ecs':
                 const ecsCluster = window.computeApiData?.results?.ecs_clusters.find(c => c.ARN === arn);
