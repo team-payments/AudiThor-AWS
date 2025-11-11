@@ -1644,6 +1644,20 @@ export const buildScopedInventoryView = () => {
                     break; // ¡listo!
                 }
 
+                case 'dynamodb':
+                const dynamoTable = window.databasesApiData?.results?.dynamodb_tables.find(t => t.ARN === arn);
+                if (dynamoTable) {
+                    unifiedScopedItems.push({
+                        type: 'DynamoDB Table',
+                        region: dynamoTable.Region,
+                        identifier: dynamoTable.TableName,
+                        details: `Encrypted: ${dynamoTable.Encrypted ? 'YES' : 'NO'}`,
+                        comment: comment,
+                        arn: arn
+                    });
+                }
+                break;
+
                 // 2) Si no, intenta como Aurora Cluster
                 const auroraCluster = window.databasesApiData?.results?.aurora_clusters.find(c => c.ARN === arn);
                 if (auroraCluster) {
