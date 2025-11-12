@@ -1322,15 +1322,17 @@ window.openLambdaCredentialDetails = (credentialIndex) => {
     modal.classList.remove('hidden');
 };
 
+
 const renderApiMapDiagram = (api) => {
     if (!api) return '<p class="text-gray-500">No API data found.</p>';
 
     const integrations = api.integrations || [];
+    const stages = api.stages || [];
 
-    let stagesHtml = `<div class="flex-shrink-0 w-48 space-y-3">
-        <h4 class="font-bold text-gray-700">Stages (${(api.stages || []).length})</h4>`;
-    if (api.stages && api.stages.length > 0) {
-        api.stages.forEach(stage => {
+    // --- Col 1: Stages ---
+    let stagesHtml = '';
+    if (stages.length > 0) {
+        stages.forEach(stage => {
             stagesHtml += `
                 <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                     <p class="font-semibold text-sm text-[#204071]">${stage}</p>
@@ -1339,56 +1341,89 @@ const renderApiMapDiagram = (api) => {
     } else {
         stagesHtml += `<div class="bg-white border border-gray-200 rounded-lg p-3 text-center text-xs text-gray-500">No stages</div>`;
     }
-    stagesHtml += '</div>';
 
-    let resourcesHtml = `<div class="flex-shrink-0 w-64 space-y-3 pt-10">`;
-    let backendsHtml = `<div class="flex-shrink-0 w-64 space-y-3 pt-10">`;
-
+    // --- Col 2 & 3: Resources & Backends (vinculados) ---
+    let resourcesHtml = '';
+    let backendsHtml = '';
+    
     if (integrations.length > 0) {
+        // Ordenar para agrupar (opcional, pero más limpio)
+        integrations.sort((a, b) => (a.path + a.method).localeCompare(b.path + b.method));
+        
         integrations.forEach(integ => {
-            const method = integ.method ? `<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">${integ.method}</span>` : '';
+            const method = integ.method ? `<span class="px-2 py-0.5 text-xs font-semibold rounded-full ${integ.method === 'OPTIONS' ? 'bg-gray-100 text-gray-700' : 'bg-blue-100 text-blue-800'}">${integ.method}</span>` : '';
             const path = integ.path || 'N/A';
-
+            
+            // Col 2 Box
             resourcesHtml += `
-                <div class="relative flex items-center">
-                    <div class="text-gray-400 absolute -left-6 top-1/2 -translate-y-1/2">⟶</div>
-                    <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex-grow">
+                <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex-grow">
+                    <div class="flex justify-between items-center">
                         <p class="font-semibold text-sm text-[#204071] break-all">${path}</p>
-                        <p class="text-xs text-gray-500 mt-1">${method} ${integ.type || 'N/A'}</p>
+                        ${method}
                     </div>
+                    <p class="text-xs text-gray-500 mt-1">${integ.type || 'N/A'}</p>
                 </div>`;
 
-            // Extraer el nombre de la Lambda del ARN
+            // Col 3 Box
             let backendName = integ.uri || 'N/A';
-            if (backendName.includes('lambda:path')) {
+            let icon = 'M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM12.94 13.06L10.88 15.12L8.7 12.94L7.29 14.35L10.88 17.94L14.35 14.47L12.94 13.06Z'; // Icono genérico
+            
+            if (integ.type === 'MOCK') {
+                backendName = 'N/A';
+            } else if (backendName.includes('lambda:path')) {
                 backendName = backendName.split('/').pop();
+            } else if (backendName.includes('arn:aws:apigateway:')) {
+                backendName = backendName.split(':').pop().replace('integration', '');
             }
 
             backendsHtml += `
-                <div class="relative flex items-center">
-                    <div class="text-gray-400 absolute -left-6 top-1/2 -translate-y-1/2">⟶</div>
-                    <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex-grow">
-                        <p class="font-semibold text-sm text-green-700 break-all">
-                            <svg fill="currentColor" class="w-4 h-4 inline-block mr-1" viewBox="0 0 24 24"><path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM12.94 13.06L10.88 15.12L8.7 12.94L7.29 14.35L10.88 17.94L14.35 14.47L12.94 13.06Z"></path></svg>
-                            ${backendName}
-                        </p>
-                        <p class="text-xs text-gray-500">${integ.type}</p>
-                    </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex-grow">
+                    <p class="font-semibold text-sm ${integ.type === 'MOCK' ? 'text-gray-500' : 'text-green-700'} break-all">
+                        <svg fill="currentColor" class="w-4 h-4 inline-block mr-1" viewBox="0 0 24 24"><path d="${icon}"></path></svg>
+                        ${backendName}
+                    </p>
+                    <p class="text-xs text-gray-500">${integ.type}</p>
                 </div>`;
         });
     } else {
-        resourcesHtml += `<div class="relative flex items-center"><div class="text-gray-400 absolute -left-6 top-1/2 -translate-y-1/2">⟶</div><div class="bg-white border border-gray-200 rounded-lg p-3 text-center text-xs text-gray-500">No resources defined</div></div>`;
-        backendsHtml += `<div class="relative flex items-center"><div class="text-gray-400 absolute -left-6 top-1/2 -translate-y-1/2">⟶</div><div class="bg-white border border-gray-200 rounded-lg p-3 text-center text-xs text-gray-500">No integrations</div></div>`;
+        resourcesHtml += `<div class="bg-white border border-gray-200 rounded-lg p-3 text-center text-xs text-gray-500">No resources defined</div>`;
+        backendsHtml += `<div class="bg-white border border-gray-200 rounded-lg p-3 text-center text-xs text-gray-500">No integrations</div>`;
     }
 
-    resourcesHtml += '</div>';
-    backendsHtml += '</div>';
-
-    return `<div class="flex items-start space-x-4 p-4 overflow-x-auto bg-gray-50 rounded-lg">
+    // --- Ensamblar el HTML final con la nueva estructura ---
+    return `
+    <div class="flex items-stretch space-x-2 p-4 overflow-x-auto bg-gray-50 rounded-lg">
+        
+        <div class="flex flex-col flex-shrink-0 w-48">
+            <h4 class="font-bold text-sm text-gray-700 mb-2 text-center">Stages (${stages.length})</h4>
+            <div class="flex flex-col justify-center space-y-3 flex-grow">
                 ${stagesHtml}
+            </div>
+        </div>
+        
+        <div class="flex flex-col justify-center flex-shrink-0">
+            <div class="text-gray-400 text-2xl mx-2">⟶</div>
+        </div>
+
+        <div class="flex flex-col flex-shrink-0 w-64">
+            <h4 class="font-bold text-sm text-gray-700 mb-2 text-center">Resources (${integrations.length})</h4>
+            <div class="flex flex-col justify-center space-y-3 flex-grow">
                 ${resourcesHtml}
+            </div>
+        </div>
+        
+        <div class="flex flex-col justify-center flex-shrink-0">
+            <div class="text-gray-400 text-2xl mx-2">⟶</div>
+        </div>
+
+        <div class="flex flex-col flex-shrink-0 w-64">
+            <h4 class="font-bold text-sm text-gray-700 mb-2 text-center">Integrations (${integrations.length})</h4>
+            <div class="flex flex-col justify-center space-y-3 flex-grow">
                 ${backendsHtml}
-            </div>`;
+            </div>
+        </div>
+
+    </div>`;
 };
 
 /**
