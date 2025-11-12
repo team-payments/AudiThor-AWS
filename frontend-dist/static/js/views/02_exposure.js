@@ -545,6 +545,7 @@ const renderApiGatewayTable = (apisByRegion) => {
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">API ID</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">API Type</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Endpoint Type</th>' +
+                    '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Port</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stages</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Creation Date</th>' +
                     '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>' +
@@ -621,6 +622,11 @@ const renderApiGatewayTable = (apisByRegion) => {
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${endpointBadgeClass}">${endpointTypeText}</span>
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    443 (HTTPS)
+                                </span>
                             </td>
                             <td class="px-4 py-4 text-sm text-gray-600 break-words max-w-xs">${stagesHtml}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${formattedDate}</td>
