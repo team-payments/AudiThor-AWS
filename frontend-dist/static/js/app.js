@@ -1547,6 +1547,7 @@ window.activateElementSelector = activateElementSelector;
 window.openModalWithVpcTags = openModalWithVpcTags;
 window.setResourceScope = setResourceScope;
 window.openModalWithResourceMap = openModalWithResourceMap;
+window.openModalWithApiMap = openModalWithApiMap;
 
 // === Delegación global para botones de Scope ===
 document.addEventListener('click', (e) => {
